@@ -7,6 +7,7 @@ local stats = require "stats"
 local schemas = require "schemas"
 
 
+OFFCHAIN_FEED_PROVIDER = 'iC5mu-_GkholDuxBrzI-rm1gIUagPrBOWhqzUwKBosk'
 TOKEN = ao.env.Process.Tags["Base-Token"]
 AMM =  ao.env.Process.Tags["Monitor-For"]
 
@@ -129,7 +130,7 @@ Handlers.add(
   "ReceiveOffchainFeed", -- handler name
   Handlers.utils.hasMatchingTag("Action", "Receive-Offchain-Feed"),
   function (msg)
-    if msg.From == 'iC5mu-_GkholDuxBrzI-rm1gIUagPrBOWhqzUwKBosk' then
+    if msg.From == OFFCHAIN_FEED_PROVIDER then
       local data = json.decode(msg.Data)
       insertManyTransactions(data, 'gateway')
     end
