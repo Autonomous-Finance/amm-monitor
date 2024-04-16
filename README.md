@@ -18,31 +18,9 @@ Due to some issues with the aos file loader we recommend using amalg to build a 
 https://luarocks.org/modules/siffiejoe/amalg
 
 To build on osx do:
-`/opt/homebrew/bin/amalg.lua -s process.lua -o build/output.lua candles intervals process schemas validation stats sqlschemas`
+`bash build.sh`
 
 
-## Starting a new monitor process
-```
-aos my-monitor-name \
---tag-name Monitor-For --tag-value <AMM_PROCESS_ID> \
---tag-name Base-Token --tag-value <BASE_TOKEN_ID> \
---tag-name Quote-Token --tag-value <QUOTE_TOKEN_ID> \
---tag-name Process-Type --tag-value 'AMM-Monitor' \
---load build/output.lua
-```
-
-
-
-## Updating code
-When loading new builds, reset the cached packages first
-```
-package.loaded["stats"] = nil
-package.loaded["process"] = nil
-package.loaded["candles"] = nil
-package.loaded["intervals"] = nil
-package.loaded["schemas"] = nil
-package.loaded["validation"] = nil
-package.loaded["sqlschemas"] = nil
-
-.load build/output.lua
-```
+## Provisioning
+Provision via aoform (https://github.com/Autonomous-Finance/aoform)
+`npx aoform apply`
