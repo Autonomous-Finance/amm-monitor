@@ -1,77 +1,67 @@
 local intervals = require('intervals')
+local sqlschema = require('sqlschema')
 local candles = {}
 
-function candles.generateCandlesForXDaysInIntervalY(xDays, yInterval, endTime)
-    local intervalSeconds = intervals.IntervalSecondsMap[yInterval]
-    if not intervalSeconds then
-      error("Invalid interval specified")
-      return
-    end
-  
-    local startTime = endTime - (xDays * 24 * 3600) -- Calculate start time based on x days ago
-  
-    local candles = {}
-    local candleStartTimestamp = intervals.getIntervalStart(startTime, yInterval)
-    local candleEndTimestamp = candleStartTimestamp + intervalSeconds
-  
-    local openPrice, closePrice, highPrice, lowPrice, totalVolume = nil, nil, nil, nil, 0
-  
-    for _, transaction in ipairs(Transactions) do
-      if transaction.Timestamp and transaction.Timestamp >= startTime and transaction.Timestamp <= endTime then
-        -- Initialize the first candle's open price
-        if not openPrice then
-          openPrice = transaction.Price
-        end
-  
-        -- Check if the transaction belongs to the current candle
-        if transaction.Timestamp < candleEndTimestamp then
-          closePrice = transaction.Price -- Update close price with each transaction
-          highPrice = (not highPrice or transaction.Price > highPrice) and transaction.Price or highPrice
-          lowPrice = (not lowPrice or transaction.Price < lowPrice) and transaction.Price or lowPrice
-          totalVolume = totalVolume + (transaction.Volume or 0)
-        else
-          -- Save the completed candle
-          table.insert(candles, {
-            open = openPrice,
-            close = closePrice,
-            high = highPrice,
-            low = lowPrice,
-            volume = totalVolume,
-            startTimestamp = candleStartTimestamp,
-            endTimestamp = candleEndTimestamp - 1,
-            startTime = os.date("%Y-%m-%d %H:%M:%S", candleStartTimestamp),
-            endTime = os.date("%Y-%m-%d %H:%M:%S", candleEndTimestamp - 1)
-          })
-  
-          -- Prepare for the next candle
-          while transaction.Timestamp >= candleEndTimestamp do
-            candleStartTimestamp = candleEndTimestamp
-            candleEndTimestamp = candleStartTimestamp + intervalSeconds
-          end
-  
-          -- Set the open price of the new candle to the close price of the last candle
-          openPrice, highPrice, lowPrice, totalVolume = closePrice, transaction.Price, transaction.Price, transaction.Volume or 0
-          closePrice = transaction.Price -- Ensure the close price is updated for the new candle
-        end
-      end
-    end
-  
-    -- Add the last candle if it has any data
-    if openPrice then
-      table.insert(candles, {
-        open = openPrice,
-        close = closePrice,
-        high = highPrice,
-        low = lowPrice,
-        volume = totalVolume,
-        startTimestamp = candleStartTimestamp,
-        endTimestamp = candleEndTimestamp - 1,
-        startTime = os.date("%Y-%m-%d %H:%M:%S", candleStartTimestamp),
-        endTime = os.date("%Y-%m-%d %H:%M:%S", candleEndTimestamp - 1)
-      })
-    end
-  
-    return candles
+function candles.generateCandlesForXDaysInIntervalY(xDays, yInterval, endTime, ammProcessId)
+  local intervalSeconds = intervals.IntervalSecondsMap[yInterval]
+  if not intervalSeconds then
+    error("Invalid interval specified")
+    return
+  end
+
+  -- Determine the GROUP BY clause based on the interval
+  local groupByClause
+  if yInterval == '15m' then
+    groupByClause = "strftime('%Y-%m-%d %H:%M', \"created_at_ts\" / 900 * 900, 'unixepoch')"
+  elseif yInterval == '1h' then
+    groupByClause = "strftime('%Y-%m-%d %H', \"created_at_ts\", 'unixepoch')"
+  elseif yInterval == '4h' then
+    groupByClause = "strftime('%Y-%m-%d %H', \"created_at_ts\" / 14400 * 14400, 'unixepoch')"
+  elseif yInterval == '1d' then
+    groupByClause = "strftime('%Y-%m-%d', \"created_at_ts\", 'unixepoch')"
+  else
+    error("Unsupported interval for grouping")
+    return
+  end
+
+  local stmt = db:prepare(string.format([[
+    SELECT 
+      %s AS candle_time,
+      MIN(created_at_ts) AS start_timestamp,
+      MAX(created_at_ts) AS end_timestamp,
+      (SELECT price FROM amm_transactions WHERE created_at_ts = (SELECT MIN(created_at_ts) FROM amm_transactions_view WHERE created_at_ts >= :start_time AND created_at_ts < :end_time AND amm_process = :amm_process)) AS open,
+      MAX(price) AS high,
+      MIN(price) AS low,
+      (SELECT price FROM amm_transactions WHERE created_at_ts = (SELECT MAX(created_at_ts) FROM amm_transactions_view WHERE created_at_ts >= :start_time AND created_at_ts < :end_time AND amm_process = :amm_process)) AS close,
+      SUM(volume) AS volume  
+    FROM
+      amm_transactions_view AS t1
+    WHERE created_at_ts >= :start_time AND created_at_ts < :end_time AND amm_process = :amm_process
+    GROUP BY 
+      1
+    ORDER BY
+      candle_time ASC  
+  ]], groupByClause))
+
+  local startTime = endTime - (xDays * 24 * 3600)
+
+  stmt:bind_names({
+    start_time = startTime,
+    end_time = endTime,
+    amm_process = ammProcessId
+  })
+
+  local candles = sqlschema.queryMany(stmt)
+
+  for i = 2, #candles do
+    candles[i].open = candles[i-1].close
+  end
+
+  if #candles > 0 then
+    candles[1].open = 0
+  end
+
+  return candles
 end
 
 return candles

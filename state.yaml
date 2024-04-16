@@ -10,3 +10,9 @@ monitor-bark_aocred:
 monitor-aft_aocred:
   processId: vL_IgadK1QU71v1gynaIFEn_gMDrgIf15Qpbk9yAFKM
   hash: 2c2ce10b24a3263187e3bf0cc02cc5dc329db2e1a3ccbcb461c0119ebdf38d67
+dexi-monitor-test:
+  processId: HWBMox9K_d_loWPz-RgnGB6h-Xmu9wBlRz7MieRE5OM
+  hash: 9be7d59003aab6abffca35875e0d6c389b0a2d4a226b7ca05d43a5305f85a376
+dexi-monitor-test-v2:
+  processId: KotG-b-0nnRmqwea1fBeVLiDF_xvYiY9X1lYlxC2XzM
+  hash: 9be7d59003aab6abffca35875e0d6c389b0a2d4a226b7ca05d43a5305f85a376

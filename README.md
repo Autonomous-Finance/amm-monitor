@@ -18,7 +18,7 @@ Due to some issues with the aos file loader we recommend using amalg to build a 
 https://luarocks.org/modules/siffiejoe/amalg
 
 To build on osx do:
-`/opt/homebrew/bin/amalg.lua -s process.lua -o build/output.lua candles intervals process schemas validation stats`
+`/opt/homebrew/bin/amalg.lua -s process.lua -o build/output.lua candles intervals process schemas validation stats sqlschemas`
 
 
 ## Starting a new monitor process
@@ -42,5 +42,7 @@ package.loaded["candles"] = nil
 package.loaded["intervals"] = nil
 package.loaded["schemas"] = nil
 package.loaded["validation"] = nil
+package.loaded["sqlschemas"] = nil
+
 .load build/output.lua
 ```
