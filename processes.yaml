@@ -1,22 +1,38 @@
-- name: dexi-monitor-test
+# - name: dexi-monitor-test
+#   file: build/output.lua
+#   prerun: reset-modules.lua
+#   scheduler: fcoN_xJeisVsPXA-trzVAuIiqO3ydLQxM-L4XbrQKzY
+#   # module: SBNb1qPQ1TDwpD_mboxm2YllmMLXpWw4U8P9Ff8W9vk
+#   module: Mg25GEhXvLCT-AzuuQ1xx3l92qI23UwlB4KKzKxkrow
+#   tags:
+#     - name: Process-Type
+#       value: Dexi-Aggregator-Test
+
+- name: dexi-monitor-test-v2-6
   file: build/output.lua
   prerun: reset-modules.lua
-  scheduler: fcoN_xJeisVsPXA-trzVAuIiqO3ydLQxM-L4XbrQKzY
-  # module: SBNb1qPQ1TDwpD_mboxm2YllmMLXpWw4U8P9Ff8W9vk
-  module: Mg25GEhXvLCT-AzuuQ1xx3l92qI23UwlB4KKzKxkrow
+  scheduler: _GQ33BkPtZrqxA84vM8Zk-N2aO0toNNu_C-l-rawrBA
+  module: GYrbbe0VbHim_7Hi6zrOpHQXrSQz07XNtwCnfbFo2I0
   tags:
     - name: Process-Type
       value: Dexi-Aggregator-Test
+    - name: Cron-Interval
+      value: 1-minute
+    - name: Cron-Tag-Action
+      value: Cron-Minute-Tick
 
-- name: dexi-monitor-test-v2
+- name: dexi-monitor-test-v2-7
   file: build/output.lua
-  #prerun: reset-modules.lua
-  scheduler: TZ7o7SIZ06ZEJ14lXwVtng1EtSx60QkPy-kh-kdAXog
-  module: Jxex6RjvDx2fuYV7JF_iowjiJjehm9Fx_fiaexkiyO0
+  prerun: reset-modules.lua
+  scheduler: _GQ33BkPtZrqxA84vM8Zk-N2aO0toNNu_C-l-rawrBA
+  module: GYrbbe0VbHim_7Hi6zrOpHQXrSQz07XNtwCnfbFo2I0
   tags:
     - name: Process-Type
       value: Dexi-Aggregator-Test
-
+    - name: Cron-Interval
+      value: 10-minute
+    - name: Cron-Tag-Action
+      value: Cron-Minute-Tick
 
 
 # - name: monitor-trunk_aocred5

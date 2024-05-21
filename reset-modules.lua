@@ -5,3 +5,4 @@ package.loaded["intervals"] = nil
 package.loaded["schemas"] = nil
 package.loaded["validation"] = nil
 package.loaded["sqlschema"] = nil
+package.loaded["indicators"] = nil

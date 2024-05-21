@@ -7,12 +7,14 @@ local stats = require "stats"
 local schemas = require "schemas"
 local sqlite3 = require("lsqlite3")
 local sqlschema = require("sqlschema")
+local indicators = require("indicators")
 
 db = db or sqlite3.open_memory()
 
 sqlschema.createTableIfNotExists(db)
 
 --
+
 OFFCHAIN_FEED_PROVIDER = 'iC5mu-_GkholDuxBrzI-rm1gIUagPrBOWhqzUwKBosk'
 TOKEN = ao.env.Process.Tags["Base-Token"]
 AMM =  ao.env.Process.Tags["Monitor-For"]
@@ -123,20 +125,14 @@ Handlers.add(
   end
 )
 
--- Handlers.add(
---   "HandleDexiMessage",
---   Handlers.utils.hasMatchingTag("Action", "Dexi-Update"),
---   function (msg)
---     local prevMA50 = msg.Tags['Prev-MA-50']
---     local prevMA200 = msg.Tags['Prev-MA-200'] 
---     local currentMA50 = msg.Tags['Current-MA-50']
---     local currentMA200 = msg.Tags['Current-MA-200']
 
---     if prevMA50 <= prevMA200 and currentMA50 > currentMA200 then
---       executeSwap(...)
---     end
---   end
--- )
+function startOfDayUTC(currentTimestamp)
+  local utcDateTable = os.date("!*t", currentTimestamp)
+  utcDateTable.hour = 0
+  utcDateTable.min = 0
+  utcDateTable.sec = 0
+  return os.time(utcDateTable)
+end
 
 
 
@@ -237,37 +233,88 @@ Handlers.add(
 
     ao.send({
       Target = msg.From,
-      Height = gatewayHeight
+      Height = tostring(gatewayHeight)
     })
   end
 )
 
 
+LastTriggeredHour = -1
+
 Handlers.add(
-  "GetAMM", -- handler name
-  Handlers.utils.hasMatchingTag("Action", "Get-AMM"), -- handler pattern to identify cron message
+  "CronMinuteTick",
+  Handlers.utils.hasMatchingTag("Action", "Cron-Minute-Tick"),
   function (msg)
+
+    local now = math.floor(msg.Timestamp / 1000)
+    local currentHour = math.floor(msg.Timestamp / 3600000)
+
+    if currentHour > LastTriggeredHour then
+      LastTriggeredHour = currentHour
+
+      indicators.dispatchIndicatorsForAllAMMs(now)
+      local outmsg = ao.send({
+        Target = ao.id,
+        Action = 'Dexi-Update-Tick',
+        OK = 'true'
+      })
+    end
+
+  end
+)
+
+
+Handlers.add(
+  "RegisterProcess",
+  Handlers.utils.hasMatchingTag("Action", "Register-Process"),
+  function (msg)
+    local processId = msg.Tags['Subscriber-Process-Id']
+    local ownerId = msg.Tags['Owner-Id']
+    local ammProcessId = msg.Tags['AMM-Process-Id']
+
+    print('Registering process: ' .. processId .. ' for amm: ' .. ammProcessId .. ' with owner: ' .. ownerId)
+    sqlschema.registerProcess(processId, ownerId, ammProcessId)
+
+    Send({
+      Target = ao.id,
+      Assignments = {ownerId, processId},
+      Action = 'Dexi-Registration-Confirmation',
+      AMM = ammProcessId,
+      Process = processId,
+      OK = 'true'
+    })
+  end
+)
+
+Handlers.add(
+  "BatchRequestPrices",
+  Handlers.utils.hasMatchingTag("Action", "Price-Batch-Request"),
+  function (msg)
+    local amms = json.decode(msg.Tags['AMM-List'])
+    local ammPrices = {}
+    for _, amm in ipairs(amms) do
+      local price = findPriceAroundTimestamp(msg.Timestamp / 1000, amm)
+      ammPrices[amm] = price
+    end
+    
     ao.send({
       Target = msg.From,
-      AMM = AMM
+      Action = 'Price-Batch-Response',
+      Data = json.encode(ammPrices)
     })
   end
 )
 
 Handlers.add(
-  "Reset-Table",
-  Handlers.utils.hasMatchingTag("Action", "Reset-Table"),
+  "CreditNotice",
+  Handlers.utils.hasMatchingTag("Action", "Credit-Notice"),
   function (msg)
-    if msg.From == Owner then
-      sqlschema.dropAndRecreateTableIfOwner(db)
-
-      ao.send({
-        Target = msg.From,
-        Message = 'Reset OK'
-      })
+    if msg.From == 'Sa0iBLPNyJQrwpTTG-tWLQU-1QeUAJA73DdxGGiKoJc' then
+      sqlschema.updateBalance(msg.Tags.Sender, msg.From, tonumber(msg.Tags.Quantity), true)
     end
   end
 )
+
 
 Handlers.add(
   "DumpTableToCSV",

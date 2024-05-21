@@ -14,5 +14,23 @@ dexi-monitor-test:
   processId: HWBMox9K_d_loWPz-RgnGB6h-Xmu9wBlRz7MieRE5OM
   hash: 9be7d59003aab6abffca35875e0d6c389b0a2d4a226b7ca05d43a5305f85a376
 dexi-monitor-test-v2:
-  processId: KotG-b-0nnRmqwea1fBeVLiDF_xvYiY9X1lYlxC2XzM
-  hash: 9be7d59003aab6abffca35875e0d6c389b0a2d4a226b7ca05d43a5305f85a376
+  processId: DcEmCsqrdwpAa-6zs65475KRTxzl8qYIZq2vRCxWjoM
+  hash: d978f9ad4714ef92bb098ff0abd66d35db311c9c24caa3f38a31c0285f74860d
+dexi-monitor-test-v2-1:
+  processId: kLZeJ4IA1807yGeSiOmkgIXV6LTtbuy16IdfoOy9N3c
+  hash: fa1b2bcd80d556d75e342dcf8235c990d86b3bc1e8bdb0a552836b803a6887fb
+dexi-monitor-test-v2-2:
+  processId: etHlqHV-UxCBtmIr5lA-hIBZY2r4hMtsYHZrF_xulv4
+  hash: 1eae807cb0393c30acededf40d708316cc37f67ce0e59c1e23f9ed75b641c96b
+dexi-monitor-test-v2-3:
+  processId: qdW33525wliCNmBE-7si0Rxo0CV4Jnzu5EEQyQLWpbA
+  hash: 9619509e59533246c63a64d4c2886d5058fe0bad5dd3d8f7325413f562200441
+dexi-monitor-test-v2-4:
+  processId: QXia73EdawYIw000KgprAvm_Xun-ieguCSXS0GNo6Tk
+  hash: 1c62c1d26fadb095923acd401cd60ca74c08d65647138bf9f8e92dec09cd5999
+dexi-monitor-test-v2-6:
+  processId: POJ5oyOzEnQf3Gm7yxVFOmWV5I-LfpAxIw_dYH1Kl-Y
+  hash: c146cd15a2e92230784383bf160903e15a32aad102cd053139ce8778e8473a62
+dexi-monitor-test-v2-7:
+  processId: jao0bfwk99iME8aK_TJLjm8H0bwaHzNuVbKRE1jArRo
+  hash: c146cd15a2e92230784383bf160903e15a32aad102cd053139ce8778e8473a62
