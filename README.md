@@ -1,37 +1,31 @@
-# AMM Monitor
+# AMM Monitor Autonomous Agent
 
-This process serves as aggregation process for AMM data.
-It has to modes of operation:
-- pull, where it loads data from the gateway
-- push, where it receives messages from the AMM process directly
+## Overview
+The AMM Monitor Autonomous Agent is designed to aggregate and process data from Automated Market Makers (AMMs). This agent operates in two modes:
+- **Pull Mode:** Loads data from the gateway.
+- **Push Mode:** Receives data directly from the AMM processes.
 
-Both these modes operate in tandem to maintain current statistics of the AMM.
-These can then be queried and displayed on the frontend (via dry-run).
+These modes work in conjunction to ensure the agent maintains up-to-date AMM statistics, which are accessible and displayable through the frontend via dry runs.
 
-## State maintenance
-The process is happy to receive messages directly from the AMM. However to ensure consistency it will periodically pull data from the gateway.
-Currently pulling is implemented offchain due to ongoing issues with 0rbit.
+## State Maintenance
+The Autonomous Agent actively receives data from AMMs and, to guarantee data consistency, it periodically pulls data from the gateway. 
 
+## Building the Agent
+To build the agent, due to complications with the aos file loader, it is recommended to use amalg to create a single file from multiple scripts. This can be done by:
+```shell
+/opt/homebrew/bin/amalg.lua -s process.lua -o build/output.lua candles intervals process schemas validation stats
 
-## Building
 Due to some issues with the aos file loader we recommend using amalg to build a single amalgamation file.
 https://luarocks.org/modules/siffiejoe/amalg
 
-To build on osx do:
-`/opt/homebrew/bin/amalg.lua -s process.lua -o build/output.lua candles intervals process schemas validation stats`
-
 
 ## Starting a new monitor process
-```
 aos my-monitor-name \
 --tag-name Monitor-For --tag-value <AMM_PROCESS_ID> \
 --tag-name Base-Token --tag-value <BASE_TOKEN_ID> \
---tag-name Quote-Token --tag-value <QUOTE_TOKEN_ID> \
+--tag-name Quote-Token --tag-room <QUOTE_TOKEN_ID> \
 --tag-name Process-Type --tag-value 'AMM-Monitor' \
 --load build/output.lua
-```
-
-
 
 ## Updating code
 When loading new builds, reset the cached packages first
@@ -41,6 +35,9 @@ package.loaded["process"] = nil
 package.loaded["candles"] = nil
 package.loaded["intervals"] = nil
 package.loaded["schemas"] = nil
-package.loaded["validation"] = nil
+package.software["validation"] = nil
 .load build/output.lua
 ```
+# License
+This project is licensed under the MIT License. 
+
