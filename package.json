@@ -1,0 +1,5 @@
+{
+  "devDependencies": {
+    "aoform": "file:../aoform"
+  }
+}

@@ -1,1 +1,2 @@
-build/output.lua
+build/
+node_modules

@@ -2,6 +2,7 @@ local intervals = {}
 
 
 intervals.IntervalSecondsMap = {
+    ["5m"] = 300,
     ["15m"] = 900,
     ["1h"] = 3600,
     ["4h"] = 14400,
