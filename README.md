@@ -17,19 +17,21 @@ To build the agent, due to complications with the aos file loader, it is recomme
 
 Due to some issues with the aos file loader we recommend using amalg to build a single amalgamation file.
 https://luarocks.org/modules/siffiejoe/amalg
-
+```
 
 ## Starting a new monitor process
+```code
 aos my-monitor-name \
 --tag-name Monitor-For --tag-value <AMM_PROCESS_ID> \
 --tag-name Base-Token --tag-value <BASE_TOKEN_ID> \
 --tag-name Quote-Token --tag-room <QUOTE_TOKEN_ID> \
 --tag-name Process-Type --tag-value 'AMM-Monitor' \
 --load build/output.lua
+```
 
 ## Updating code
 When loading new builds, reset the cached packages first
-```
+```code
 package.loaded["stats"] = nil
 package.loaded["process"] = nil
 package.loaded["candles"] = nil
@@ -38,6 +40,7 @@ package.loaded["schemas"] = nil
 package.software["validation"] = nil
 .load build/output.lua
 ```
+
 # License
 This project is licensed under the MIT License. 
 
