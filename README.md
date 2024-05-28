@@ -1,8 +1,14 @@
-# Dexi Backend
+# AMM Monitor Autonomous Agent
 
-Dexi is a decentralized application built on the AO blockchain, designed to enhance DeFi data analytics. It integrates SQLite for sophisticated on-chain data processing.
+## Overview
+The AMM Monitor Autonomous Agent is designed to aggregate and process data from Automated Market Makers (AMMs). This agent operates in two modes:
+- **Pull Mode:** Loads data from the gateway.
+- **Push Mode:** Receives data directly from the AMM processes.
+These modes work in conjunction to ensure the agent maintains up-to-date AMM statistics, which are accessible and displayable through the frontend via dry runs.
 
-Dexi processes transaction data from AMMs, utilizing AO's scalability and code execution capabilities to perform complex data operations directly on the blockchain.
+
+## State Maintenance
+The Autonomous Agent actively receives data from AMMs and, to guarantee data consistency, it periodically pulls data from the gateway. 
 
 # Handlers
 
@@ -41,12 +47,9 @@ ao.send({
 ```
 
 
+## Building the Agent
+To build the agent, due to complications with the aos file loader, it is recommended to use amalg to create a single file from multiple scripts. This can be done by:
 
-## Building & Deploying
-While AOS comes with a built in loader that can resolve modules, we opt for using Lua Amalg. This gives us an amalgamation file that can be easily Eval'd in one go with AOconnect. We use this in conjunction with aoform, a lightweight utility to deploy AO processes. You can check it out here:
-https://github.com/Autonomous-Finance/aoform
-
-Deployment (build.sh):
 ```
 /opt/homebrew/bin/luacheck process.lua schemas.lua sqlschema.lua intervals.lua candles.lua stats.lua validation.lua indicators.lua
 
