@@ -155,7 +155,7 @@ Handlers.add(
 )
 
 Handlers.add(
-  "UpdateLocalState", -- handler name
+  "UpdateLocalState",
   Handlers.utils.hasMatchingTag("Action", "Order-Confirmation-Monitor"),
   function (msg)
     local stmt = 'SELECT TRUE FROM amm_registry WHERE amm_process = :amm_process'
