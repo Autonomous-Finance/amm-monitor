@@ -40,7 +40,7 @@ local function insertSingleMessage(msg, source, sourceAmm)
     source = source,
     block_height = msg['Block-Height'],
     block_id = msg['Block-Id'] or '',
-    sender = msg.From,
+    sender = msg.recipient or '',
     created_at_ts = msg.Timestamp,
     to_token = msg.Tags['To-Token'],
     from_token = msg.Tags['From-Token'],
