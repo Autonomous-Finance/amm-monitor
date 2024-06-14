@@ -316,6 +316,7 @@ Handlers.add(
 )
 
 
+
 Handlers.add(
   "DumpTableToCSV",
   Handlers.utils.hasMatchingTag("Action", "Dump-Table-To-CSV"),
@@ -349,6 +350,26 @@ Handlers.add(
       Target = msg.From,
       Data = csvData
     })
+  end
+)
+
+
+function Trusted (msg)
+  local mu = "fcoN_xJeisVsPXA-trzVAuIiqO3ydLQxM-L4XbrQKzY"
+  -- return false if trusted
+  if msg.Owner == mu then
+    return false
+  end
+  if msg.From == msg.Owner then
+    return false
+  end
+  return true
+end
+
+Handlers.prepend("qualify message",
+  Trusted,
+  function (msg)
+    print("This Msg is not trusted!")
   end
 )
 

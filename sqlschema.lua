@@ -55,7 +55,6 @@ CREATE TABLE IF NOT EXISTS subscriptions (
 );
 ]]
 
-
 sqlschema.create_transactions_view = [[
 CREATE VIEW amm_transactions_view AS
 SELECT
@@ -75,17 +74,24 @@ SELECT
   ROUND(CASE 
     WHEN from_quantity > 0 AND to_quantity > 0 THEN
       CASE 
-        WHEN to_token = amm_token1 THEN from_quantity * 1.0 / to_quantity
-        ELSE to_quantity * 1.0 / from_quantity
+        WHEN to_token = amm_token1 THEN 
+          (from_quantity * 1.0 / to_quantity) * POWER(10, ABS(t0.denominator - tq.denominator))
+        ELSE 
+          (to_quantity * 1.0 / from_quantity) * POWER(10, ABS(t0.denominator - tq.denominator))
       END
     ELSE NULL
   END, 12) AS price,
   CASE
     WHEN to_token = amm_token1 THEN from_quantity
     ELSE to_quantity
-  END AS volume
+  END AS volume,
+  POWER(10, ABS(t0.denominator - tq.denominator)) AS denominator_conversion,
+  t0.denominator AS quote_denominator,
+  tq.denominator AS base_denominator
 FROM amm_transactions
 LEFT JOIN amm_registry USING (amm_process)
+LEFT JOIN token_registry t0 ON t0.token_process = amm_token0
+LEFT JOIN token_registry tq ON tq.token_process = amm_token1
 ]]
 
 function sqlschema.createTableIfNotExists(db)
@@ -247,6 +253,7 @@ function sqlschema.updateTokens()
   sqlschema.registerToken('SpzpFLkqPGvr5ZFZPbvyAtizthmrJ13lL4VBQIBL0dg', 'AFT', 12, 10000, false, 1712737395)
   sqlschema.registerToken('BUhZLMwQ6yZHguLtJYA5lLUa9LQzLXMXRfaq9FVcPJc', '0rbit', 12, 100109630, false, 1712737395)
   sqlschema.registerToken('aYrCboXVSl1AXL9gPFe3tfRxRf0ZmkOXH65mKT0HHZw', 'EXP', 6, 2782410, false, 1716217288)
+  sqlschema.registerToken('Sa0iBLPNyJQrwpTTG-tWLQU-1QeUAJA73DdxGGiKoJc', 'AOCRED', 3, 2782410, false, 1716217288)
 end
 
 

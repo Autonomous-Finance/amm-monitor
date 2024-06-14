@@ -33,7 +33,7 @@ function candles.generateCandlesForXDaysInIntervalY(xDays, yInterval, endTime, a
       MAX(price) AS high,
       MIN(price) AS low,
       (SELECT price FROM amm_transactions WHERE created_at_ts = (SELECT MAX(created_at_ts) FROM amm_transactions_view WHERE created_at_ts >= :start_time AND created_at_ts < :end_time AND amm_process = :amm_process)) AS close,
-      SUM(volume) AS volume  
+      SUM(volume) / POWER(10, quote_denominator) AS volume  
     FROM
       amm_transactions_view AS t1
     WHERE created_at_ts >= :start_time AND created_at_ts < :end_time AND amm_process = :amm_process
