@@ -1,5 +1,5 @@
 {
   "devDependencies": {
-    "aoform": "file:../aoform"
+    "aoform": "github:Autonomous-Finance/aoform"
   }
 }

@@ -22,6 +22,13 @@ The handler returns a JSON-encoded response containing the current state of the 
 The 'Register-Process' handler is used to register a process to monitor a specific AMM. The handler expects input tags for the AMM identifier (AMM-Process-Id), an Owner-Id and the process identifier (Subscriber-Process-Id).
 Once registered the owner (wallet with Owner-Id) has to send 1 AOCred to the Dexi process to activate the subscription.
 
+## Get-Top-N-Market-Data
+The handler returns a JSON-encoded response containing prices for the top N tokens by marketcap. The prices are given in the context of the respective amm pools where said prices were observed. The handler considers the specified `Quote-Token` tag, only providing price information from pool with said QuoteToken (`token0`).
+This data can be obtained not only by calling the `Get-Top-N-Market-Data` handler, but also by subscribing to the data.
+```
+TODO
+```
+
 ## Get-Stats
 The Get-Stats Action can be used to retreive statistics about a specific AMM. The handler expects input tags for the AMM identifier (AMM).
 The response message looks like this:
