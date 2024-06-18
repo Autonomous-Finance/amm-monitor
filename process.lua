@@ -268,16 +268,16 @@ Handlers.add(
     local now = math.floor(msg.Timestamp / 1000)
     local currentHour = math.floor(msg.Timestamp / 3600000)
 
-    -- if currentHour > LastTriggeredHour then
-    --   LastTriggeredHour = currentHour
+    if currentHour > LastTriggeredHour then
+      LastTriggeredHour = currentHour
 
-    --   indicators.dispatchIndicatorsForAllAMMs(now)
-    --   local outmsg = ao.send({
-    --     Target = ao.id,
-    --     Action = 'Dexi-Update-Tick',
-    --     OK = 'true'
-    --   })
-    -- end
+      indicators.dispatchIndicatorsForAllAMMs(now)
+      local outmsg = ao.send({
+        Target = ao.id,
+        Action = 'Dexi-Update-Tick',
+        OK = 'true'
+      })
+    end
 
     topNConsumers.dispatchMarketData(now)
   end
