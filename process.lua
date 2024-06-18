@@ -203,11 +203,18 @@ Handlers.add(
   "GetTopNMarketData",
   Handlers.utils.hasMatchingTag("Action", "Get-Top-N-Market-Data"),
   function(msg)
+    local quoteToken = msg.Tags['Quote-Token']
+    if not quoteToken then
+      error('Quote-Token is required')
+    end
+    if not sqlschema.isQuoteTokenAvailable(quoteToken) then
+      error('Quote-Token not available: ' .. quoteToken)
+    end
     ao.send({
       ['App-Name'] = 'Dexi',
       ['Payload'] = 'Top-N-Market-Data',
       Target = msg.From,
-      Data = json.encode(sqlschema.getTopNMarketData(msg.Tags['Quote-Token']))
+      Data = json.encode(sqlschema.getTopNMarketData(quoteToken))
     })
   end
 )
@@ -307,6 +314,9 @@ Handlers.add(
     local ownerId = msg.Tags['Owner-Id']
     local quoteToken = msg.Tags['Quote-Token']
 
+    if not quoteToken then
+      error('Quote-Token is required')
+    end
     if not sqlschema.isQuoteTokenAvailable(quoteToken) then
       error('Quote-Token not available: ' .. quoteToken)
     end
