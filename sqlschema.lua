@@ -266,7 +266,6 @@ function sqlschema.getOverview(now, orderBy)
 end
 
 function sqlschema.getTopNMarketData(token0)
-  -- TODO sanitize input
   local orderByClause = "market_cap DESC"
   local stmt = db:prepare([[
   WITH current_prices AS (
@@ -278,20 +277,25 @@ function sqlschema.getTopNMarketData(token0)
   SELECT
     rank() OVER (ORDER BY t.total_supply * current_price DESC) AS market_cap_rank,
     r.amm_name as amm_name,
-    r.amm_process as amm_process,
-    r.amm_token0 AS token0,
-    r.amm_token1 AS token1,
-    t.token_name AS token_name,
-    t.total_supply * current_price AS market_cap,
-    (SELECT price FROM amm_transactions_view WHERE amm_process = r.amm_process ORDER BY created_at_ts DESC LIMIT 1) AS current_price,
+    r.amm_process as pool,
+    r.amm_token1 AS token,
+    t.token_name AS ticker,
+    t.denominator as denomination,
+    (SELECT price FROM amm_transactions_view WHERE amm_process = r.amm_process ORDER BY created_at_ts DESC LIMIT 1) AS current_price
   FROM amm_registry r
-  WHERE r.amm_token0 = :token0
   LEFT JOIN current_prices c ON c.amm_process = r.amm_process
   LEFT JOIN token_registry t ON t.token_process = r.amm_token1
+  WHERE r.amm_token0 = :token0
   LIMIT 100
   ]], orderByClause)
+
+  if not stmt then
+    error("Err: " .. db:errmsg())
+  end
+
   stmt:bind_names({
-    token0 = token0
+    token0 = token0,
+    pricePrecision = PRICE_PRECISION
   })
   return sqlschema.queryMany(stmt)
 end

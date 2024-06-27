@@ -16,7 +16,7 @@ sqlschema.createTableIfNotExists(db)
 
 --
 
-OFFCHAIN_FEED_PROVIDER = 'iC5mu-_GkholDuxBrzI-rm1gIUagPrBOWhqzUwKBosk'
+OFFCHAIN_FEED_PROVIDER = 'P6i7xXWuZtuKJVJYNwEqduj0s8R_G4wZJ38TB5Knpy4'
 TOKEN = ao.env.Process.Tags["Base-Token"]
 AMM = ao.env.Process.Tags["Monitor-For"]
 
