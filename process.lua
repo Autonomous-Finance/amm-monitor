@@ -27,7 +27,8 @@ local function insertSingleMessage(msg, source, sourceAmm)
   local stmt, err = db:prepare [[
     REPLACE INTO amm_transactions (
       id, source, block_height, block_id, sender, created_at_ts,
-      to_token, from_token, from_quantity, to_quantity, fee, amm_process
+      to_token, from_token, from_quantity, to_quantity, fee, amm_process,
+      reserves_
     ) VALUES (:id, :source, :block_height, :block_id, :sender, :created_at_ts,
               :to_token, :from_token, :from_quantity, :to_quantity, :fee, :amm_process);
   ]]
