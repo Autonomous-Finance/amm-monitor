@@ -1,2 +1,4 @@
 build/
 node_modules
+state.yml
+processes.yml
