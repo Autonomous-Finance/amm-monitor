@@ -1,13 +1,3 @@
-- name: test
-  file: test.lua
-  scheduler: _GQ33BkPtZrqxA84vM8Zk-N2aO0toNNu_C-l-rawrBA
-  module: GYrbbe0VbHim_7Hi6zrOpHQXrSQz07XNtwCnfbFo2I0
-  tags:
-    - name: test
-      value: test
-
-
-
 - name: dexi-monitor-test-prod-v3
   file: build/output.lua
   prerun: reset-modules.lua
