@@ -23,11 +23,25 @@ The 'Register-Process' handler is used to register a process to monitor a specif
 Once registered the owner (wallet with Owner-Id) has to send 1 AOCred to the Dexi process to activate the subscription.
 
 ## Get-Top-N-Market-Data
-The handler returns a JSON-encoded response containing prices for the top N tokens by marketcap. The prices are given in the context of the respective amm pools where said prices were observed. The handler considers the specified `Quote-Token` tag, only providing price information from pool with said QuoteToken (`token0`).
-This data can be obtained not only by calling the `Get-Top-N-Market-Data` handler, but also by subscribing to the data.
+The handler returns a JSON-encoded response containing specific market data related to the monitored AMMs. It is designed for consumption by token index investors. The market data contains latest prices of monitored AMMs that have the quote token as specified in the `Quote-Token` tag. Results are sorted by the market cap of the base token in descending order. 
+
+The latest price of an AMM is the price of the last trade that took place, and may not be representative at all for trades that involve volumes of significantly different magnitude than that specific trade. Therefore, the market data also includes the latest reserves of the AMM, as well as the current swap fee. This allows consumers of this data to very accurately predict an expected swap output for a trade with a specific input amount, without the need to send a dedicated message to the AMM process.
+
+This data can be obtained not only by calling the `Get-Top-N-Market-Data` handler, but also by subscribing to the data (see next section)
+
+## Register-Top-N-Consumer
+Here is how a process like a token index fund agent would subscribe itself to DEXI in order to receive Top-N-Market-Data.
+```lua
+ao.send({
+    Target = DEXI_PROCESS_ID,
+    Action = 'Register-Top-N-Consumer',
+    ['Subscriber-Process-Id'] = ao.id,
+    ['Owner-Id'] = Owner,
+    ['Quote-Token'] = 'abc_TokenProcessId_xyz'
+})
 ```
-TODO
-```
+As with subscriptions for regular AMM data, once registered the owner (wallet with `Owner-Id`) has to send 1 AOCred to the Dexi process to activate the subscription.
+
 
 ## Get-Stats
 The Get-Stats Action can be used to retreive statistics about a specific AMM. The handler expects input tags for the AMM identifier (AMM).
