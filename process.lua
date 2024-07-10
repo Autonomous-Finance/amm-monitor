@@ -12,31 +12,39 @@ local topNConsumers = require("top-n-consumers")
 
 db = db or sqlite3.open_memory()
 
+
 sqlschema.createTableIfNotExists(db)
 
---
+local function printTable(t, indent)
+  indent = indent or 0
+  local prefix = string.rep("  ", indent)
 
-OFFCHAIN_FEED_PROVIDER = 'P6i7xXWuZtuKJVJYNwEqduj0s8R_G4wZJ38TB5Knpy4'
-TOKEN = ao.env.Process.Tags["Base-Token"]
-AMM = ao.env.Process.Tags["Monitor-For"]
+  for k, v in pairs(t) do
+    print(string.rep("-", 70))
+    if type(v) == "table" then
+      print(prefix .. tostring(k) .. ": ")
+      printTable(v, indent + 1)
+    else
+      print(prefix .. tostring(k) .. ": " .. tostring(v))
+    end
+  end
+end
 
-local function insertSingleMessage(msg, source, sourceAmm)
+
+local function insertSingleMessageInAmmMonitor(msg, source, sourceAmm)
   local valid, err = schemas.inputMessageSchema(msg)
   assert(valid, 'Invalid input transaction data' .. json.encode(err))
 
   local stmt, err = db:prepare [[
     REPLACE INTO amm_transactions (
       id, source, block_height, block_id, sender, created_at_ts,
-      to_token, from_token, from_quantity, to_quantity, fee, amm_process,
-      reserves_
+      to_token, from_token, from_quantity, to_quantity, fee, amm_process, reserves_0, reserves_1
     ) VALUES (:id, :source, :block_height, :block_id, :sender, :created_at_ts,
-              :to_token, :from_token, :from_quantity, :to_quantity, :fee, :amm_process);
+              :to_token, :from_token, :from_quantity, :to_quantity, :fee, :amm_process, :reserves_0, :reserves_1);
   ]]
-
   if not stmt then
-    error("Failed to prepare SQL statement: " .. db:errmsg())
+    print("Failed to prepare SQL statement: " .. tostring(err))
   end
-
   stmt:bind_names({
     id = msg.Id,
     source = source,
@@ -49,17 +57,92 @@ local function insertSingleMessage(msg, source, sourceAmm)
     from_quantity = tonumber(msg.Tags['From-Quantity']),
     to_quantity = tonumber(msg.Tags['To-Quantity']),
     fee = tonumber(msg.Tags['Fee']),
-    amm_process = sourceAmm
+    amm_process = sourceAmm,
+    reserves_0 = tonumber(msg.Tags['Reserve-Base']),
+    reserves_1 = tonumber(msg.Tags['Reserve-Quote'])
   })
 
   stmt:step()
   stmt:reset()
 end
 
+local function insertOrderMessageInDexMonitor(msg, source, sourceAmm)
+  local valid, err = schemas.dexOrderMessageSchema(msg)
+  assert(valid, 'Invalid input transaction data' .. json.encode(err))
+
+  local stmt, err = db:prepare [[
+    REPLACE INTO dex_orders (
+      order_id, source, block_height, block_id, sender, created_at_ts,
+      type, status, side, original_quantity, executed_quantity, price, wallet
+    ) VALUES (:order_id, :source, :block_height, :block_id, :sender, :created_at_ts,
+              :type, :status, :side, :original_quantity, :executed_quantity, :price, :wallet);
+  ]]
+  if not stmt then
+    print("Failed to prepare SQL statement: " .. tostring(err))
+  end
+  stmt:bind_names({
+    order_id = msg.Id,
+    source = source,
+    block_height = msg['Block-Height'],
+    block_id = msg['Block-Id'] or '',
+    sender = msg.recipient or '',
+    created_at_ts = msg.Timestamp,
+    type = msg.Tags['Order-Type'],
+    status = msg.Tags['Order-Status'],
+    side = msg.Tags['Order-Side'],
+    original_quantity = msg.Tags['Original-Quantity'],
+    executed_quantity = msg.Tags['Executed-Quantity'],
+    price = msg.Tags['Price'],
+    wallet = msg.Tags['Wallet'],
+  })
+  stmt:step()
+  stmt:reset()
+end
+
+local function insertTradeMessageInDexMonitor(msg, source, sourceAmm)
+  print('2')
+  local valid, err = schemas.dexTradeMessageSchema(msg)
+  print('(DexTrades) Valid: ' .. tostring(valid) .. ' / Error: ' .. tostring(err))
+  assert(valid, 'Invalid input transaction data' .. json.encode(err))
+
+  local stmt, err = db:prepare [[
+      REPLACE INTO dex_trades (
+          trade_id, source, block_height, block_id, sender, created_at_ts,
+          original_quantity, executed_quantity, price, maker_fees, taker_fees, is_buyer_taker, order_id, match_with
+        ) VALUES (:trade_id, :source, :block_height, :block_id, :sender, :created_at_ts,
+          :original_quantity, :executed_quantity, :price, :maker_fees, :taker_fees, :is_buyer_taker, :order_id, :match_with);
+      ]]
+
+  if not stmt then
+    print("Failed to prepare SQL statement: " .. tostring(err))
+  end
+
+
+  stmt:bind_names({
+    trade_id = msg.Id,
+    source = source,
+    block_height = msg['Block-Height'],
+    block_id = msg['Block-Id'] or '',
+    sender = msg.recipient or '',
+    created_at_ts = msg.Timestamp,
+    original_quantity = msg.Tags['Original-Quantity'],
+    executed_quantity = msg.Tags['Executed-Quantity'],
+    price = msg.Tags['Price'],
+    maker_fees = msg.Tags['Maker-Fees'],
+    taker_fees = msg.Tags['Taker-Fees'],
+    is_buyer_taker = msg.Tags['Is-Buyer-Taker'],
+    order_id = msg.Tags['Order-Id'],
+    match_with = msg.Tags['Match-With']
+  })
+  stmt:step()
+  stmt:reset()
+  print('(7) - trade inserted in db')
+end
+
 
 function debugTable()
   local stmt = db:prepare [[
-    SELECT * FROM amm_transactions ORDER BY created_at_ts LIMIT 100;
+    SELECT * FROM dex_registry;
   ]]
   if not stmt then
     error("Failed to prepare SQL statement: " .. db:errmsg())
@@ -156,17 +239,55 @@ Handlers.add(
 )
 
 Handlers.add(
-  "UpdateLocalState",
+  "AmmUpdateLocalState",
   Handlers.utils.hasMatchingTag("Action", "Order-Confirmation-Monitor"),
   function(msg)
+    print('(1)')
     local stmt = 'SELECT TRUE FROM amm_registry WHERE amm_process = :amm_process'
     local stmt = db:prepare(stmt)
     stmt:bind_names({ amm_process = msg.From })
 
     msg.Timestamp = math.floor(msg.Timestamp / 1000)
     local row = sqlschema.queryOne(stmt)
+
     if row or msg.From == Owner then
-      insertSingleMessage(msg, 'message', msg.From)
+      insertSingleMessageInAmmMonitor(msg, 'message', msg.From)
+    end
+  end
+)
+
+Handlers.add(
+  "DexOrdersUpdateLocalState",
+  Handlers.utils.hasMatchingTag("Action", "Dex-Order-Confirmation-Monitor"),
+  function(msg)
+    local stmt = 'SELECT TRUE FROM dex_registry WHERE dex_process_id = :dex_process_id'
+    local stmt = db:prepare(stmt)
+    stmt:bind_names({ dex_process_id = msg.From })
+    msg.Timestamp = math.floor(msg.Timestamp / 1000)
+    local row = sqlschema.queryOne(stmt)
+
+    if row or msg.From == Owner then
+      insertOrderMessageInDexMonitor(msg, 'message', msg.From)
+    end
+  end
+)
+
+Handlers.add(
+  "DexTradesUpdateLocalState",
+  Handlers.utils.hasMatchingTag("Action", "Dex-Trade-Confirmation-Monitor"),
+  function(msg)
+    print('(1) from DexTrades')
+    local stmt = 'SELECT TRUE FROM dex_registry WHERE dex_process_id = :dex_process_id'
+    local stmt = db:prepare(stmt)
+    stmt:bind_names({ dex_process_id = msg.From })
+
+    msg.Timestamp = math.floor(msg.Timestamp / 1000)
+    local row = sqlschema.queryOne(stmt)
+    -- print('Row: ' .. tostring(row))
+    -- print('Owner: ' .. tostring(Owner))
+    -- print('msg.From: ' .. tostring(msg.From))
+    if row or msg.From == Owner then
+      insertTradeMessageInDexMonitor(msg, 'message', msg.From)
     end
   end
 )
@@ -181,6 +302,19 @@ Handlers.add(
       ['Payload'] = 'Registered-AMMs',
       Target = msg.From,
       Data = json.encode(sqlschema.getRegisteredAMMs())
+    })
+  end
+)
+
+Handlers.add(
+  "GetRegisteredDEXs",
+  Handlers.utils.hasMatchingTag("Action", "Get-Registered-DEXs"),
+  function(msg)
+    ao.send({
+      ['App-Name'] = 'Dexi',
+      ['Payload'] = 'Registered-DEXs',
+      Target = msg.From,
+      Data = json.encode(sqlschema.getRegisteredDEXs())
     })
   end
 )
@@ -406,7 +540,7 @@ Handlers.add(
 
 
 function Trusted(msg)
-  local mu = "fcoN_xJeisVsPXA-trzVAuIiqO3ydLQxM-L4XbrQKzY"
+  local mu = "UuwjYemwjUQoAnnV-lEYyD1sINqHLbn0OQmwqRqEIYc"
   -- return false if trusted
   if msg.Owner == mu then
     return false
