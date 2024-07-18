@@ -20,6 +20,37 @@ OFFCHAIN_FEED_PROVIDER = 'P6i7xXWuZtuKJVJYNwEqduj0s8R_G4wZJ38TB5Knpy4'
 TOKEN = ao.env.Process.Tags["Base-Token"]
 AMM = ao.env.Process.Tags["Monitor-For"]
 
+
+
+local function updateAmmSwapParams(amm, msg)
+  local reserves_0 = msg.Tags["Reseves-Token-A"]
+  local reserves_1 = msg.Tags["Reseves-Token-B"]
+  local fee_percentage = msg.Tags["Fee-Percentage"]
+
+  local valid, err = schemas.swapParamsSchema(reserves_0, reserves_1, fee_percentage)
+  assert(valid, 'Invalid input amm swap params data' .. json.encode(err))
+
+  local stmt, err = db:prepare [[
+    REPLACE INTO amm_registry_table (
+      amm_process, reserves_0, reserves_1, fee_percentage
+    ) VALUES (:amm_process, :reserves_0, :reserves_1, :fee_percentage);
+  ]]
+
+  if not stmt then
+    error("Failed to prepare SQL statement: " .. db:errmsg())
+  end
+
+  stmt:bind_names({
+    fee_percentage = fee_percentage,
+    reserves_0 = reserves_0,
+    reserves_1 = reserves_1,
+    amm_process = amm
+  })
+
+  stmt:step()
+  stmt:reset()
+end
+
 local function insertSingleMessage(msg, source, sourceAmm)
   local valid, err = schemas.inputMessageSchema(msg)
   assert(valid, 'Invalid input transaction data' .. json.encode(err))
@@ -27,10 +58,9 @@ local function insertSingleMessage(msg, source, sourceAmm)
   local stmt, err = db:prepare [[
     REPLACE INTO amm_transactions (
       id, source, block_height, block_id, sender, created_at_ts,
-      to_token, from_token, from_quantity, to_quantity, fee, amm_process,
-      reserves_0, reserves_1, fee_percentage
+      to_token, from_token, from_quantity, to_quantity, fee_percentage, amm_process
     ) VALUES (:id, :source, :block_height, :block_id, :sender, :created_at_ts,
-              :to_token, :from_token, :from_quantity, :to_quantity, :fee_percentage, :reserves_0, :reserves_1, :amm_process);
+              :to_token, :from_token, :from_quantity, :to_quantity, :fee_percentage, :amm_process);
   ]]
 
   if not stmt then
@@ -49,13 +79,13 @@ local function insertSingleMessage(msg, source, sourceAmm)
     from_quantity = tonumber(msg.Tags['From-Quantity']),
     to_quantity = tonumber(msg.Tags['To-Quantity']),
     fee_percentage = tonumber(msg.Tags['Fee-Percentage']),
-    reserves_0 = msg.Tags['Reserves-Token-A'] or "",
-    reserves_1 = msg.Tags['Reserves-Token-B'] or "",
     amm_process = sourceAmm
   })
 
   stmt:step()
   stmt:reset()
+
+  updateAmmSwapParams(sourceAmm, msg)
 end
 
 
@@ -158,7 +188,7 @@ Handlers.add(
 )
 
 Handlers.add(
-  "UpdateLocalState",
+  "UpdateLocalState-Order-Confirmation",
   Handlers.utils.hasMatchingTag("Action", "Order-Confirmation-Monitor"),
   function(msg)
     local stmt = 'SELECT TRUE FROM amm_registry WHERE amm_process = :amm_process'
@@ -169,6 +199,22 @@ Handlers.add(
     local row = sqlschema.queryOne(stmt)
     if row or msg.From == Owner then
       insertSingleMessage(msg, 'message', msg.From)
+    end
+  end
+)
+
+Handlers.add(
+  "UpdateLocalState-Liquidity-Change",
+  Handlers.utils.hasMatchingTag("Action", "Liquidity-Change-Monitor"),
+  function(msg)
+    local stmt = 'SELECT TRUE FROM amm_registry WHERE amm_process = :amm_process'
+    local stmt = db:prepare(stmt)
+    stmt:bind_names({ amm_process = msg.From })
+
+    msg.Timestamp = math.floor(msg.Timestamp / 1000)
+    local row = sqlschema.queryOne(stmt)
+    if row or msg.From == Owner then
+      findPriceAroundTimestamp(msg.From, msg)
     end
   end
 )
@@ -224,13 +270,26 @@ Handlers.add(
 
 
 Handlers.add(
-  "ReceiveOffchainFeed", -- handler name
+  "ReceiveOffchainFeed-Transactions",
   Handlers.utils.hasMatchingTag("Action", "Receive-Offchain-Feed"),
   function(msg)
     if msg.From == OFFCHAIN_FEED_PROVIDER then
       local data = json.decode(msg.Data)
       for _, transaction in ipairs(data) do
         insertSingleMessage(transaction, 'gateway', transaction.Tags['AMM'])
+      end
+    end
+  end
+)
+
+Handlers.add(
+  "ReceiveOffchainFeed-LiquidityChanges",
+  Handlers.utils.hasMatchingTag("Action", "Receive-Offchain-Feed-Liquidity-Changes"),
+  function(msg)
+    if msg.From == OFFCHAIN_FEED_PROVIDER then
+      local data = json.decode(msg.Data)
+      for _, liquidityUpdate in ipairs(data) do
+        insertSingleMessage(liquidityUpdate, 'gateway', liquidityUpdate.Tags['AMM'])
       end
     end
   end

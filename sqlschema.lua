@@ -10,42 +10,11 @@ CREATE TABLE IF NOT EXISTS amm_transactions (
     created_at_ts INTEGER,
     to_token TEXT NOT NULL,
     from_token TEXT NOT NULL,
-    from_quantity INT NOT NULL,
-    to_quantity INT NOT NULL,
-    fee INT INT NULL,
+    from_quantity TEXT NOT NULL,
+    to_quantity TEXT NOT NULL,
+    fee_percentage TEXT NOT NULL,
     amm_process TEXT NOT NULL,
-    reserves_0 TEXT NOT NULL DEFAULT "",
-    reserves_1 TEXT NOT NULL DEFAULT "",
-    fee_percentage TEXT NOT NULL DEFAULT ""
 );
-]]
-
-sqlschema.should_alter_table_add_reserves = function()
-  local stmt = db:prepare("PRAGMA table_info(amm_transactions);")
-  if not stmt then
-    error("Err: " .. db:errmsg())
-  end
-  local hasReserves0 = false
-  local hasReserves1 = false
-  local hasFeePercentage = false
-  for row in stmt:nrows() do
-    if row.name == "reserves_0" then
-      hasReserves0 = true
-    elseif row.name == "reserves_1" then
-      hasReserves1 = true
-    elseif row.name == "fee_percentage" then
-      hasFeePercentage = true
-    end
-  end
-  stmt:reset()
-  return not hasReserves0 or not hasReserves1 or not hasFeePercentage
-end
-
-sqlschema.alter_table_add_reserves = [[
-ALTER TABLE amm_transactions
-  ADD COLUMN reserves_0 TEXT NOT NULL DEFAULT "",
-  ADD COLUMN reserves_1 TEXT NOT NULL DEFAULT "",
-  ADD COLUMN fee_percentage TEXT NOT NULL DEFAULT "";
 ]]
 
 sqlschema.create_amm_registry_table = [[
@@ -54,7 +23,10 @@ CREATE TABLE IF NOT EXISTS amm_registry (
     amm_name TEXT NOT NULL,
     amm_token0 TEXT NOT NULL,
     amm_token1 TEXT NOT NULL,
-    amm_discovered_at_ts INTEGER
+    amm_discovered_at_ts INTEGER,
+    reserves_0 TEXT NOT NULL,
+    reserves_1 TEXT NOT NULL,
+    fee_percentage TEXT NOT NULL,
 );
 ]]
 
@@ -109,11 +81,8 @@ SELECT
   from_token,
   from_quantity,
   to_quantity,
-  fee,
+  fee_percentage as fee,
   amm_process,
-  reserves_0,
-  reserves_1,
-  fee_percentage,
   CASE WHEN to_token = amm_token1 THEN 1 ELSE 0 END AS is_buy,
   ROUND(CASE
     WHEN from_quantity > 0 AND to_quantity > 0 THEN
@@ -140,10 +109,6 @@ LEFT JOIN token_registry tq ON tq.token_process = amm_token1
 
 function sqlschema.createTableIfNotExists(db)
   db:exec(sqlschema.create_table)
-
-  if sqlschema.should_alter_table_add_reserves() then
-    db:exec(sqlschema.alter_table_add_reserves)
-  end
 
   db:exec("DROP VIEW IF EXISTS amm_transactions_view;")
   print("Err: " .. db:errmsg())
@@ -196,17 +161,20 @@ function sqlschema.rawQuery(query)
   return sqlschema.queryMany(stmt)
 end
 
-function sqlschema.registerAMM(name, processId, token0, token1, discoveredAt)
+function sqlschema.registerAMM(name, processId, token0, token1, discoveredAt, reserves_0, reserves_1, feePercentage)
   print({
     "process", processId,
     "name", name,
     "token0", token0,
-    "token1", token1
+    "token1", token1,
+    "reserves_0", reserves_0,
+    "reserves_1", reserves_1,
+    "fee_percentage", feePercentage,
   })
   local stmt = db:prepare [[
-  INSERT OR REPLACE INTO amm_registry (amm_process, amm_name, amm_token0, amm_token1, amm_discovered_at_ts)
+  INSERT OR REPLACE INTO amm_registry (amm_process, amm_name, amm_token0, amm_token1, amm_discovered_at_ts, reserves_0, reserves_1, fee_percentage)
   VALUES
-    (:process, :amm_name, :token0, :token1, :discovered_at)
+    (:process, :amm_name, :token0, :token1, :discovered_at, :reserves_0, :reserves_1, :fee_percentage);
   ]]
   if not stmt then
     error("Err: " .. db:errmsg())
@@ -216,7 +184,10 @@ function sqlschema.registerAMM(name, processId, token0, token1, discoveredAt)
     amm_name = name,
     token0 = token0,
     token1 = token1,
-    discovered_at = discoveredAt
+    discovered_at = discoveredAt,
+    reserves_0 = reserves_0,
+    reserves_1 = reserves_1,
+    fee_percentage = feePercentage
   })
   stmt:step()
   print("Err: " .. db:errmsg())
@@ -310,9 +281,6 @@ function sqlschema.getTopNMarketData(token0)
     SELECT
       amm_process,
       (SELECT price FROM amm_transactions_view WHERE amm_process = r.amm_process ORDER BY created_at_ts DESC LIMIT 1) AS current_price
-      (SELECT reserves_0 FROM amm_transactions_view WHERE amm_process = r.amm_process ORDER BY created_at_ts DESC LIMIT 1) AS current_reserves_0
-      (SELECT reserves_1 FROM amm_transactions_view WHERE amm_process = r.amm_process ORDER BY created_at_ts DESC LIMIT 1) AS current_reserves_1
-      (SELECT fee_percentage FROM amm_transactions_view WHERE amm_process = r.amm_process ORDER BY created_at_ts DESC LIMIT 1) AS current_fee_percentage
     FROM amm_registry r
   )
   SELECT
@@ -323,9 +291,9 @@ function sqlschema.getTopNMarketData(token0)
     t.token_name AS ticker,
     t.denominator as denomination,
     c.current_price AS current_price,
-    c.reserves_0 AS reserves_0,
-    c.reserves_1 AS reserves_1,
-    c.fee_percentage AS fee_percentage
+    r.reserves_0 AS reserves_0,
+    r.reserves_1 AS reserves_1,
+    r.fee_percentage AS fee_percentage
   FROM amm_registry r
   LEFT JOIN current_prices c ON c.amm_process = r.amm_process
   LEFT JOIN token_registry t ON t.token_process = r.amm_token1
@@ -339,22 +307,27 @@ function sqlschema.getTopNMarketData(token0)
 
   stmt:bind_names({
     token0 = token0,
-    pricePrecision = PRICE_PRECISION
   })
   return sqlschema.queryMany(stmt)
 end
 
+-- TODO initialize reserves correctly
 function sqlschema.updateAMMs()
   sqlschema.registerAMM('TRUNK/AOCRED', 'vn5lUv8OaevTb45iI_qykad_d9MP69kuYg5mZW1zCHE',
-    'Sa0iBLPNyJQrwpTTG-tWLQU-1QeUAJA73DdxGGiKoJc', 'OT9qTE2467gcozb2g8R6D6N3nQS94ENcaAIJfUzHCww', 1712737395)
+    'Sa0iBLPNyJQrwpTTG-tWLQU-1QeUAJA73DdxGGiKoJc', 'OT9qTE2467gcozb2g8R6D6N3nQS94ENcaAIJfUzHCww', 1712737395, 0, 0,
+    '0.25')
   sqlschema.registerAMM('0rbit/AOCRED', '2bKo3vwB1Mo5TItmxuUQzZ11JgKauU_n2IZO1G13AIk',
-    'Sa0iBLPNyJQrwpTTG-tWLQU-1QeUAJA73DdxGGiKoJc', 'BUhZLMwQ6yZHguLtJYA5lLUa9LQzLXMXRfaq9FVcPJc', 1712737395)
+    'Sa0iBLPNyJQrwpTTG-tWLQU-1QeUAJA73DdxGGiKoJc', 'BUhZLMwQ6yZHguLtJYA5lLUa9LQzLXMXRfaq9FVcPJc', 1712737395, 0, 0,
+    '0.25')
   sqlschema.registerAMM('BARK/AOCRED', 'U3Yy3MQ41urYMvSmzHsaA4hJEDuvIm-TgXvSm-wz-X0',
-    'Sa0iBLPNyJQrwpTTG-tWLQU-1QeUAJA73DdxGGiKoJc', '8p7ApPZxC_37M06QHVejCQrKsHbcJEerd3jWNkDUWPQ', 1712737395)
+    'Sa0iBLPNyJQrwpTTG-tWLQU-1QeUAJA73DdxGGiKoJc', '8p7ApPZxC_37M06QHVejCQrKsHbcJEerd3jWNkDUWPQ', 1712737395, 0, 0,
+    '0.25')
   sqlschema.registerAMM('AFT/AOCRED', 'DCQJwfEQCD-OQYmfgNH4Oh6uGo9eQJbEn6WbNvtrI_k',
-    'Sa0iBLPNyJQrwpTTG-tWLQU-1QeUAJA73DdxGGiKoJc', 'SpzpFLkqPGvr5ZFZPbvyAtizthmrJ13lL4VBQIBL0dg', 1712737395)
+    'Sa0iBLPNyJQrwpTTG-tWLQU-1QeUAJA73DdxGGiKoJc', 'SpzpFLkqPGvr5ZFZPbvyAtizthmrJ13lL4VBQIBL0dg', 1712737395, 0, 0,
+    '0.25')
   sqlschema.registerAMM('EXP/AOCRED', 'IMcN3R14yThfHzgbYzBDuuSpzmow7zGyBHRE3Gwrtsk',
-    'Sa0iBLPNyJQrwpTTG-tWLQU-1QeUAJA73DdxGGiKoJc', 'aYrCboXVSl1AXL9gPFe3tfRxRf0ZmkOXH65mKT0HHZw', 1712737395)
+    'Sa0iBLPNyJQrwpTTG-tWLQU-1QeUAJA73DdxGGiKoJc', 'aYrCboXVSl1AXL9gPFe3tfRxRf0ZmkOXH65mKT0HHZw', 1712737395, 0, 0,
+    '0.25')
 end
 
 function sqlschema.updateTokens()

@@ -17,4 +17,18 @@ schemas.inputMessageSchema = v.is_table({
     }, true)
 }, true)
 
+schemas.swapParamsSchema = function(reserves_0, reserves_1, fee_percentage)
+    local isString0, err0 = v.is_bint_string()(reserves_0)
+    local isString1, err1 = v.is_bint_string()(reserves_1)
+    local isStringFee, errFee = v.is_float_string()(fee_percentage)
+
+    local areAllValid = isString0 and isString1 and isStringFee
+
+    if not areAllValid then
+        return false, err0 or err1 or errFee
+    end
+
+    return true
+end
+
 return schemas;
