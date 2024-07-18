@@ -28,9 +28,9 @@ local function insertSingleMessage(msg, source, sourceAmm)
     REPLACE INTO amm_transactions (
       id, source, block_height, block_id, sender, created_at_ts,
       to_token, from_token, from_quantity, to_quantity, fee, amm_process,
-      reserves_
+      reserves_0, reserves_1, fee_percentage
     ) VALUES (:id, :source, :block_height, :block_id, :sender, :created_at_ts,
-              :to_token, :from_token, :from_quantity, :to_quantity, :fee, :amm_process);
+              :to_token, :from_token, :from_quantity, :to_quantity, :fee_percentage, :reserves_0, :reserves_1, :amm_process);
   ]]
 
   if not stmt then
@@ -48,7 +48,9 @@ local function insertSingleMessage(msg, source, sourceAmm)
     from_token = msg.Tags['From-Token'],
     from_quantity = tonumber(msg.Tags['From-Quantity']),
     to_quantity = tonumber(msg.Tags['To-Quantity']),
-    fee = tonumber(msg.Tags['Fee']),
+    fee_percentage = tonumber(msg.Tags['Fee-Percentage']),
+    reserves_0 = msg.Tags['Reserves-Token-A'] or "",
+    reserves_1 = msg.Tags['Reserves-Token-B'] or "",
     amm_process = sourceAmm
   })
 
