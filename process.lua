@@ -51,7 +51,7 @@ local function updateAmmSwapParams(amm, msg)
   stmt:reset()
 end
 
-local function insertSingleMessage(msg, source, sourceAmm)
+local function insertSingleTransaction(msg, source, sourceAmm)
   local valid, err = schemas.inputMessageSchema(msg)
   assert(valid, 'Invalid input transaction data' .. json.encode(err))
 
@@ -85,7 +85,14 @@ local function insertSingleMessage(msg, source, sourceAmm)
   stmt:step()
   stmt:reset()
 
+  local now = math.floor(msg.Timestamp / 1000)
+  indicators.dispatchIndicatorsForAMM(sourceAmm, now)
+
   updateAmmSwapParams(sourceAmm, msg)
+
+  sqlschema.updateTopNTokenSets()
+
+  topNConsumers.dispatchMarketDataForAMM(now, sourceAmm)
 end
 
 
@@ -159,15 +166,6 @@ Handlers.add(
   end
 )
 
-
-function startOfDayUTC(currentTimestamp)
-  local utcDateTable = os.date("!*t", currentTimestamp)
-  utcDateTable.hour = 0
-  utcDateTable.min = 0
-  utcDateTable.sec = 0
-  return os.time(utcDateTable)
-end
-
 Handlers.add(
   "GetCandles",
   Handlers.utils.hasMatchingTag("Action", "Get-Candles"),
@@ -198,7 +196,7 @@ Handlers.add(
     msg.Timestamp = math.floor(msg.Timestamp / 1000)
     local row = sqlschema.queryOne(stmt)
     if row or msg.From == Owner then
-      insertSingleMessage(msg, 'message', msg.From)
+      insertSingleTransaction(msg, 'message', msg.From)
     end
   end
 )
@@ -214,7 +212,8 @@ Handlers.add(
     msg.Timestamp = math.floor(msg.Timestamp / 1000)
     local row = sqlschema.queryOne(stmt)
     if row or msg.From == Owner then
-      findPriceAroundTimestamp(msg.From, msg)
+      updateAmmSwapParams(msg.From, msg)
+      topNConsumers.dispatchMarketDataForAMM(msg.Timestamp, msg.From)
     end
   end
 )
@@ -276,7 +275,7 @@ Handlers.add(
     if msg.From == OFFCHAIN_FEED_PROVIDER then
       local data = json.decode(msg.Data)
       for _, transaction in ipairs(data) do
-        insertSingleMessage(transaction, 'gateway', transaction.Tags['AMM'])
+        insertSingleTransaction(transaction, 'gateway', transaction.Tags['AMM'])
       end
     end
   end
@@ -289,7 +288,7 @@ Handlers.add(
     if msg.From == OFFCHAIN_FEED_PROVIDER then
       local data = json.decode(msg.Data)
       for _, liquidityUpdate in ipairs(data) do
-        insertSingleMessage(liquidityUpdate, 'gateway', liquidityUpdate.Tags['AMM'])
+        updateAmmSwapParams(liquidityUpdate.Tags['AMM'], liquidityUpdate)
       end
     end
   end
@@ -317,31 +316,6 @@ Handlers.add(
       Target = msg.From,
       Height = tostring(gatewayHeight)
     })
-  end
-)
-
-
-LastTriggeredHour = -1
-
-Handlers.add(
-  "CronMinuteTick",
-  Handlers.utils.hasMatchingTag("Action", "Cron-Minute-Tick"),
-  function(msg)
-    local now = math.floor(msg.Timestamp / 1000)
-    local currentHour = math.floor(msg.Timestamp / 3600000)
-
-    if currentHour > LastTriggeredHour then
-      LastTriggeredHour = currentHour
-
-      indicators.dispatchIndicatorsForAllAMMs(now)
-      local outmsg = ao.send({
-        Target = ao.id,
-        Action = 'Dexi-Update-Tick',
-        OK = 'true'
-      })
-    end
-
-    topNConsumers.dispatchMarketData(now)
   end
 )
 

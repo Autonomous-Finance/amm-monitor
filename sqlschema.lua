@@ -62,9 +62,8 @@ sqlschema.create_top_n_subscriptions_table = [[
 CREATE TABLE IF NOT EXISTS top_n_subscriptions (
     process_id TEXT PRIMARY KEY,
     owner_id TEXT NOT NULL,
-    quote_token_process_id TEXT NOT NULL,
-    last_push_at INTEGER DEFAULT 0,
-    push_interval INTEGER DEFAULT 0
+    top_n INTEGER NOT NULL,
+    token_set TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(token_set))
 );
 ]]
 
@@ -107,6 +106,19 @@ LEFT JOIN token_registry t0 ON t0.token_process = amm_token0
 LEFT JOIN token_registry tq ON tq.token_process = amm_token1
 ]]
 
+
+-- assuming all pairs have the same token1, in which the market cap is expressed
+sqlschema.create_market_cap_view = [[
+CREATE VIEW market_cap_view AS
+SELECT
+  r.amm_token0 AS token_process,
+  t.total_supply * current_price AS market_cap,
+FROM amm_registry r
+LEFT JOIN token_registry t ON t.token_process = r.amm_token0
+ORDER BY market_cap DESC
+LIMIT 100
+]]
+
 function sqlschema.createTableIfNotExists(db)
   db:exec(sqlschema.create_table)
 
@@ -117,6 +129,9 @@ function sqlschema.createTableIfNotExists(db)
   print("Err: " .. db:errmsg())
 
   db:exec(sqlschema.create_transactions_view)
+  print("Err: " .. db:errmsg())
+
+  db:exec(sqlschema.create_market_cap_view)
   print("Err: " .. db:errmsg())
 
   db:exec(sqlschema.create_balances_table)
@@ -275,7 +290,7 @@ function sqlschema.getOverview(now, orderBy)
 end
 
 function sqlschema.getTopNMarketData(token0)
-  local orderByClause = "market_cap DESC"
+  local orderByClause = "market_cap_rank DESC"
   local stmt = db:prepare([[
   WITH current_prices AS (
     SELECT
@@ -384,13 +399,13 @@ function sqlschema.registerProcess(processId, ownerId, ammProcessId)
   end
 end
 
-function sqlschema.registerTopNConsumer(processId, ownerId, quoteToken)
+function sqlschema.registerTopNConsumer(processId, ownerId, topN)
   local stmt = db:prepare [[
-    INSERT INTO top_n_subscriptions (process_id, owner_id, quote_token_process_id)
-    VALUES (:process_id, :owner_id, :quote_token_process_id)
+    INSERT INTO top_n_subscriptions (process_id, owner_id, top_n)
+    VALUES (:process_id, :owner_id, :top_n)
     ON CONFLICT(process_id) DO UPDATE SET
     owner_id = excluded.owner_id,
-    quote_token_process_id = excluded.quote_token_process_id;
+    top_n = excluded.top_n;
   ]]
   if not stmt then
     error("Failed to prepare SQL statement for registering process: " .. db:errmsg())
@@ -398,13 +413,15 @@ function sqlschema.registerTopNConsumer(processId, ownerId, quoteToken)
   stmt:bind_names({
     process_id = processId,
     owner_id = ownerId,
-    quote_token_process_id = quoteToken
+    top_n = topN
   })
   local result, err = stmt:step()
   stmt:finalize()
   if err then
     error("Err: " .. db:errmsg())
   end
+
+  sqlschema.updateTopNTokenSets(processId)
 end
 
 function sqlschema.registerToken(processId, name, denominator, totalSupply, fixedSupply, updatedAt)
@@ -449,6 +466,41 @@ function sqlschema.updateTokenSupply(processId, totalSupply, fixedSupply, update
     fixed_supply = fixedSupply,
     token_updated_at_ts = updatedAt
   })
+  local result, err = stmt:step()
+  stmt:finalize()
+  if err then
+    error("Err: " .. db:errmsg())
+  end
+
+  sqlschema.updateTopNTokenSets()
+end
+
+-- for each subscriber to top N market data, update the token set
+function sqlschema.updateTopNTokenSets(specificSubscriber)
+  local specificSubscriberClause = specificSubscriber
+      and " AND process_id = :process_id"
+      or ""
+  local stmt = db:prepare [[
+    UPDATE top_n_subscriptions
+    SET token_set = (
+      SELECT json_group_array(token_process)
+      FROM (
+        SELECT token_process
+        FROM market_cap_view
+        LIMIT top_n
+      )
+    )
+    WHERE EXISTS (
+      SELECT 1
+      FROM market_cap_view
+      LIMIT top_n
+    ) ]] .. specificSubscriberClause .. [[;
+  ]]
+
+  if not stmt then
+    error("Failed to prepare SQL statement for updating top N token sets: " .. db:errmsg())
+  end
+
   local result, err = stmt:step()
   stmt:finalize()
   if err then

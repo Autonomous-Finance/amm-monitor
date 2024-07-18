@@ -1,34 +1,32 @@
 local sqlschema = require('sqlschema')
 local topNConsumers = {}
 
-function topNConsumers.dispatchMarketData(now)
+function topNConsumers.dispatchMarketDataForAMM(now, ammProcessId)
   local subscribersStmt = db:prepare([[
-    SELECT s.process_id, s.quote_token_process_id
-    FROM top_n_subscriptions s
-    JOIN balances b ON s.owner_id = b.owner_id AND b.balance > 0
-    WHERE s.last_push_at + s.push_interval >= :now
-    ]])
+      SELECT s.process_id, s.top_n, s.token_set
+      FROM top_n_subscriptions s
+      JOIN balances b ON s.owner_id = b.owner_id AND b.balance > 0
+      WHERE JSON_CONTAINS(s.token_set, :ammProcessId, '$')
+      ]])
+
   if not subscribersStmt then
     error("Err: " .. db:errmsg())
   end
   subscribersStmt:bind_names({
-    now = now
+    now = now,
+    ammProcessId = ammProcessId
   })
 
   local json = require("json")
 
-  print('sending market data updates to consumer processes')
+  print('sending market data updates to affected subscribers')
 
-  local marketDataPerQuoteToken = {} -- cache market data per quote token
-  local consumers = {}               -- later log subscribers that were updated
+  local marketData = sqlschema.getTopNMarketData() -- TODO send only the necessary data per each subscriber, possibly include in the subscribersStmt via SQL
+
+  local targets = {}                               -- later log subscribers that were updated
   for row in subscribersStmt:nrows() do
-    table.insert(consumers, row.process_id)
-    local quoteToken = row.quote_token_process_id
-    local marketData = marketDataPerQuoteToken[quoteToken]
-    if not marketData then
-      marketData = sqlschema.getTopNMarketData(quoteToken)
-      marketDataPerQuoteToken[quoteToken] = marketData
-    end
+    table.insert(targets, row.process_id)
+
     ao.send({
       ['Target'] = row.process_id,
       ['Action'] = 'TopNMarketData',
@@ -37,17 +35,17 @@ function topNConsumers.dispatchMarketData(now)
   end
   subscribersStmt:finalize()
 
-  print('sent market data updates to ' .. #consumers .. ' consumer processes')
+  print('sent market data updates to ' .. #targets .. ' subscribers')
 
   local message = {
     ['Target'] = ao.id,
-    ['Assignments'] = consumers,
+    ['Assignments'] = targets,
     ['Action'] = 'TopNMarketData',
-    ['Data'] = json.encode(marketDataPerQuoteToken)
+    ['Data'] = json.encode(marketData)
   }
   ao.send(message)
 
-  print('Dispatched market data to all top N consumers')
+  print('Dispatched market data to all top N subscribers')
 end
 
 return topNConsumers

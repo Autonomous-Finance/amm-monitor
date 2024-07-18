@@ -250,25 +250,27 @@ function indicators.dispatchIndicatorsMessage(ammProcessId, startTimestamp, endT
   -- end
 end
 
-function indicators.dispatchIndicatorsForAllAMMs(now)
-  local ammsStmt = db:prepare([[
-      SELECT amm_process, amm_discovered_at_ts
+function indicators.dispatchIndicatorsForAMM(now, ammProcessId)
+  local ammStmt = db:prepare([[
+      SELECT amm_discovered_at_ts
       FROM amm_registry
+      WHERE amm_process = :amm_process_id
     ]])
-  if not ammsStmt then
+  if not ammStmt then
     error("Err: " .. db:errmsg())
   end
 
+  ammStmt:bind_names({ amm_process_id = ammProcessId })
+
   local oneWeekAgo = now - (7 * 24 * 60 * 60)
 
-  for row in ammsStmt:nrows() do
-    local ammProcessId = row.amm_process
-    local discoveredAt = row.amm_discovered_at_ts
+  local row = ammStmt:step()
+  local discoveredAt = row.amm_discovered_at_ts
 
-    local startTimestamp = math.max(discoveredAt, oneWeekAgo)
-    indicators.dispatchIndicatorsMessage(ammProcessId, startTimestamp, now)
-  end
-  ammsStmt:finalize()
+  local startTimestamp = math.max(discoveredAt, oneWeekAgo)
+  indicators.dispatchIndicatorsMessage(ammProcessId, startTimestamp, now)
+
+  ammStmt:finalize()
   print('Dispatched indicators for all AMMs')
 end
 

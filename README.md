@@ -68,6 +68,29 @@ ao.send({
 ```
 
 
+## Data Feeds [WIP]
+
+### Top N Market Data
+
+Processes subscribe to be notified with market data related to their "top N tokens".
+
+Subscribers are notified immediately as soon as a relevant change occurs. Relevant changes are
+
+- a new transaction has occurred involving one of the tokens in the token set of that subscriber
+- a liquidity addition / removal has occurred involving one of the tokens in the token set of that subscriber
+
+For this, DEXI computes & tracks for each subscriber what their top N token set is. In order to track this data efficiently, DEXI keeps updating the token set on relevant events, which are:
+
+- subscriber process was registered
+- market caps have changed
+  - total supply of a token has changed
+  - a trade has occurred
+
+We don't treat liquidity provision as an event that would change market cap, since this affects neither the price nor the total supply of any token.
+
+In the current implementation Top N Market Data works under the **assumption that all monitored pools share the same quote token**, in which the market cap is actually expressed.
+
+
 ## Building the Agent
 To build the agent, due to complications with the aos file loader, it is recommended to use amalg to create a single file from multiple scripts. This can be done by:
 
