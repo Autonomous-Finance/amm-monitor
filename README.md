@@ -92,17 +92,25 @@ In the current implementation Top N Market Data works under the **assumption tha
 
 
 ## Building the Agent
-To build the agent, due to complications with the aos file loader, it is recommended to use amalg to create a single file from multiple scripts. This can be done by:
+To build the agent, due to complications with the aos file loader, it is recommended to use amalg to create a single file from multiple scripts. This can be done by something like:
 
-```
-/opt/homebrew/bin/luacheck process.lua schemas.lua sqlschema.lua intervals.lua candles.lua stats.lua validation.lua indicators.lua
+```bash
+/opt/homebrew/bin/luacheck [file1] [file2] ...
 
-/opt/homebrew/bin/amalg.lua -s process.lua -o build/output.lua sqlschema intervals schemas validation candles stats indicators
+/opt/homebrew/bin/amalg.lua -s process.lua -o build/output.lua [module1] [module2] ...
 
 npx aoform apply
 ```
-In our experience amalagamations work more reliably than the aos loader (for now) and it also has the nice property of beign able to deploy with just one command.
+See `./build.sh` for details
 
+In our experience amalagamations work more reliably than the aos loader (for now) and it also has the nice property of beign able to deploy with just one command.
 
 To build & deploy on OSX do:
 `bash build.sh`
+
+
+## TODO
+
+- use subscribable package
+- ? remove isTrusted check (not needed any longer)
+- move .lua files into a src/

@@ -1,5 +1,6 @@
-local intervals = require('intervals')
-local sqlschema = require('sqlschema')
+local intervals = require('dexi-core.intervals')
+local sqlschema = require('dexi-core.sqlschema')
+
 local candles = {}
 
 function candles.generateCandlesForXDaysInIntervalY(xDays, yInterval, endTime, ammProcessId)
@@ -25,7 +26,7 @@ function candles.generateCandlesForXDaysInIntervalY(xDays, yInterval, endTime, a
   end
 
   local stmt = db:prepare(string.format([[
-    SELECT 
+    SELECT
       %s AS candle_time,
       MIN(created_at_ts) AS start_timestamp,
       MAX(created_at_ts) AS end_timestamp,
@@ -33,14 +34,14 @@ function candles.generateCandlesForXDaysInIntervalY(xDays, yInterval, endTime, a
       MAX(price) AS high,
       MIN(price) AS low,
       (SELECT price FROM amm_transactions WHERE created_at_ts = (SELECT MAX(created_at_ts) FROM amm_transactions_view WHERE created_at_ts >= :start_time AND created_at_ts < :end_time AND amm_process = :amm_process)) AS close,
-      SUM(volume) / POWER(10, quote_denominator) AS volume  
+      SUM(volume) / POWER(10, quote_denominator) AS volume
     FROM
       amm_transactions_view AS t1
     WHERE created_at_ts >= :start_time AND created_at_ts < :end_time AND amm_process = :amm_process
-    GROUP BY 
+    GROUP BY
       1
     ORDER BY
-      candle_time ASC  
+      candle_time ASC
   ]], groupByClause))
 
   local startTime = endTime - (xDays * 24 * 3600)
@@ -54,7 +55,7 @@ function candles.generateCandlesForXDaysInIntervalY(xDays, yInterval, endTime, a
   local candles = sqlschema.queryMany(stmt)
 
   for i = 2, #candles do
-    candles[i].open = candles[i-1].close
+    candles[i].open = candles[i - 1].close
   end
 
   if #candles > 0 then
@@ -65,4 +66,3 @@ function candles.generateCandlesForXDaysInIntervalY(xDays, yInterval, endTime, a
 end
 
 return candles
-

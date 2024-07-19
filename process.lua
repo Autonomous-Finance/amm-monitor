@@ -1,442 +1,187 @@
 local json = require("json")
-
-
-local intervals = require("intervals")
-local candles = require "candles"
-local stats = require "stats"
-local schemas = require "schemas"
 local sqlite3 = require("lsqlite3")
-local sqlschema = require("sqlschema")
-local indicators = require("indicators")
-local topNConsumers = require("top-n-consumers")
+
+local overview = require("dexi-core.overview")
+local dexiCore = require("dexi-core.dexi-core")
+local ingest = require("ingest.ingest")
+local sqlschema = require("dexi-core.sqlschema")
+local indicators = require("indicators.indicators")
+local topN = require("top-n.top-n")
+local debug = require("utils.debug")
 
 db = db or sqlite3.open_memory()
 
 sqlschema.createTableIfNotExists(db)
 
---
+-- eliminate warnings
+Owner = Owner or ao.env.Process.Owner
+Handlers = Handlers or {}
+ao = ao or {}
 
 OFFCHAIN_FEED_PROVIDER = 'P6i7xXWuZtuKJVJYNwEqduj0s8R_G4wZJ38TB5Knpy4'
 TOKEN = ao.env.Process.Tags["Base-Token"]
 AMM = ao.env.Process.Tags["Monitor-For"]
 
+-- ================== HANDLER LOGIC ================= --
 
 
-local function updateAmmSwapParams(amm, msg)
-  local reserves_0 = msg.Tags["Reseves-Token-A"]
-  local reserves_1 = msg.Tags["Reseves-Token-B"]
-  local fee_percentage = msg.Tags["Fee-Percentage"]
+-- -------------- SUBSCRIPTIONS -------------- --
 
-  local valid, err = schemas.swapParamsSchema(reserves_0, reserves_1, fee_percentage)
-  assert(valid, 'Invalid input amm swap params data' .. json.encode(err))
-
-  local stmt, err = db:prepare [[
-    REPLACE INTO amm_registry_table (
-      amm_process, reserves_0, reserves_1, fee_percentage
-    ) VALUES (:amm_process, :reserves_0, :reserves_1, :fee_percentage);
-  ]]
-
-  if not stmt then
-    error("Failed to prepare SQL statement: " .. db:errmsg())
+local recordPayment = function(msg)
+  if msg.From == 'Sa0iBLPNyJQrwpTTG-tWLQU-1QeUAJA73DdxGGiKoJc' then
+    sqlschema.updateBalance(msg.Tags.Sender, msg.From, tonumber(msg.Tags.Quantity), true)
   end
+end
 
-  stmt:bind_names({
-    fee_percentage = fee_percentage,
-    reserves_0 = reserves_0,
-    reserves_1 = reserves_1,
-    amm_process = amm
+local subscribeForIndicators = function(msg)
+  local processId = msg.Tags['Subscriber-Process-Id']
+  local ownerId = msg.Tags['Owner-Id']
+  local ammProcessId = msg.Tags['AMM-Process-Id']
+
+  print('Registering subscriber to indicator data: ' ..
+    processId .. ' for amm: ' .. ammProcessId .. ' with owner: ' .. ownerId)
+  indicators.registerIndicatorSubscriber(processId, ownerId, ammProcessId)
+
+  ao.send({
+    Target = ao.id,
+    Assignments = { ownerId, processId },
+    Action = 'Dexi-Indicator-Subscription-Confirmation',
+    AMM = ammProcessId,
+    Process = processId,
+    OK = 'true'
   })
-
-  stmt:step()
-  stmt:reset()
 end
 
-local function insertSingleTransaction(msg, source, sourceAmm)
-  local valid, err = schemas.inputMessageSchema(msg)
-  assert(valid, 'Invalid input transaction data' .. json.encode(err))
+local subscribeForTopN = function(msg)
+  local processId = msg.Tags['Subscriber-Process-Id']
+  local ownerId = msg.Tags['Owner-Id']
+  local quoteToken = msg.Tags['Quote-Token']
 
-  local stmt, err = db:prepare [[
-    REPLACE INTO amm_transactions (
-      id, source, block_height, block_id, sender, created_at_ts,
-      to_token, from_token, from_quantity, to_quantity, fee_percentage, amm_process
-    ) VALUES (:id, :source, :block_height, :block_id, :sender, :created_at_ts,
-              :to_token, :from_token, :from_quantity, :to_quantity, :fee_percentage, :amm_process);
-  ]]
-
-  if not stmt then
-    error("Failed to prepare SQL statement: " .. db:errmsg())
+  if not quoteToken then
+    error('Quote-Token is required')
+  end
+  if not sqlschema.isQuoteTokenAvailable(quoteToken) then
+    error('Quote-Token not available: ' .. quoteToken)
   end
 
-  stmt:bind_names({
-    id = msg.Id,
-    source = source,
-    block_height = msg['Block-Height'],
-    block_id = msg['Block-Id'] or '',
-    sender = msg.recipient or '',
-    created_at_ts = msg.Timestamp,
-    to_token = msg.Tags['To-Token'],
-    from_token = msg.Tags['From-Token'],
-    from_quantity = tonumber(msg.Tags['From-Quantity']),
-    to_quantity = tonumber(msg.Tags['To-Quantity']),
-    fee_percentage = tonumber(msg.Tags['Fee-Percentage']),
-    amm_process = sourceAmm
+  print('Registering subscriber to top N market data: ' ..
+    processId .. ' for quote token: ' .. quoteToken .. ' with owner: ' .. ownerId)
+  topN.registerTopNSubscriber(processId, ownerId, quoteToken)
+
+  -- determine top N token set for this subscriber
+  topN.updateTopNTokenSet(processId)
+
+  ao.send({
+    Target = ao.id,
+    Assignments = { ownerId, processId },
+    Action = 'Dexi-Top-N-Subscription-Confirmation',
+    QuoteToken = quoteToken,
+    Process = processId,
+    OK = 'true'
   })
-
-  stmt:step()
-  stmt:reset()
-
-  local now = math.floor(msg.Timestamp / 1000)
-  indicators.dispatchIndicatorsForAMM(sourceAmm, now)
-
-  updateAmmSwapParams(sourceAmm, msg)
-
-  sqlschema.updateTopNTokenSets()
-
-  topNConsumers.dispatchMarketDataForAMM(now, sourceAmm)
 end
 
+-- -------------- GETTERS -------------- --
 
-function debugTable()
-  local stmt = db:prepare [[
-    SELECT * FROM amm_transactions ORDER BY created_at_ts LIMIT 100;
-  ]]
-  if not stmt then
-    error("Failed to prepare SQL statement: " .. db:errmsg())
-  end
-  return sqlschema.queryMany(stmt)
-end
-
-local function findPriceAroundTimestamp(targetTimestampBefore, ammProcessId)
-  local stmt = db:prepare [[
-    SELECT price
-    FROM amm_transactions_view
-    WHERE created_at_ts <= :target_timestamp_before
-    AND amm_process = :amm_process_id
-    ORDER BY created_at_ts DESC
-    LIMIT 1;
-  ]]
-
-  if not stmt then
-    error("Failed to prepare SQL statement: " .. db:errmsg())
-  end
-
-  stmt:bind_names({
-    target_timestamp_before = targetTimestampBefore,
-    amm_process_id = ammProcessId
+local getRegisteredAMMs = function(msg)
+  ao.send({
+    ['App-Name'] = 'Dexi',
+    ['Payload'] = 'Registered-AMMs',
+    Target = msg.From,
+    Data = json.encode(sqlschema.getRegisteredAMMs())
   })
-
-
-  local row = sqlschema.queryOne(stmt)
-  local price = row and row.price or nil
-
-  return price
 end
 
+-- -------------------------------------------- --
+
+Handlers.add(
+  "GetRegisteredAMMs",
+  Handlers.utils.hasMatchingTag("Action", "Get-Registered-AMMs"),
+  getRegisteredAMMs
+)
 
 Handlers.add(
   "GetStats",
   Handlers.utils.hasMatchingTag("Action", "Get-Stats"),
-  function(msg)
-    local stats = stats.getAggregateStats(0, msg.Tags.AMM)
-    local now = msg.Timestamp / 1000
-
-    local priceNow = findPriceAroundTimestamp(now, msg.Tags.AMM)
-    local price24HAgo = findPriceAroundTimestamp(now - intervals.IntervalSecondsMap['1d'], msg.Tags.AMM)
-    local price6HAgo = findPriceAroundTimestamp(now - intervals.IntervalSecondsMap['6h'], msg.Tags.AMM)
-    local price1HAgo = findPriceAroundTimestamp(now - intervals.IntervalSecondsMap['1h'], msg.Tags.AMM)
-
-    ao.send({
-      Target = msg.From,
-      ['App-Name'] = 'Dexi',
-      ['Payload'] = 'Stats',
-      ['AMM'] = msg.Tags.AMM,
-      ['Total-Volume'] = tostring(stats.total_volume),
-      ['Buy-Volume'] = tostring(stats.buy_volume),
-      ['Sell-Volume'] = tostring(stats.sell_volume),
-      ['Buy-Count'] = tostring(stats.buy_count),
-      ['Sell-Count'] = tostring(stats.sell_count),
-      ['Buyers'] = tostring(stats.distinct_buyers),
-      ['Sellers'] = tostring(stats.distinct_sellers),
-      ['Total-Traders'] = tostring(stats.distinct_traders),
-      ['Latest-Price'] = tostring(priceNow),
-      ['Price-24H-Ago'] = tostring(price24HAgo),
-      ['Price-6H-Ago'] = tostring(price6HAgo),
-      ['Price-1H-Ago'] = tostring(price1HAgo)
-    })
-  end
+  dexiCore.getStats
 )
 
 Handlers.add(
   "GetCandles",
   Handlers.utils.hasMatchingTag("Action", "Get-Candles"),
-  function(msg)
-    local days = msg.Tags.Days and tonumber(msg.Tags.Days) or 30
-    local candles = candles.generateCandlesForXDaysInIntervalY(days, msg.Tags.Interval, msg.Timestamp / 1000,
-      msg.Tags.AMM)
-    ao.send({
-      Target = msg.From,
-      ['App-Name'] = 'Dexi',
-      ['Payload'] = 'Candles',
-      ['AMM'] = msg.Tags.AMM,
-      ['Interval'] = msg.Tags.Interval or '15m',
-      ['Days'] = tostring(msg.Tags.Days),
-      Data = json.encode(candles)
-    })
-  end
+  dexiCore.getCandles
 )
 
 Handlers.add(
-  "UpdateLocalState-Order-Confirmation",
-  Handlers.utils.hasMatchingTag("Action", "Order-Confirmation-Monitor"),
-  function(msg)
-    local stmt = 'SELECT TRUE FROM amm_registry WHERE amm_process = :amm_process'
-    local stmt = db:prepare(stmt)
-    stmt:bind_names({ amm_process = msg.From })
-
-    msg.Timestamp = math.floor(msg.Timestamp / 1000)
-    local row = sqlschema.queryOne(stmt)
-    if row or msg.From == Owner then
-      insertSingleTransaction(msg, 'message', msg.From)
-    end
-  end
+  "UpdateLocalState-Swap",
+  Handlers.utils.hasMatchingTag("Action", "Swap-Monitor"),
+  ingest.monitorIngestSwap
 )
 
 Handlers.add(
-  "UpdateLocalState-Liquidity-Change",
-  Handlers.utils.hasMatchingTag("Action", "Liquidity-Change-Monitor"),
-  function(msg)
-    local stmt = 'SELECT TRUE FROM amm_registry WHERE amm_process = :amm_process'
-    local stmt = db:prepare(stmt)
-    stmt:bind_names({ amm_process = msg.From })
-
-    msg.Timestamp = math.floor(msg.Timestamp / 1000)
-    local row = sqlschema.queryOne(stmt)
-    if row or msg.From == Owner then
-      updateAmmSwapParams(msg.From, msg)
-      topNConsumers.dispatchMarketDataForAMM(msg.Timestamp, msg.From)
-    end
-  end
+  "UpdateLocalState-Swap-Params-Change",
+  Handlers.utils.hasMatchingTag("Action", "Swap-Params-Change"),
+  ingest.monitorIngestSwapParamsChange
 )
 
+Handlers.add(
+  "ReceiveOffchainFeed-Swaps",
+  Handlers.utils.hasMatchingTag("Action", "Receive-Offchain-Feed-Swaps"),
+  ingest.feedIngestSwaps
+)
 
 Handlers.add(
-  "GetRegisteredAMMs",
-  Handlers.utils.hasMatchingTag("Action", "Get-Registered-AMMs"),
-  function(msg)
-    ao.send({
-      ['App-Name'] = 'Dexi',
-      ['Payload'] = 'Registered-AMMs',
-      Target = msg.From,
-      Data = json.encode(sqlschema.getRegisteredAMMs())
-    })
-  end
+  "ReceiveOffchainFeed-Swap-Params-Changes",
+  Handlers.utils.hasMatchingTag("Action", "Receive-Offchain-Feed-Swap-Params-Changes"),
+  ingest.feedIngestSwapParamsChange
 )
 
 Handlers.add(
   "GetOverview",
   Handlers.utils.hasMatchingTag("Action", "Get-Overview"),
-  function(msg)
-    local now = msg.Timestamp / 1000
-    local orderBy = msg.Tags['Order-By']
-    ao.send({
-      ['App-Name'] = 'Dexi',
-      ['Payload'] = 'Overview',
-      Target = msg.From,
-      Data = json.encode(sqlschema.getOverview(now, orderBy))
-    })
-  end
+  overview.getOverview
 )
 
 Handlers.add(
   "GetTopNMarketData",
   Handlers.utils.hasMatchingTag("Action", "Get-Top-N-Market-Data"),
-  function(msg)
-    local quoteToken = msg.Tags['Quote-Token']
-    if not quoteToken then
-      error('Quote-Token is required')
-    end
-    if not sqlschema.isQuoteTokenAvailable(quoteToken) then
-      error('Quote-Token not available: ' .. quoteToken)
-    end
-    ao.send({
-      ['App-Name'] = 'Dexi',
-      ['Payload'] = 'Top-N-Market-Data',
-      Target = msg.From,
-      Data = json.encode(sqlschema.getTopNMarketData(quoteToken))
-    })
-  end
-)
-
-
-Handlers.add(
-  "ReceiveOffchainFeed-Transactions",
-  Handlers.utils.hasMatchingTag("Action", "Receive-Offchain-Feed"),
-  function(msg)
-    if msg.From == OFFCHAIN_FEED_PROVIDER then
-      local data = json.decode(msg.Data)
-      for _, transaction in ipairs(data) do
-        insertSingleTransaction(transaction, 'gateway', transaction.Tags['AMM'])
-      end
-    end
-  end
+  topN.getTopNMarketData
 )
 
 Handlers.add(
-  "ReceiveOffchainFeed-LiquidityChanges",
-  Handlers.utils.hasMatchingTag("Action", "Receive-Offchain-Feed-Liquidity-Changes"),
-  function(msg)
-    if msg.From == OFFCHAIN_FEED_PROVIDER then
-      local data = json.decode(msg.Data)
-      for _, liquidityUpdate in ipairs(data) do
-        updateAmmSwapParams(liquidityUpdate.Tags['AMM'], liquidityUpdate)
-      end
-    end
-  end
-)
-
-
-Handlers.add(
-  "GetCurrentHeight",
-  Handlers.utils.hasMatchingTag("Action", "Get-Current-Height"),
-  function(msg)
-    local stmt = db:prepare [[
-      SELECT MAX(block_height) AS max_height
-      FROM amm_transactions
-      WHERE source = 'gateway' AND amm_process = :amm;
-    ]]
-
-    stmt:bind_names({ amm = msg.Tags.AMM })
-
-    local row = sqlschema.queryOne(stmt)
-    local gatewayHeight = row and row.max_height or 0
-
-    stmt:reset()
-
-    ao.send({
-      Target = msg.From,
-      Height = tostring(gatewayHeight)
-    })
-  end
-)
-
-
-Handlers.add(
-  "RegisterProcess",
-  Handlers.utils.hasMatchingTag("Action", "Register-Process"),
-  function(msg)
-    local processId = msg.Tags['Subscriber-Process-Id']
-    local ownerId = msg.Tags['Owner-Id']
-    local ammProcessId = msg.Tags['AMM-Process-Id']
-
-    print('Registering process: ' .. processId .. ' for amm: ' .. ammProcessId .. ' with owner: ' .. ownerId)
-    sqlschema.registerProcess(processId, ownerId, ammProcessId)
-
-    Send({
-      Target = ao.id,
-      Assignments = { ownerId, processId },
-      Action = 'Dexi-Registration-Confirmation',
-      AMM = ammProcessId,
-      Process = processId,
-      OK = 'true'
-    })
-  end
+  "SubscribeIndicators",
+  Handlers.utils.hasMatchingTag("Action", "Subscribe-Indicators"),
+  subscribeForIndicators
 )
 
 Handlers.add(
-  "RegisterTopNConsumer",
-  Handlers.utils.hasMatchingTag("Action", "Register-Top-N-Consumer"),
-  function(msg)
-    local processId = msg.Tags['Subscriber-Process-Id']
-    local ownerId = msg.Tags['Owner-Id']
-    local quoteToken = msg.Tags['Quote-Token']
-
-    if not quoteToken then
-      error('Quote-Token is required')
-    end
-    if not sqlschema.isQuoteTokenAvailable(quoteToken) then
-      error('Quote-Token not available: ' .. quoteToken)
-    end
-
-    print('Registering top n consumer: ' .. processId .. ' for quote token: ' .. quoteToken .. ' with owner: ' .. ownerId)
-    sqlschema.registerTopNConsumer(processId, ownerId, quoteToken)
-
-    Send({
-      Target = ao.id,
-      Assignments = { ownerId, processId },
-      Action = 'Dexi-Top-N-Registration-Confirmation',
-      QuoteToken = quoteToken,
-      Process = processId,
-      OK = 'true'
-    })
-  end
+  "SubscribeTopN",
+  Handlers.utils.hasMatchingTag("Action", "Subscribe-Top-N"),
+  subscribeForTopN
 )
 
 Handlers.add(
   "BatchRequestPrices",
   Handlers.utils.hasMatchingTag("Action", "Price-Batch-Request"),
-  function(msg)
-    local amms = json.decode(msg.Tags['AMM-List'])
-    local ammPrices = {}
-    for _, amm in ipairs(amms) do
-      local price = findPriceAroundTimestamp(msg.Timestamp / 1000, amm)
-      ammPrices[amm] = price
-    end
-
-    ao.send({
-      Target = msg.From,
-      Action = 'Price-Batch-Response',
-      Data = json.encode(ammPrices)
-    })
-  end
+  dexiCore.getPricesInBatch
 )
 
 Handlers.add(
   "CreditNotice",
   Handlers.utils.hasMatchingTag("Action", "Credit-Notice"),
-  function(msg)
-    if msg.From == 'Sa0iBLPNyJQrwpTTG-tWLQU-1QeUAJA73DdxGGiKoJc' then
-      sqlschema.updateBalance(msg.Tags.Sender, msg.From, tonumber(msg.Tags.Quantity), true)
-    end
-  end
+  recordPayment
 )
 
-
+Handlers.add(
+  "GetCurrentHeight",
+  Handlers.utils.hasMatchingTag("Action", "Get-Current-Height"),
+  ingest.getCurrentHeight
+)
 
 Handlers.add(
   "DumpTableToCSV",
   Handlers.utils.hasMatchingTag("Action", "Dump-Table-To-CSV"),
-  function(msg)
-    local stmt = db:prepare [[
-      SELECT *
-      FROM amm_transactions;
-    ]]
-
-    local rows = {}
-    local row = stmt:step()
-    while row do
-      table.insert(rows, row)
-      row = stmt:step()
-    end
-
-    stmt:reset()
-
-    local csvHeader =
-    "id,source,block_height,block_id,from,timestamp,is_buy,price,volume,to_token,from_token,from_quantity,to_quantity,fee,amm_process\n"
-    local csvData = csvHeader
-
-    for _, row in ipairs(rows) do
-      local rowData = string.format("%s,%s,%d,%s,%s,%d,%d,%.8f,%.8f,%s,%s,%.8f,%.8f,%.8f,%s\n",
-        row.id, row.source, row.block_height, row.block_id, row["from"], row["timestamp"],
-        row.is_buy, row.price, row.volume, row.to_token, row.from_token, row.from_quantity,
-        row.to_quantity, row.fee, row.amm_process)
-      csvData = csvData .. rowData
-    end
-
-    ao.send({
-      Target = msg.From,
-      Data = csvData
-    })
-  end
+  debug.dumpToCSV
 )
 
 

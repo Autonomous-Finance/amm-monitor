@@ -1,6 +1,6 @@
 local sqlschema = {}
 
-sqlschema.create_table = [[
+sqlschema.create_transactions_table = [[
 CREATE TABLE IF NOT EXISTS amm_transactions (
     id TEXT PRIMARY KEY,
     source TEXT NOT NULL CHECK (source IN ('gateway', 'message')),
@@ -17,16 +17,36 @@ CREATE TABLE IF NOT EXISTS amm_transactions (
 );
 ]]
 
+--[[
+  Records changes in the swap configuration of an AMM
+  i.e. the factors that AFFECT THE PRICE of the next swap
+  - changes in pool reserves (due to swaps or liquidity add/remove actions)
+  - changes in pool fees
+]]
+sqlschema.create_amm_swap_params_changes_table = [[
+CREATE TABLE IF NOT EXISTS amm_swap_params_changes (
+    id TEXT PRIMARY KEY,
+    source TEXT NOT NULL CHECK (source IN ('gateway', 'message')),
+    block_height INTEGER NOT NULL,
+    block_id TEXT,
+    sender TEXT NOT NULL,
+    created_at_ts INTEGER,
+    cause TEXT NOT NULL CHECK (cause IN ('swap', 'swap-params-change')),
+    token TEXT NOT NULL,
+    reserves_0 TEXT NOT NULL,
+    reserves_1 TEXT NOT NULL,
+    fee_percentage TEXT NOT NULL,
+    amm_process TEXT NOT NULL,
+);
+]]
+
 sqlschema.create_amm_registry_table = [[
 CREATE TABLE IF NOT EXISTS amm_registry (
     amm_process TEXT PRIMARY KEY,
     amm_name TEXT NOT NULL,
     amm_token0 TEXT NOT NULL,
     amm_token1 TEXT NOT NULL,
-    amm_discovered_at_ts INTEGER,
-    reserves_0 TEXT NOT NULL,
-    reserves_1 TEXT NOT NULL,
-    fee_percentage TEXT NOT NULL,
+    amm_discovered_at_ts INTEGER
 );
 ]]
 
@@ -50,8 +70,8 @@ CREATE TABLE IF NOT EXISTS balances (
 );
 ]]
 
-sqlschema.create_subscriptions_table = [[
-CREATE TABLE IF NOT EXISTS subscriptions (
+sqlschema.create_indicator_subscriptions_table = [[
+CREATE TABLE IF NOT EXISTS indicator_subscriptions (
     process_id TEXT PRIMARY KEY,
     owner_id TEXT NOT NULL,
     amm_process_id TEXT NOT NULL
@@ -62,6 +82,7 @@ sqlschema.create_top_n_subscriptions_table = [[
 CREATE TABLE IF NOT EXISTS top_n_subscriptions (
     process_id TEXT PRIMARY KEY,
     owner_id TEXT NOT NULL,
+    quote_token TEXT NOT NULL,
     top_n INTEGER NOT NULL,
     token_set TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(token_set))
 );
@@ -106,29 +127,51 @@ LEFT JOIN token_registry t0 ON t0.token_process = amm_token0
 LEFT JOIN token_registry tq ON tq.token_process = amm_token1
 ]]
 
+sqlschema.create_amm_swap_params_view = [[
+CREATE VIEW amm_swap_params_view AS
+SELECT
+  amm_process,
+  reserves_0,
+  reserves_1,
+  fee_percentage
+FROM amm_liquidity_changes
+WHERE created_at_ts = (SELECT MAX(created_at_ts) FROM amm_liquidity_changes WHERE amm_process = amm_process)
+]]
 
--- assuming all pairs have the same token1, in which the market cap is expressed
+
+-- assuming all pairs have the same token0 (quote token), in which the market cap is expressed
 sqlschema.create_market_cap_view = [[
 CREATE VIEW market_cap_view AS
 SELECT
-  r.amm_token0 AS token_process,
+  r.amm_token1 AS token_process,
   t.total_supply * current_price AS market_cap,
 FROM amm_registry r
-LEFT JOIN token_registry t ON t.token_process = r.amm_token0
+LEFT JOIN token_registry t ON t.token_process = r.amm_token1
 ORDER BY market_cap DESC
 LIMIT 100
 ]]
 
 function sqlschema.createTableIfNotExists(db)
-  db:exec(sqlschema.create_table)
+  db:exec(sqlschema.create_transactions_table)
 
-  db:exec("DROP VIEW IF EXISTS amm_transactions_view;")
-  print("Err: " .. db:errmsg())
+  db:exec(sqlschema.create_amm_swap_params_changes_table)
 
   db:exec(sqlschema.create_amm_registry_table)
   print("Err: " .. db:errmsg())
 
+  db:exec("DROP VIEW IF EXISTS amm_transactions_view;")
+  print("Err: " .. db:errmsg())
+
   db:exec(sqlschema.create_transactions_view)
+  print("Err: " .. db:errmsg())
+
+  db:exec("DROP VIEW IF EXISTS amm_swap_params_view;")
+  print("Err: " .. db:errmsg())
+
+  db:exec(sqlschema.create_amm_swap_params_view)
+  print("Err: " .. db:errmsg())
+
+  db:exec("DROP VIEW IF EXISTS amm_market_cap_view;")
   print("Err: " .. db:errmsg())
 
   db:exec(sqlschema.create_market_cap_view)
@@ -137,7 +180,7 @@ function sqlschema.createTableIfNotExists(db)
   db:exec(sqlschema.create_balances_table)
   print("Err: " .. db:errmsg())
 
-  db:exec(sqlschema.create_subscriptions_table)
+  db:exec(sqlschema.create_indicator_subscriptions_table)
   print("Err: " .. db:errmsg())
 
   db:exec(sqlschema.create_top_n_subscriptions_table)
@@ -176,20 +219,17 @@ function sqlschema.rawQuery(query)
   return sqlschema.queryMany(stmt)
 end
 
-function sqlschema.registerAMM(name, processId, token0, token1, discoveredAt, reserves_0, reserves_1, feePercentage)
+function sqlschema.registerAMM(name, processId, token0, token1, discoveredAt)
   print({
     "process", processId,
     "name", name,
     "token0", token0,
     "token1", token1,
-    "reserves_0", reserves_0,
-    "reserves_1", reserves_1,
-    "fee_percentage", feePercentage,
   })
   local stmt = db:prepare [[
-  INSERT OR REPLACE INTO amm_registry (amm_process, amm_name, amm_token0, amm_token1, amm_discovered_at_ts, reserves_0, reserves_1, fee_percentage)
+  INSERT OR REPLACE INTO amm_registry (amm_process, amm_name, amm_token0, amm_token1, amm_discovered_at_ts)
   VALUES
-    (:process, :amm_name, :token0, :token1, :discovered_at, :reserves_0, :reserves_1, :fee_percentage);
+    (:process, :amm_name, :token0, :token1, :discovered_at);
   ]]
   if not stmt then
     error("Err: " .. db:errmsg())
@@ -199,10 +239,7 @@ function sqlschema.registerAMM(name, processId, token0, token1, discoveredAt, re
     amm_name = name,
     token0 = token0,
     token1 = token1,
-    discovered_at = discoveredAt,
-    reserves_0 = reserves_0,
-    reserves_1 = reserves_1,
-    fee_percentage = feePercentage
+    discovered_at = discoveredAt
   })
   stmt:step()
   print("Err: " .. db:errmsg())
@@ -227,122 +264,17 @@ function sqlschema.isQuoteTokenAvailable(token0)
   return result["COUNT(*)"] > 0
 end
 
-function sqlschema.getOverview(now, orderBy)
-  local orderByClause = "amm_discovered_at_ts DESC"
-
-  if orderBy == "volume" then
-    orderByClause = "volume DESC"
-  elseif orderBy == "transactions" then
-    orderByClause = "transactions DESC"
-  elseif orderBy == "market_cap" then
-    orderByClause = "market_cap DESC"
-  end
-
-  local stmt = db:prepare(string.format([[
-  WITH stats AS (
-    SELECT
-      amm_process,
-      COUNT(*) AS transactions,
-      SUM(volume) AS volume
-    FROM amm_transactions_view
-    WHERE created_at_ts >= :now - 86400
-    GROUP BY 1
-  ), current_prices AS (
-    SELECT
-      amm_process,
-      (SELECT price FROM amm_transactions_view WHERE amm_process = r.amm_process ORDER BY created_at_ts DESC LIMIT 1) AS current_price
-    FROM amm_registry r
-  )
-  SELECT
-    rank() OVER (ORDER BY t.total_supply * current_price DESC) AS market_cap_rank,
-    r.amm_name as amm_name,
-    r.amm_process as amm_process,
-    r.amm_token0 AS token0,
-    r.amm_token1 AS token1,
-    transactions,
-    volume,
-    t.token_name AS token_name,
-    t.total_supply AS total_supply,
-    t.fixed_supply AS fixed_supply,
-    t.total_supply * current_price AS market_cap,
-    (SELECT price FROM amm_transactions_view WHERE amm_process = r.amm_process ORDER BY created_at_ts DESC LIMIT 1) AS current_price,
-    (SELECT price FROM amm_transactions_view WHERE amm_process = r.amm_process AND created_at_ts <= :now - 300 ORDER BY created_at_ts DESC LIMIT 1) AS price_5m_ago,
-    (SELECT price FROM amm_transactions_view WHERE amm_process = r.amm_process AND created_at_ts <= :now - 3600 ORDER BY created_at_ts DESC LIMIT 1) AS price_1h_ago,
-    (SELECT price FROM amm_transactions_view WHERE amm_process = r.amm_process AND created_at_ts <= :now - 21600 ORDER BY created_at_ts DESC LIMIT 1) AS price_6h_ago,
-    (SELECT price FROM amm_transactions_view WHERE amm_process = r.amm_process AND created_at_ts <= :now - 86400 ORDER BY created_at_ts DESC LIMIT 1) AS price_24h_ago
-  FROM amm_registry r
-  LEFT JOIN stats s ON s.amm_process = r.amm_process
-  LEFT JOIN current_prices c ON c.amm_process = r.amm_process
-  LEFT JOIN token_registry t ON t.token_process = r.amm_token1
-  ORDER BY %s
-  LIMIT 100
-  ]], 'market_cap DESC'))
-
-  if not stmt then
-    error("Err: " .. db:errmsg())
-  end
-
-  stmt:bind_names({
-    now = now
-  })
-
-  return sqlschema.queryMany(stmt)
-end
-
-function sqlschema.getTopNMarketData(token0)
-  local orderByClause = "market_cap_rank DESC"
-  local stmt = db:prepare([[
-  WITH current_prices AS (
-    SELECT
-      amm_process,
-      (SELECT price FROM amm_transactions_view WHERE amm_process = r.amm_process ORDER BY created_at_ts DESC LIMIT 1) AS current_price
-    FROM amm_registry r
-  )
-  SELECT
-    rank() OVER (ORDER BY t.total_supply * current_price DESC) AS market_cap_rank,
-    r.amm_name as amm_name,
-    r.amm_process as pool,
-    r.amm_token1 AS token,
-    t.token_name AS ticker,
-    t.denominator as denomination,
-    c.current_price AS current_price,
-    r.reserves_0 AS reserves_0,
-    r.reserves_1 AS reserves_1,
-    r.fee_percentage AS fee_percentage
-  FROM amm_registry r
-  LEFT JOIN current_prices c ON c.amm_process = r.amm_process
-  LEFT JOIN token_registry t ON t.token_process = r.amm_token1
-  WHERE r.amm_token0 = :token0
-  LIMIT 100
-  ]], orderByClause)
-
-  if not stmt then
-    error("Err: " .. db:errmsg())
-  end
-
-  stmt:bind_names({
-    token0 = token0,
-  })
-  return sqlschema.queryMany(stmt)
-end
-
--- TODO initialize reserves correctly
 function sqlschema.updateAMMs()
   sqlschema.registerAMM('TRUNK/AOCRED', 'vn5lUv8OaevTb45iI_qykad_d9MP69kuYg5mZW1zCHE',
-    'Sa0iBLPNyJQrwpTTG-tWLQU-1QeUAJA73DdxGGiKoJc', 'OT9qTE2467gcozb2g8R6D6N3nQS94ENcaAIJfUzHCww', 1712737395, 0, 0,
-    '0.25')
+    'Sa0iBLPNyJQrwpTTG-tWLQU-1QeUAJA73DdxGGiKoJc', 'OT9qTE2467gcozb2g8R6D6N3nQS94ENcaAIJfUzHCww', 1712737395)
   sqlschema.registerAMM('0rbit/AOCRED', '2bKo3vwB1Mo5TItmxuUQzZ11JgKauU_n2IZO1G13AIk',
-    'Sa0iBLPNyJQrwpTTG-tWLQU-1QeUAJA73DdxGGiKoJc', 'BUhZLMwQ6yZHguLtJYA5lLUa9LQzLXMXRfaq9FVcPJc', 1712737395, 0, 0,
-    '0.25')
+    'Sa0iBLPNyJQrwpTTG-tWLQU-1QeUAJA73DdxGGiKoJc', 'BUhZLMwQ6yZHguLtJYA5lLUa9LQzLXMXRfaq9FVcPJc', 1712737395)
   sqlschema.registerAMM('BARK/AOCRED', 'U3Yy3MQ41urYMvSmzHsaA4hJEDuvIm-TgXvSm-wz-X0',
-    'Sa0iBLPNyJQrwpTTG-tWLQU-1QeUAJA73DdxGGiKoJc', '8p7ApPZxC_37M06QHVejCQrKsHbcJEerd3jWNkDUWPQ', 1712737395, 0, 0,
-    '0.25')
+    'Sa0iBLPNyJQrwpTTG-tWLQU-1QeUAJA73DdxGGiKoJc', '8p7ApPZxC_37M06QHVejCQrKsHbcJEerd3jWNkDUWPQ', 1712737395)
   sqlschema.registerAMM('AFT/AOCRED', 'DCQJwfEQCD-OQYmfgNH4Oh6uGo9eQJbEn6WbNvtrI_k',
-    'Sa0iBLPNyJQrwpTTG-tWLQU-1QeUAJA73DdxGGiKoJc', 'SpzpFLkqPGvr5ZFZPbvyAtizthmrJ13lL4VBQIBL0dg', 1712737395, 0, 0,
-    '0.25')
+    'Sa0iBLPNyJQrwpTTG-tWLQU-1QeUAJA73DdxGGiKoJc', 'SpzpFLkqPGvr5ZFZPbvyAtizthmrJ13lL4VBQIBL0dg', 1712737395)
   sqlschema.registerAMM('EXP/AOCRED', 'IMcN3R14yThfHzgbYzBDuuSpzmow7zGyBHRE3Gwrtsk',
-    'Sa0iBLPNyJQrwpTTG-tWLQU-1QeUAJA73DdxGGiKoJc', 'aYrCboXVSl1AXL9gPFe3tfRxRf0ZmkOXH65mKT0HHZw', 1712737395, 0, 0,
-    '0.25')
+    'Sa0iBLPNyJQrwpTTG-tWLQU-1QeUAJA73DdxGGiKoJc', 'aYrCboXVSl1AXL9gPFe3tfRxRf0ZmkOXH65mKT0HHZw', 1712737395)
 end
 
 function sqlschema.updateTokens()
@@ -354,31 +286,9 @@ function sqlschema.updateTokens()
   sqlschema.registerToken('Sa0iBLPNyJQrwpTTG-tWLQU-1QeUAJA73DdxGGiKoJc', 'AOCRED', 3, 2782410, false, 1716217288)
 end
 
-function sqlschema.getIndicators(timestampFrom, timestampTo, ammProcess)
-  local stmt = db:prepare([[
-    SELECT
-      *
-    FROM amm_transactions_view
-    WHERE created_at_ts BETWEEN :date_from AND :date_to
-      AND amm_process = :amm_process
-  ]])
-
-  if not stmt then
-    error("Err: " .. db:errmsg())
-  end
-
-  stmt:bind_names({
-    date_from = timestampFrom,
-    date_to = timestampTo,
-    amm_process = ammProcess
-  })
-
-  return sqlschema.queryMany(stmt)
-end
-
-function sqlschema.registerProcess(processId, ownerId, ammProcessId)
+function sqlschema.registerIndicatorSubscriber(processId, ownerId, ammProcessId)
   local stmt = db:prepare [[
-    INSERT INTO subscriptions (process_id, owner_id, amm_process_id)
+    INSERT INTO indicator_subscriptions (process_id, owner_id, amm_process_id)
     VALUES (:process_id, :owner_id, :amm_process_id)
     ON CONFLICT(process_id) DO UPDATE SET
     owner_id = excluded.owner_id,
@@ -399,12 +309,13 @@ function sqlschema.registerProcess(processId, ownerId, ammProcessId)
   end
 end
 
-function sqlschema.registerTopNConsumer(processId, ownerId, topN)
+function sqlschema.registerTopNSubscriber(processId, ownerId, quoteToken, topN)
   local stmt = db:prepare [[
-    INSERT INTO top_n_subscriptions (process_id, owner_id, top_n)
-    VALUES (:process_id, :owner_id, :top_n)
+    INSERT INTO top_n_subscriptions (process_id, owner_id, quote_token, top_n)
+    VALUES (:process_id, :owner_id, :quote_token, :top_n)
     ON CONFLICT(process_id) DO UPDATE SET
     owner_id = excluded.owner_id,
+    quote_token = excluded.quote_token,
     top_n = excluded.top_n;
   ]]
   if not stmt then
@@ -413,6 +324,7 @@ function sqlschema.registerTopNConsumer(processId, ownerId, topN)
   stmt:bind_names({
     process_id = processId,
     owner_id = ownerId,
+    quote_token = quoteToken,
     top_n = topN
   })
   local result, err = stmt:step()
@@ -420,8 +332,6 @@ function sqlschema.registerTopNConsumer(processId, ownerId, topN)
   if err then
     error("Err: " .. db:errmsg())
   end
-
-  sqlschema.updateTopNTokenSets(processId)
 end
 
 function sqlschema.registerToken(processId, name, denominator, totalSupply, fixedSupply, updatedAt)
@@ -455,7 +365,9 @@ end
 
 function sqlschema.updateTokenSupply(processId, totalSupply, fixedSupply, updatedAt)
   local stmt = db:prepare [[
-    UPDATE token_registry SET total_supply = :total_supply, fixed_supply = :fixed_supply, token_updated_at_ts = :token_updated_at_ts WHERE token_process = :token_process;
+    UPDATE token_registry
+    SET total_supply = :total_supply, fixed_supply = :fixed_supply, token_updated_at_ts = :token_updated_at_ts
+    WHERE token_process = :token_process;
   ]]
   if not stmt then
     error("Failed to prepare SQL statement for updating token supply: " .. db:errmsg())
@@ -472,11 +384,20 @@ function sqlschema.updateTokenSupply(processId, totalSupply, fixedSupply, update
     error("Err: " .. db:errmsg())
   end
 
-  sqlschema.updateTopNTokenSets()
+  --[[
+      supply change affects
+          the market cap of this token =>
+            the overall token ranking by market cap =>
+              the top N token sets
+    ]]
+  sqlschema.updateTopNTokenSet()
 end
 
--- for each subscriber to top N market data, update the token set
-function sqlschema.updateTopNTokenSets(specificSubscriber)
+--[[
+ For subscribersStmt to top N market data, update the token set
+ ]]
+---@param specificSubscriber string | nil if nil, token set is updated for each subscriber
+function sqlschema.updateTopNTokenSet(specificSubscriber)
   local specificSubscriberClause = specificSubscriber
       and " AND process_id = :process_id"
       or ""
@@ -533,6 +454,15 @@ function sqlschema.updateBalance(ownerId, tokenId, amount, isCredit)
   if err then
     error("Error updating balance: " .. db:errmsg())
   end
+end
+
+function sqlschema.isKnownAmm(processId)
+  local stmt = 'SELECT TRUE FROM amm_registry WHERE amm_process = :amm_process'
+  local stmt = db:prepare(stmt)
+  stmt:bind_names({ amm_process = processId })
+
+  local row = sqlschema.queryOne(stmt)
+  return row ~= nil
 end
 
 return sqlschema

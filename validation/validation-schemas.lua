@@ -1,4 +1,4 @@
-local v = require("validation")
+local v = require("validation.validation")
 
 local schemas = {}
 

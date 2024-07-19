@@ -1,7 +1,11 @@
-local sqlschema = require('sqlschema')
+local sqlschema = require('dexi-core.sqlschema')
+local calc = require('indicators.calc')
+
 local indicators = {}
 
-function indicators.getDailyStats(ammProcessId, startDate, endDate)
+-- ---------------- SQL
+
+local function getDailyStats(ammProcessId, startDate, endDate)
   local stmt = db:prepare([[
     SELECT
       date(created_at_ts, 'unixepoch') AS date,
@@ -26,7 +30,30 @@ function indicators.getDailyStats(ammProcessId, startDate, endDate)
   return sqlschema.queryMany(stmt)
 end
 
-function indicators.fillMissingDates(dailyStats, startDate, endDate)
+local function getSubscribersToProcess(ammProcessId)
+  local subscribersStmt = db:prepare([[
+      SELECT s.process_id
+      FROM indicator_subscriptions s
+      JOIN balances b ON s.owner_id = b.owner_id AND b.balance > 0
+      WHERE amm_process_id = :amm_process_id
+    ]])
+  if not subscribersStmt then
+    error("Err: " .. db:errmsg())
+  end
+  subscribersStmt:bind_names({ amm_process_id = ammProcessId })
+
+  local processes = {}
+  for row in subscribersStmt:nrows() do
+    table.insert(processes, row.process_id)
+  end
+  subscribersStmt:finalize()
+
+  return processes
+end
+
+-- ---------------- INTERNAL
+
+local function fillMissingDates(dailyStats, startDate, endDate)
   local filledDailyStats = {}
   local currentTimestamp = os.time({ year = startDate:sub(1, 4), month = startDate:sub(6, 7), day = startDate:sub(9, 10) })
   local endTimestamp = os.time({ year = endDate:sub(1, 4), month = endDate:sub(6, 7), day = endDate:sub(9, 10) })
@@ -61,127 +88,16 @@ function indicators.fillMissingDates(dailyStats, startDate, endDate)
   return filledDailyStats
 end
 
-function indicators.calculateSMAs(dailyStats)
-  local smas = {}
-  for i = 1, #dailyStats do
-    local sma10 = 0
-    local sma20 = 0
-    local sma50 = 0
-    local sma100 = 0
-    local sma150 = 0
-    local sma200 = 0
-
-    for j = math.max(1, i - 9), i do
-      sma10 = sma10 + dailyStats[j].close
-    end
-    sma10 = sma10 / math.min(10, i)
-
-    for j = math.max(1, i - 19), i do
-      sma20 = sma20 + dailyStats[j].close
-    end
-    sma20 = sma20 / math.min(20, i)
-
-    for j = math.max(1, i - 49), i do
-      sma50 = sma50 + dailyStats[j].close
-    end
-    sma50 = sma50 / math.min(50, i)
-
-    for j = math.max(1, i - 99), i do
-      sma100 = sma100 + dailyStats[j].close
-    end
-    sma100 = sma100 / math.min(100, i)
-
-    for j = math.max(1, i - 149), i do
-      sma150 = sma150 + dailyStats[j].close
-    end
-    sma150 = sma150 / math.min(150, i)
-
-    for j = math.max(1, i - 199), i do
-      sma200 = sma200 + dailyStats[j].close
-    end
-    sma200 = sma200 / math.min(200, i)
-
-    smas[i] = {
-      sma10 = sma10,
-      sma20 = sma20,
-      sma50 = sma50,
-      sma100 = sma100,
-      sma150 = sma150,
-      sma200 = sma200
-    }
-  end
-
-  return smas
-end
-
-function indicators.calculateEMAs(dailyStats)
-  local ema12 = {}
-  local ema26 = {}
-
-  for i = 1, #dailyStats do
-    if i == 1 then
-      ema12[i] = dailyStats[i].close
-      ema26[i] = dailyStats[i].close
-    else
-      ema12[i] = (dailyStats[i].close - ema12[i - 1]) * 2 / 13 + ema12[i - 1]
-      ema26[i] = (dailyStats[i].close - ema26[i - 1]) * 2 / 27 + ema26[i - 1]
-    end
-  end
-
-  return ema12, ema26
-end
-
-function indicators.calculateMACD(ema12, ema26)
-  local macd = {}
-  local signalLine = {}
-  local histogram = {}
-
-  for i = 1, #ema12 do
-    macd[i] = ema12[i] - ema26[i]
-
-    if i == 1 then
-      signalLine[i] = macd[i]
-    else
-      signalLine[i] = (macd[i] - signalLine[i - 1]) * 2 / 10 + signalLine[i - 1]
-    end
-
-    histogram[i] = macd[i] - signalLine[i]
-  end
-
-  return macd, signalLine, histogram
-end
-
-function indicators.calculateBollingerBands(dailyStats, smas)
-  local upperBand = {}
-  local lowerBand = {}
-
-  for i = 1, #dailyStats do
-    local sum = 0
-    local count = 0
-
-    for j = math.max(1, i - 19), i do
-      sum = sum + (dailyStats[j].close - smas[i].sma20) ^ 2
-      count = count + 1
-    end
-
-    local stdDev = math.sqrt(sum / count)
-    upperBand[i] = smas[i].sma20 + 2 * stdDev
-    lowerBand[i] = smas[i].sma20 - 2 * stdDev
-  end
-
-  return upperBand, lowerBand
-end
-
-function indicators.getIndicators(ammProcessId, startTimestamp, endTimestamp)
+local function getIndicators(ammProcessId, startTimestamp, endTimestamp)
   local endDate = os.date("!%Y-%m-%d", endTimestamp)
   local startDate = os.date("!%Y-%m-%d", startTimestamp)
 
-  local dailyStats = indicators.getDailyStats(ammProcessId, startDate, endDate)
-  local filledDailyStats = indicators.fillMissingDates(dailyStats, startDate, endDate)
-  local smas = indicators.calculateSMAs(filledDailyStats)
-  -- local ema12, ema26 = indicators.calculateEMAs(filledDailyStats)
-  -- local macd, signalLine, histogram = indicators.calculateMACD(ema12, ema26)
-  -- local upperBand, lowerBand = indicators.calculateBollingerBands(filledDailyStats, smas)
+  local dailyStats = getDailyStats(ammProcessId, startDate, endDate)
+  local filledDailyStats = fillMissingDates(dailyStats, startDate, endDate)
+  local smas = calc.calculateSMAs(filledDailyStats)
+  -- local ema12, ema26 = calculations.calculateEMAs(filledDailyStats)
+  -- local macd, signalLine, histogram = calculations.calculateMACD(ema12, ema26)
+  -- local upperBand, lowerBand = calculations.calculateBollingerBands(filledDailyStats, smas)
 
   local result = {}
   for i = 1, #filledDailyStats do
@@ -211,25 +127,12 @@ function indicators.getIndicators(ammProcessId, startTimestamp, endTimestamp)
   return result
 end
 
+-- ---------------- EXPORT
+
 function indicators.dispatchIndicatorsMessage(ammProcessId, startTimestamp, endTimestamp)
-  local subscribersStmt = db:prepare([[
-      SELECT s.process_id
-      FROM subscriptions s
-      JOIN balances b ON s.owner_id = b.owner_id AND b.balance > 0
-      WHERE amm_process_id = :amm_process_id
-    ]])
-  if not subscribersStmt then
-    error("Err: " .. db:errmsg())
-  end
-  subscribersStmt:bind_names({ amm_process_id = ammProcessId })
+  local processes = getSubscribersToProcess(ammProcessId)
 
-  local processes = {}
-  for row in subscribersStmt:nrows() do
-    table.insert(processes, row.process_id)
-  end
-  subscribersStmt:finalize()
-
-  local indicatorsResults = indicators.getIndicators(ammProcessId, startTimestamp, endTimestamp)
+  local indicatorsResults = getIndicators(ammProcessId, startTimestamp, endTimestamp)
 
   local json = require("json")
 

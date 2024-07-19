@@ -1,10 +1,10 @@
-local sqlschema = require('sqlschema')
+local sqlschema = require('dexi-core.sqlschema')
 local stats = {}
 
 function stats.getAggregateStats(minTimestamp, ammProcessId)
   print(1)
-  local stmt, err = db:prepare[[
-    SELECT 
+  local stmt, err = db:prepare [[
+    SELECT
       SUM(volume) AS total_volume,
       ROUND(SUM(CASE WHEN is_buy = 1 THEN volume ELSE 0 END)) AS buy_volume,
       ROUND(SUM(CASE WHEN is_buy = 0 THEN volume ELSE 0 END)) AS sell_volume,
