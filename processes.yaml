@@ -70,6 +70,10 @@
       value: -EAOD6s58Qg0N1ZBrygin6gc1ZtxAzu5YJ20NoSlico
     - name: Offchain-Supply-Updates-Provider
       value: P6i7xXWuZtuKJVJYNwEqduj0s8R_G4wZJ38TB5Knpy4
+    - name: Dexi-Token-Process
+      value: Dexi___TESTtestTESTtestTESTtestTESTtest____
+    - name: Dexi-Token-Ticker
+      value: DEXI
 
 # - name: monitor-trunk_aocred5
 #   file: build/output.lua

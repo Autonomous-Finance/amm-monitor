@@ -166,3 +166,8 @@ npx aoform apply
 - use subscribable package
 - use squishy and remap package paths
 - move .lua files into a src/
+- dispatch indicators on feed ingestion
+
+- graceful error handling
+  
+- test suite
