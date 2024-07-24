@@ -1,3 +1,4 @@
 node_modules
 state.yml
 processes.yml
+.vscode
