@@ -1,5 +1,6 @@
 local json = require('json')
 
+local sqlschema = require('dexi-core.sqlschema')
 local overview = require('dexi-core.overview')
 local intervals = require('dexi-core.intervals')
 local stats = require('dexi-core.stats')
@@ -7,11 +8,20 @@ local candles = require('dexi-core.candles')
 local priceAround = require('dexi-core.price-around')
 
 
-local historicalQueries = {}
+local dexiCore = {}
 
 -- ---------------- EXPORT
 
-historicalQueries.getOverview = function(msg)
+dexiCore.getRegisteredAMMs = function(msg)
+  ao.send({
+    ['App-Name'] = 'Dexi',
+    ['Payload'] = 'Registered-AMMs',
+    Target = msg.From,
+    Data = json.encode(sqlschema.getRegisteredAMMs())
+  })
+end
+
+dexiCore.getOverview = function(msg)
   local now = msg.Timestamp / 1000
   local orderBy = msg.Tags['Order-By']
   ao.send({
@@ -22,7 +32,7 @@ historicalQueries.getOverview = function(msg)
   })
 end
 
-function historicalQueries.getPricesInBatch(msg)
+function dexiCore.getPricesInBatch(msg)
   local amms = json.decode(msg.Tags['AMM-List'])
   local ammPrices = {}
   for _, amm in ipairs(amms) do
@@ -37,7 +47,7 @@ function historicalQueries.getPricesInBatch(msg)
   })
 end
 
-function historicalQueries.getStats(msg)
+function dexiCore.getStats(msg)
   local aggStats = stats.getAggregateStats(0, msg.Tags.AMM)
   local now = math.floor(msg.Timestamp / 1000)
 
@@ -66,7 +76,7 @@ function historicalQueries.getStats(msg)
   })
 end
 
-function historicalQueries.getCandles(msg)
+function dexiCore.getCandles(msg)
   local days = msg.Tags.Days and tonumber(msg.Tags.Days) or 30
   local candles = candles.generateCandlesForXDaysInIntervalY(days, msg.Tags.Interval, msg.Timestamp / 1000,
     msg.Tags.AMM)
@@ -81,4 +91,4 @@ function historicalQueries.getCandles(msg)
   })
 end
 
-return historicalQueries
+return dexiCore

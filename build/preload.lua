@@ -92,7 +92,7 @@ do
     }
 
     function intervals.getIntervalStart(timestamp, interval)
-      timestamp = math.floor(timestamp)   -- Ensure timestamp is an integer
+      timestamp = math.floor(timestamp) -- Ensure timestamp is an integer
       local date = os.date("!*t", timestamp)
 
       if interval == "1h" then
@@ -266,24 +266,44 @@ do
         "token0", token0,
         "token1", token1
       })
-      local stmt = db:prepare [[
+      db:execute("BEGIN")
+      local registerStmt = db:prepare [[
       INSERT OR REPLACE INTO amm_registry (amm_process, amm_name, amm_token0, amm_token1, amm_discovered_at_ts)
       VALUES
         (:process, :amm_name, :token0, :token1, :discovered_at)
       ]]
-      if not stmt then
+      if not registerStmt then
         error("Err: " .. db:errmsg())
       end
-      stmt:bind_names({
+      registerStmt:bind_names({
         process = processId,
         amm_name = name,
         token0 = token0,
         token1 = token1,
         discovered_at = discoveredAt
       })
-      stmt:step()
+      registerStmt:step()
       print("Err: " .. db:errmsg())
-      stmt:reset()
+      registerStmt:reset()
+
+      -- update amm_swap_params table with token0 and token1
+      local initSwapConfig = db:prepare [[
+      INSERT OR REPLACE INTO amm_swap_params (amm_process, token_0, token_1)
+      VALUES
+        (:process, :token0, :token1)
+      ]]
+      if not initSwapConfig then
+        error("Err: " .. db:errmsg())
+      end
+      initSwapConfig:bind_names({
+        process = processId,
+        token0 = token0,
+        token1 = token1
+      })
+      initSwapConfig:step()
+      print("Err: " .. db:errmsg())
+      initSwapConfig:reset()
+      db:execute("COMMIT;")
     end
 
     function sqlschema.getRegisteredAMMs()

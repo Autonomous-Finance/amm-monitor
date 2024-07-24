@@ -40,13 +40,42 @@ CREATE TABLE IF NOT EXISTS amm_swap_params_changes (
 );
 ]]
 
+--[[
+  ! DEXI v1 - amm_base_token and amm_quote_token
+  These are determined by DEXI according to DEXI's business logic, they are not defined as such by the AMMs.
+
+  The labels 'quote' and 'base' are necessary in the context of market cap calculations.
+
+  - in DEXI v1, BRK is the quote token for market cap calculations
+  - we cannot assume that any offset token0 or token1 will be BRK, since we allow for non-bark pairs to be registered
+  - when BRK is one of the tokens, we also cannot assume which of them (0 or 1) it will be
+  - amms of non-BRK pairs are registered here WITHOUT base and quote token and are subsequently NOT INCLUDED in our market cap calculations
+
+    ==> we always check for equality with BRK when registering an AMM, thereby
+      - determining which is base and which is quote
+      - ensuring we can filter out pools that don't enter the market cap calculation at all (non-BRK pairs)
+]]
 sqlschema.create_amm_registry_table = [[
 CREATE TABLE IF NOT EXISTS amm_registry (
     amm_process TEXT PRIMARY KEY,
     amm_name TEXT NOT NULL,
     amm_token0 TEXT NOT NULL,
     amm_token1 TEXT NOT NULL,
+    amm_base_token TEXT,
+    amm_quote_token TEXT,
     amm_discovered_at_ts INTEGER
+);
+]]
+
+-- table rather than view, since this will both change and be queried very frequently
+sqlschema.create_amm_swap_params_table = [[
+CREATE TABLE IF NOT EXISTS amm_swap_params (
+    amm_process TEXT PRIMARY KEY,
+    token_0 TEXT NOT NULL,
+    token_1 TEXT NOT NULL,
+    reserves_0 TEXT NOT NULL,
+    reserves_1 TEXT NOT NULL,
+    fee_percentage TEXT NOT NULL
 );
 ]]
 
@@ -127,26 +156,18 @@ LEFT JOIN token_registry t0 ON t0.token_process = amm_token0
 LEFT JOIN token_registry tq ON tq.token_process = amm_token1
 ]]
 
-sqlschema.create_amm_swap_params_view = [[
-CREATE VIEW amm_swap_params_view AS
-SELECT
-  amm_process,
-  reserves_0,
-  reserves_1,
-  fee_percentage
-FROM amm_liquidity_changes
-WHERE created_at_ts = (SELECT MAX(created_at_ts) FROM amm_liquidity_changes WHERE amm_process = amm_process)
-]]
 
-
--- assuming all pairs have the same token0 (quote token), in which the market cap is expressed
+--! only includes token pairs with BRK
 sqlschema.create_market_cap_view = [[
 CREATE VIEW market_cap_view AS
 SELECT
-  r.amm_token1 AS token_process,
+  r.amm_base_token AS token_process,
   t.total_supply * current_price AS market_cap,
+  r.amm_quote_token AS quote_token_process,
+  rank() OVER (ORDER BY t.total_supply * current_price DESC) AS market_cap_rank,
 FROM amm_registry r
-LEFT JOIN token_registry t ON t.token_process = r.amm_token1
+WHERE r.amm_quote_token IS NOT NULL
+LEFT JOIN token_registry t ON t.token_process = r.amm_base_token
 ORDER BY market_cap DESC
 LIMIT 100
 ]]
@@ -156,6 +177,9 @@ function sqlschema.createTableIfNotExists(db)
 
   db:exec(sqlschema.create_amm_swap_params_changes_table)
 
+  db:exec(sqlschema.create_amm_swap_params_table)
+  print("Err: " .. db:errmsg())
+
   db:exec(sqlschema.create_amm_registry_table)
   print("Err: " .. db:errmsg())
 
@@ -163,12 +187,6 @@ function sqlschema.createTableIfNotExists(db)
   print("Err: " .. db:errmsg())
 
   db:exec(sqlschema.create_transactions_view)
-  print("Err: " .. db:errmsg())
-
-  db:exec("DROP VIEW IF EXISTS amm_swap_params_view;")
-  print("Err: " .. db:errmsg())
-
-  db:exec(sqlschema.create_amm_swap_params_view)
   print("Err: " .. db:errmsg())
 
   db:exec("DROP VIEW IF EXISTS amm_market_cap_view;")
@@ -227,9 +245,9 @@ function sqlschema.registerAMM(name, processId, token0, token1, discoveredAt)
     "token1", token1,
   })
   local stmt = db:prepare [[
-  INSERT OR REPLACE INTO amm_registry (amm_process, amm_name, amm_token0, amm_token1, amm_discovered_at_ts)
+  INSERT OR REPLACE INTO amm_registry (amm_process, amm_name, amm_token0, amm_token1, amm_quote_token, amm_base_token, amm_discovered_at_ts)
   VALUES
-    (:process, :amm_name, :token0, :token1, :discovered_at);
+    (:process, :amm_name, :token0, :token1, :quote_token, :base_token, :discovered_at);
   ]]
   if not stmt then
     error("Err: " .. db:errmsg())
@@ -239,6 +257,8 @@ function sqlschema.registerAMM(name, processId, token0, token1, discoveredAt)
     amm_name = name,
     token0 = token0,
     token1 = token1,
+    quote_token = token0 == BARK_TOKEN_PROCESS and token0 or token1,
+    base_token = token0 == BARK_TOKEN_PROCESS and token1 or token0,
     discovered_at = discoveredAt
   })
   stmt:step()
@@ -251,17 +271,7 @@ function sqlschema.getRegisteredAMMs()
 end
 
 function sqlschema.getQuoteTokens()
-  return sqlschema.rawQuery("SELECT DISTINCT amm_token0 FROM amm_registry")
-end
-
-function sqlschema.isQuoteTokenAvailable(token0)
-  local stmt = db:prepare("SELECT COUNT(*) FROM amm_registry WHERE amm_token0 = :token0")
-  if not stmt then
-    error("Err: " .. db:errmsg())
-  end
-  stmt:bind_names({ token0 = token0 })
-  local result = sqlschema.queryOne(stmt)
-  return result["COUNT(*)"] > 0
+  return sqlschema.rawQuery("SELECT DISTINCT amm_quote_token FROM amm_registry")
 end
 
 function sqlschema.updateAMMs()
@@ -391,42 +401,6 @@ function sqlschema.updateTokenSupply(processId, totalSupply, fixedSupply, update
               the top N token sets
     ]]
   sqlschema.updateTopNTokenSet()
-end
-
---[[
- For subscribersStmt to top N market data, update the token set
- ]]
----@param specificSubscriber string | nil if nil, token set is updated for each subscriber
-function sqlschema.updateTopNTokenSet(specificSubscriber)
-  local specificSubscriberClause = specificSubscriber
-      and " AND process_id = :process_id"
-      or ""
-  local stmt = db:prepare [[
-    UPDATE top_n_subscriptions
-    SET token_set = (
-      SELECT json_group_array(token_process)
-      FROM (
-        SELECT token_process
-        FROM market_cap_view
-        LIMIT top_n
-      )
-    )
-    WHERE EXISTS (
-      SELECT 1
-      FROM market_cap_view
-      LIMIT top_n
-    ) ]] .. specificSubscriberClause .. [[;
-  ]]
-
-  if not stmt then
-    error("Failed to prepare SQL statement for updating top N token sets: " .. db:errmsg())
-  end
-
-  local result, err = stmt:step()
-  stmt:finalize()
-  if err then
-    error("Err: " .. db:errmsg())
-  end
 end
 
 function sqlschema.updateBalance(ownerId, tokenId, amount, isCredit)
