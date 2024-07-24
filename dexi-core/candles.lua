@@ -1,5 +1,5 @@
 local intervals = require('dexi-core.intervals')
-local sqlschema = require('dexi-core.sqlschema')
+local dbUtils = require('db.utils')
 
 local candles = {}
 
@@ -52,7 +52,7 @@ function candles.generateCandlesForXDaysInIntervalY(xDays, yInterval, endTime, a
     amm_process = ammProcessId
   })
 
-  local candles = sqlschema.queryMany(stmt)
+  local candles = dbUtils.queryMany(stmt)
 
   for i = 2, #candles do
     candles[i].open = candles[i - 1].close

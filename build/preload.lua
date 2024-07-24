@@ -3,7 +3,7 @@ do
   package.preload["candles"] = function(...)
     local arg = _G.arg;
     local intervals = require('dexis.intervals')
-    local sqlschema = require('dexi-core.sqlschema')
+    local sqlschema = require('db.sqlschema')
     local candles = {}
 
     function candles.generateCandlesForXDaysInIntervalY(xDays, yInterval, endTime, ammProcessId)
@@ -377,7 +377,7 @@ do
   local _ENV = _ENV
   package.preload["stats"] = function(...)
     local arg = _G.arg;
-    local sqlschema = require('dexi-core.sqlschema')
+    local sqlschema = require('db.sqlschema')
     local stats = {}
 
     function stats.getAggregateStats(minTimestamp, ammProcessId)

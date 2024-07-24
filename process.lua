@@ -1,17 +1,17 @@
-local json = require("json")
 local sqlite3 = require("lsqlite3")
 
-local overview = require("dexi-core.overview")
 local dexiCore = require("dexi-core.dexi-core")
+local sqlschema = require("db.sqlschema")
+local seeder = require("db.seed")
 local ingest = require("ingest.ingest")
-local sqlschema = require("dexi-core.sqlschema")
 local indicators = require("indicators.indicators")
 local topN = require("top-n.top-n")
 local debug = require("utils.debug")
 
 db = db or sqlite3.open_memory()
 
-sqlschema.createTableIfNotExists(db)
+seeder.createMissingTables()
+seeder.seed() -- TODO eliminate in production
 
 -- eliminate warnings
 Owner = Owner or ao.env.Process.Owner
@@ -20,9 +20,11 @@ ao = ao or {}
 
 OFFCHAIN_FEED_PROVIDER = OFFCHAIN_FEED_PROVIDER or ao.env.Process.Tags["Offchain-Feed-Provider"]
 BARK_TOKEN_PROCESS = BARK_TOKEN_PROCESS or ao.env.Process.Tags["Bark-Token-Process"]
-
+SUPPLY_UPDATES_PROVIDER = SUPPLY_UPDATES_PROVIDER or
+    ao.env.Process.Tags["Offchain-Supply-Updates-Provider"]
 
 -- -------------- SUBSCRIPTIONS -------------- --
+-- TODO move out or remove with refactoring that integrates subscribable package
 
 local recordPayment = function(msg)
   if msg.From == 'Sa0iBLPNyJQrwpTTG-tWLQU-1QeUAJA73DdxGGiKoJc' then
@@ -30,7 +32,7 @@ local recordPayment = function(msg)
   end
 end
 
-local subscribeForIndicators = function(msg)
+local handleSubscribeForIndicators = function(msg)
   local processId = msg.Tags['Subscriber-Process-Id']
   local ownerId = msg.Tags['Owner-Id']
   local ammProcessId = msg.Tags['AMM-Process-Id']
@@ -49,7 +51,7 @@ local subscribeForIndicators = function(msg)
   })
 end
 
-local subscribeForTopN = function(msg)
+local handleSubscribeForTopN = function(msg)
   local processId = msg.Tags['Subscriber-Process-Id']
   local ownerId = msg.Tags['Owner-Id']
   local quoteToken = msg.Tags['Quote-Token']
@@ -81,82 +83,68 @@ end
 
 -- -------------------------------------------- --
 
+-- CORE --
+
 Handlers.add(
   "GetRegisteredAMMs",
   Handlers.utils.hasMatchingTag("Action", "Get-Registered-AMMs"),
-  dexiCore.getRegisteredAMMs
+  dexiCore.handleGetRegisteredAMMs
 )
 
 Handlers.add(
   "GetStats",
   Handlers.utils.hasMatchingTag("Action", "Get-Stats"),
-  dexiCore.getStats
+  dexiCore.handleGetStats
 )
 
 Handlers.add(
   "GetCandles",
   Handlers.utils.hasMatchingTag("Action", "Get-Candles"),
-  dexiCore.getCandles
-)
-
-Handlers.add(
-  "UpdateLocalState-Swap",
-  Handlers.utils.hasMatchingTag("Action", "Swap-Monitor"),
-  ingest.monitorIngestSwap
-)
-
-Handlers.add(
-  "UpdateLocalState-Swap-Params-Change",
-  Handlers.utils.hasMatchingTag("Action", "Swap-Params-Change"),
-  ingest.monitorIngestSwapParamsChange
-)
-
-Handlers.add(
-  "ReceiveOffchainFeed-Swaps",
-  Handlers.utils.hasMatchingTag("Action", "Receive-Offchain-Feed-Swaps"),
-  ingest.feedIngestSwaps
-)
-
-Handlers.add(
-  "ReceiveOffchainFeed-Swap-Params-Changes",
-  Handlers.utils.hasMatchingTag("Action", "Receive-Offchain-Feed-Swap-Params-Changes"),
-  ingest.feedIngestSwapParamsChange
+  dexiCore.handleGetCandles
 )
 
 Handlers.add(
   "GetOverview",
   Handlers.utils.hasMatchingTag("Action", "Get-Overview"),
-  overview.getOverview
-)
-
-Handlers.add(
-  "GetTopNMarketData",
-  Handlers.utils.hasMatchingTag("Action", "Get-Top-N-Market-Data"),
-  topN.getTopNMarketData
-)
-
-Handlers.add(
-  "SubscribeIndicators",
-  Handlers.utils.hasMatchingTag("Action", "Subscribe-Indicators"),
-  subscribeForIndicators
-)
-
-Handlers.add(
-  "SubscribeTopN",
-  Handlers.utils.hasMatchingTag("Action", "Subscribe-Top-N"),
-  subscribeForTopN
+  dexiCore.handleGetOverview
 )
 
 Handlers.add(
   "BatchRequestPrices",
   Handlers.utils.hasMatchingTag("Action", "Price-Batch-Request"),
-  dexiCore.getPricesInBatch
+  dexiCore.handleGetPricesInBatch
 )
 
 Handlers.add(
-  "CreditNotice",
-  Handlers.utils.hasMatchingTag("Action", "Credit-Notice"),
-  recordPayment
+  'Update-Total-Supply',
+  Handlers.utils.hasMatchingTag("Action", "Update-Total-Supply"),
+  dexiCore.handleUpdateTotalSupply
+)
+
+-- SWAP & SWAP PARAMS CHANGES INGESTION --
+
+Handlers.add(
+  "UpdateLocalState-Swap",
+  Handlers.utils.hasMatchingTag("Action", "Swap-Monitor"),
+  ingest.handleMonitorIngestSwap
+)
+
+Handlers.add(
+  "UpdateLocalState-Swap-Params-Change",
+  Handlers.utils.hasMatchingTag("Action", "Swap-Params-Change"),
+  ingest.handleMonitorIngestSwapParamsChange
+)
+
+Handlers.add(
+  "ReceiveOffchainFeed-Swaps",
+  Handlers.utils.hasMatchingTag("Action", "Receive-Offchain-Feed-Swaps"),
+  ingest.handleFeedIngestSwaps
+)
+
+Handlers.add(
+  "ReceiveOffchainFeed-Swap-Params-Changes",
+  Handlers.utils.hasMatchingTag("Action", "Receive-Offchain-Feed-Swap-Params-Changes"),
+  ingest.handleFeedIngestSwapParamsChange
 )
 
 Handlers.add(
@@ -165,30 +153,48 @@ Handlers.add(
   ingest.getCurrentHeight
 )
 
+-- INDICATORS --
+
+Handlers.add(
+  "SubscribeIndicators",
+  Handlers.utils.hasMatchingTag("Action", "Subscribe-Indicators"),
+  handleSubscribeForIndicators
+)
+
+-- TOP N --
+
+Handlers.add(
+  "GetTopNMarketData",
+  Handlers.utils.hasMatchingTag("Action", "Get-Top-N-Market-Data"),
+  topN.handleGetTopNMarketData
+)
+
+Handlers.add(
+  "SubscribeTopN",
+  Handlers.utils.hasMatchingTag("Action", "Subscribe-Top-N"),
+  handleSubscribeForTopN
+)
+
+-- PAYMENTS
+
+Handlers.add(
+  "CreditNotice",
+  Handlers.utils.hasMatchingTag("Action", "Credit-Notice"),
+  recordPayment
+)
+
+-- DEBUG
+
+Handlers.add(
+  "Reset-DB-State",
+  Handlers.utils.hasMatchingTag("Action", "Reset-DB-State"),
+  seeder.handleResetDBState
+)
+
 Handlers.add(
   "DumpTableToCSV",
   Handlers.utils.hasMatchingTag("Action", "Dump-Table-To-CSV"),
   debug.dumpToCSV
-)
-
-
-function Trusted(msg)
-  local mu = "fcoN_xJeisVsPXA-trzVAuIiqO3ydLQxM-L4XbrQKzY"
-  -- return false if trusted
-  if msg.Owner == mu then
-    return false
-  end
-  if msg.From == msg.Owner then
-    return false
-  end
-  return true
-end
-
-Handlers.prepend("qualify message",
-  Trusted,
-  function(msg)
-    print("This Msg is not trusted!")
-  end
 )
 
 

@@ -1,4 +1,5 @@
-local sqlschema = require('dexi-core.sqlschema')
+local dbUtils = require('db.utils')
+
 local stats = {}
 
 function stats.getAggregateStats(minTimestamp, ammProcessId)
@@ -29,7 +30,7 @@ function stats.getAggregateStats(minTimestamp, ammProcessId)
   })
 
 
-  return sqlschema.queryOne(stmt)
+  return dbUtils.queryOne(stmt)
 end
 
 return stats

@@ -1,4 +1,4 @@
-local sqlschema = require('dexi-core.sqlschema')
+local sqlschema = require('db.sqlschema')
 
 local priceAround = {}
 

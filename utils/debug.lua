@@ -1,4 +1,4 @@
-local sqlschema = require('dexi-core.sqlschema')
+local dbUtils = require('db.utils')
 
 local debug = {}
 
@@ -42,7 +42,7 @@ function debug.debugTable()
   if not stmt then
     error("Failed to prepare SQL statement: " .. db:errmsg())
   end
-  return sqlschema.queryMany(stmt)
+  return dbUtils.queryMany(stmt)
 end
 
 return debug
