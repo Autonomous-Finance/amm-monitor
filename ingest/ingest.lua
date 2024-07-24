@@ -69,6 +69,26 @@ function ingestSql.recordChangeInSwapParams(entry)
   stmt:reset()
 end
 
+function ingestSql.updateCurrentSwapParams(entry)
+  local stmt, err = db:prepare [[
+    REPLACE INTO amm_swap_params (
+      amm_process, reserves_0, reserves_1, fee_percentage
+    ) VALUES (
+     :amm_process, :reserves_0, :reserves_1, :fee_percentage
+    );
+  ]]
+
+  if not stmt then
+    error("Failed to prepare SQL statement: " .. db:errmsg())
+  end
+
+  -- going for brevity - this will be more robust with teal
+  stmt:bind_names(entry)
+
+  stmt:step()
+  stmt:reset()
+end
+
 -- ==================== INTERNAL ===================== --
 
 local function recordChangeInSwapParams(msg, source, sourceAmm, cause)
@@ -94,6 +114,7 @@ local function recordChangeInSwapParams(msg, source, sourceAmm, cause)
   }
 
   ingestSql.recordChangeInSwapParams(entry)
+  ingestSql.updateCurrentSwapParams(entry)
 end
 
 local function recordSwap(msg, source, sourceAmm)

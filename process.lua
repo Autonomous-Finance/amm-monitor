@@ -18,11 +18,8 @@ Owner = Owner or ao.env.Process.Owner
 Handlers = Handlers or {}
 ao = ao or {}
 
-OFFCHAIN_FEED_PROVIDER = 'P6i7xXWuZtuKJVJYNwEqduj0s8R_G4wZJ38TB5Knpy4'
-TOKEN = ao.env.Process.Tags["Base-Token"]
-AMM = ao.env.Process.Tags["Monitor-For"]
-
--- ================== HANDLER LOGIC ================= --
+OFFCHAIN_FEED_PROVIDER = OFFCHAIN_FEED_PROVIDER or ao.env.Process.Tags["Offchain-Feed-Provider"]
+BARK_TOKEN_PROCESS = BARK_TOKEN_PROCESS or ao.env.Process.Tags["Bark-Token-Process"]
 
 
 -- -------------- SUBSCRIPTIONS -------------- --
@@ -60,8 +57,9 @@ local subscribeForTopN = function(msg)
   if not quoteToken then
     error('Quote-Token is required')
   end
-  if not sqlschema.isQuoteTokenAvailable(quoteToken) then
-    error('Quote-Token not available: ' .. quoteToken)
+
+  if quoteToken ~= BARK_TOKEN_PROCESS then
+    error('Quote token not available (only BRK): ' .. quoteToken)
   end
 
   print('Registering subscriber to top N market data: ' ..
@@ -81,23 +79,12 @@ local subscribeForTopN = function(msg)
   })
 end
 
--- -------------- GETTERS -------------- --
-
-local getRegisteredAMMs = function(msg)
-  ao.send({
-    ['App-Name'] = 'Dexi',
-    ['Payload'] = 'Registered-AMMs',
-    Target = msg.From,
-    Data = json.encode(sqlschema.getRegisteredAMMs())
-  })
-end
-
 -- -------------------------------------------- --
 
 Handlers.add(
   "GetRegisteredAMMs",
   Handlers.utils.hasMatchingTag("Action", "Get-Registered-AMMs"),
-  getRegisteredAMMs
+  dexiCore.getRegisteredAMMs
 )
 
 Handlers.add(
