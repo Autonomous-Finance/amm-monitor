@@ -138,7 +138,7 @@ function topN.handleGetTopNMarketData(msg)
     error('Quote-Token is required')
   end
 
-  if quoteToken ~= BARK_TOKEN_PROCESS then
+  if quoteToken ~= QUOTE_TOKEN_PROCESS then
     error('Quote-Token must be BARK')
   end
 

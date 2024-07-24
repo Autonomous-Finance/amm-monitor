@@ -19,7 +19,7 @@ Handlers = Handlers or {}
 ao = ao or {}
 
 OFFCHAIN_FEED_PROVIDER = OFFCHAIN_FEED_PROVIDER or ao.env.Process.Tags["Offchain-Feed-Provider"]
-BARK_TOKEN_PROCESS = BARK_TOKEN_PROCESS or ao.env.Process.Tags["Bark-Token-Process"]
+QUOTE_TOKEN_PROCESS = QUOTE_TOKEN_PROCESS or ao.env.Process.Tags["Quote-Token-Process"]
 SUPPLY_UPDATES_PROVIDER = SUPPLY_UPDATES_PROVIDER or
     ao.env.Process.Tags["Offchain-Supply-Updates-Provider"]
 
@@ -60,7 +60,7 @@ local handleSubscribeForTopN = function(msg)
     error('Quote-Token is required')
   end
 
-  if quoteToken ~= BARK_TOKEN_PROCESS then
+  if quoteToken ~= QUOTE_TOKEN_PROCESS then
     error('Quote token not available (only BRK): ' .. quoteToken)
   end
 
@@ -164,13 +164,13 @@ Handlers.add(
 -- TOP N --
 
 Handlers.add(
-  "GetTopNMarketData",
+  "Get-Top-N-Market-Data",
   Handlers.utils.hasMatchingTag("Action", "Get-Top-N-Market-Data"),
   topN.handleGetTopNMarketData
 )
 
 Handlers.add(
-  "SubscribeTopN",
+  "Subscribe-Top-N",
   Handlers.utils.hasMatchingTag("Action", "Subscribe-Top-N"),
   handleSubscribeForTopN
 )
