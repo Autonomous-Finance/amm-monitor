@@ -4,7 +4,7 @@ local sqlschema = {}
 
 sqlschema.create_transactions_table = [[
 CREATE TABLE IF NOT EXISTS amm_transactions (
-    id TEXT PRIMARY KEY,
+    id TEXT NOT NULL PRIMARY KEY,
     source TEXT NOT NULL CHECK (source IN ('gateway', 'message')),
     block_height INTEGER NOT NULL,
     block_id TEXT,
@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS amm_transactions (
 ]]
 sqlschema.create_amm_swap_params_changes_table = [[
 CREATE TABLE IF NOT EXISTS amm_swap_params_changes (
-    id TEXT PRIMARY KEY,
+    id TEXT NOT NULL PRIMARY KEY,
     source TEXT NOT NULL CHECK (source IN ('gateway', 'message')),
     block_height INTEGER NOT NULL,
     block_id TEXT,
@@ -39,6 +39,17 @@ CREATE TABLE IF NOT EXISTS amm_swap_params_changes (
     reserves_1 TEXT NOT NULL,
     fee_percentage TEXT NOT NULL,
     amm_process TEXT NOT NULL,
+);
+]]
+
+sqlschema.create_token_supply_changes_table = [[
+CREATE TABLE IF NOT EXISTS token_supply_changes (
+    id TEXT NOT NULL PRIMARY KEY,
+    block_height INTEGER NOT NULL,
+    block_id TEXT,
+    supply_changed_at_ts INTEGER,
+    token TEXT NOT NULL,
+    total_supply TEXT NOT NULL,
 );
 ]]
 
@@ -59,7 +70,7 @@ CREATE TABLE IF NOT EXISTS amm_swap_params_changes (
 ]]
 sqlschema.create_amm_registry_table = [[
 CREATE TABLE IF NOT EXISTS amm_registry (
-    amm_process TEXT PRIMARY KEY,
+    amm_process TEXT NOT NULL PRIMARY KEY,
     amm_name TEXT NOT NULL,
     amm_token0 TEXT NOT NULL,
     amm_token1 TEXT NOT NULL,
@@ -72,7 +83,7 @@ CREATE TABLE IF NOT EXISTS amm_registry (
 -- table rather than view, since this will both change and be queried very frequently
 sqlschema.create_amm_swap_params_table = [[
 CREATE TABLE IF NOT EXISTS amm_swap_params (
-    amm_process TEXT PRIMARY KEY,
+    amm_process TEXT NOT NULL PRIMARY KEY,
     token_0 TEXT NOT NULL,
     token_1 TEXT NOT NULL,
     reserves_0 TEXT NOT NULL,
@@ -83,7 +94,7 @@ CREATE TABLE IF NOT EXISTS amm_swap_params (
 
 sqlschema.create_token_registry_table = [[
 CREATE TABLE IF NOT EXISTS token_registry (
-    token_process TEXT PRIMARY KEY,
+    token_process TEXT NOT NULL PRIMARY KEY,
     token_name TEXT NOT NULL,
     denominator INT NOT NULL,
     total_supply INT NOT NULL,
@@ -95,7 +106,7 @@ CREATE TABLE IF NOT EXISTS token_registry (
 
 sqlschema.create_balances_table = [[
 CREATE TABLE IF NOT EXISTS balances (
-    owner_id TEXT PRIMARY KEY,
+    owner_id TEXT NOT NULL PRIMARY KEY,
     token_id TEXT NOT NULL,
     balance INT NOT NULL
 );
@@ -103,7 +114,7 @@ CREATE TABLE IF NOT EXISTS balances (
 
 sqlschema.create_indicator_subscriptions_table = [[
 CREATE TABLE IF NOT EXISTS indicator_subscriptions (
-    process_id TEXT PRIMARY KEY,
+    process_id TEXT NOT NULL PRIMARY KEY,
     owner_id TEXT NOT NULL,
     amm_process_id TEXT NOT NULL
 );
@@ -111,7 +122,7 @@ CREATE TABLE IF NOT EXISTS indicator_subscriptions (
 
 sqlschema.create_top_n_subscriptions_table = [[
 CREATE TABLE IF NOT EXISTS top_n_subscriptions (
-    process_id TEXT PRIMARY KEY,
+    process_id TEXT NOT NULL PRIMARY KEY,
     owner_id TEXT NOT NULL,
     quote_token TEXT NOT NULL,
     top_n INTEGER NOT NULL,

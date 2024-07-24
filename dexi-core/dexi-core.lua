@@ -77,26 +77,52 @@ function sql.getRegisteredAMMs()
   return dbUtils.rawQuery("SELECT * FROM amm_registry")
 end
 
-function sql.updateTokenSupply(processId, totalSupply, fixedSupply, updatedAt)
-  local stmt = db:prepare [[
-    UPDATE token_registry
-    SET total_supply = :total_supply, fixed_supply = :fixed_supply, token_updated_at_ts = :token_updated_at_ts
-    WHERE token_process = :token_process;
+---@param supply_changed_at_ts number @timestamp of when the change occurred in the token contract - typically earlier than the time at which DEXI records this change
+function sql.updateTokenSupply(id, block_height, block_id, supply_changed_at_ts, token, total_supply, now_ts)
+  db:execute('BEGIN;')
+
+  local changesStmt = db:prepare [[
+    INSERT INTO token_supply_changes
+    (id, block_height, block_id, supply_changed_at_ts, token, total_supply)
+    VALUES (:id, :block_height, :block_id, :supply_changed_at_ts, :token, :total_supply);
   ]]
-  if not stmt then
+  if not changesStmt then
     error("Failed to prepare SQL statement for updating token supply: " .. db:errmsg())
   end
-  stmt:bind_names({
-    token_process = processId,
-    total_supply = totalSupply,
-    fixed_supply = fixedSupply,
-    token_updated_at_ts = updatedAt
+  changesStmt:bind_names({
+    id = id,
+    block_height = block_height,
+    block_id = block_id,
+    supply_changed_at_ts = supply_changed_at_ts,
+    token = token,
+    total_supply = total_supply
   })
-  local result, err = stmt:step()
-  stmt:finalize()
-  if err then
+  local _, errChanges = changesStmt:step()
+  changesStmt:finalize()
+  if errChanges then
     error("Err: " .. db:errmsg())
   end
+
+  local registryStmt = db:prepare [[
+    UPDATE token_registry
+    SET total_supply = :total_supply, token_updated_at_ts = :token_updated_at_ts
+    WHERE token_process = :token_process;
+  ]]
+  if not registryStmt then
+    error("Failed to prepare SQL statement for updating token supply: " .. db:errmsg())
+  end
+  registryStmt:bind_names({
+    token_process = token,
+    total_supply = total_supply,
+    token_updated_at_ts = now_ts
+  })
+  local _, errRegistry = registryStmt:step()
+  registryStmt:finalize()
+  if errRegistry then
+    error("Err: " .. db:errmsg())
+  end
+
+  db:execute('COMMIT;')
 end
 
 function sql.isKnownAmm(processId)
@@ -197,10 +223,15 @@ function dexiCore.handleUpdateTokenSupply(msg)
     error('Unauthorized')
   end
 
-  local processId = msg.Tags["Process-Id"]
-  local totalSupply = msg.Tags["Total-Supply"]
-  local updatedAt = msg.Tags["Updated-At"]
-  sql.updateTokenSupply(processId, totalSupply, updatedAt)
+  local id = msg.id
+  local block_height = msg.Tags["Block-Height"]
+  local block_id = msg.Tags["Block-Id"]
+  local token = msg.Tags["Process-Id"]
+  local total_supply = msg.Tags["Total-Supply"]
+  local supply_changed_at_ts = msg.Tags["Supply-Changed-At"]
+  local now_ts = math.floor(msg.Timestamp / 1000)
+  sql.updateTokenSupply(id, block_height, block_id, supply_changed_at_ts, token, total_supply, now_ts)
+
   --[[
       supply change affects
           the market cap of this token =>

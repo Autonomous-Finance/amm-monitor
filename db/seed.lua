@@ -11,6 +11,9 @@ function dbSeed.createMissingTables()
   db:exec(sqlschema.create_amm_swap_params_table)
   print("Err: " .. db:errmsg())
 
+  db:exec(sqlschema.create_token_supply_changes_table)
+  print("Err: " .. db:errmsg())
+
   db:exec(sqlschema.create_amm_registry_table)
   print("Err: " .. db:errmsg())
 
@@ -68,7 +71,7 @@ end
 
 function dbSeed.handleResetDBState(msg)
   if msg.From ~= Owner then
-    error('Only the owner can reset-and-seed ')
+    error('Only the owner can reset-and-seed the database')
   end
 
   db:exec("DROP TABLE IF EXISTS amm_transactions;")
