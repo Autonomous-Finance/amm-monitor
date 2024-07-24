@@ -19,6 +19,7 @@ Handlers = Handlers or {}
 ao = ao or {}
 
 OFFCHAIN_FEED_PROVIDER = 'P6i7xXWuZtuKJVJYNwEqduj0s8R_G4wZJ38TB5Knpy4'
+DEXI_TOKEN = "eM6NGBSgwyDTqQ0grng1fQvBF-5HcMeshLcz9QPE-0A"
 TOKEN = ao.env.Process.Tags["Base-Token"]
 AMM = ao.env.Process.Tags["Monitor-For"]
 
@@ -78,6 +79,58 @@ local subscribeForTopN = function(msg)
     QuoteToken = quoteToken,
     Process = processId,
     OK = 'true'
+  })
+end
+
+local recordRegisterAMMPayment = function(msg)
+  assert(msg.Tags.Quantity, 'Credit notice data must contain a valid quantity')
+  assert(msg.Tags.Sender, 'Credit notice data must contain a valid sender')
+  assert(msg.Tags["AMM-Process"], 'Credit notice data must contain a valid amm-process')
+  assert(msg.Tags["Token-A"], 'Credit notice data must contain a valid token-a')
+  assert(msg.Tags["Token-B"], 'Credit notice data must contain a valid token-b')
+  assert(msg.Tags["Name"], 'Credit notice data must contain a valid fee-percentage')
+
+  -- send Register-Subscriber to amm process
+  ao.send({
+    Target = msg.Tags["AMM-Process"],
+    Action = "Register-Subscriber",
+    Tags = {
+      ["Subscriber-Process-Id"] = ao.id,
+      ["Owner-Id"] = msg.Tags.Sender,
+      ['Topics'] = json.encode({ "order-confirmation", "liquidity-change" })
+    }
+  })
+
+  -- Pay for the Subscription
+  ao.send({
+    Target = DEXI_TOKEN,
+    Action = "Transfer",
+    Tags = {
+      Receiver = msg.Tags["AMM-Process"],
+      Quantity = msg.Tags.Quantity,
+      ["X-Action"] = "Pay-For-Subscription"
+    }
+  })
+
+  sqlschema.registerAMM(
+    msg.Tags["Name"],
+    msg.Tags["AMM-Process"],
+    msg.Tags["Token-A"],
+    msg.Tags["Token-B"],
+    msg.Timestamp
+  )
+
+  -- send confirmation to sender
+  ao.send({
+    Target = msg.Tags.Sender,
+    Action = "Dexi-AMM-Registration-Confirmation",
+    Tags = {
+      ["AMM-Process"] = msg.Tags["AMM-Process"],
+      ["Token-A"] = msg.Tags["Token-A"],
+      ["Token-B"] = msg.Tags["Token-B"],
+      ["Name"] = msg.Tags["Name"]
+    }
+  
   })
 end
 
@@ -170,6 +223,16 @@ Handlers.add(
   "CreditNotice",
   Handlers.utils.hasMatchingTag("Action", "Credit-Notice"),
   recordPayment
+)
+
+Handlers.add(
+  "CreditNoticeRegisterAMM",
+  function(msg)
+    return Handlers.utils.hasMatchingTag("Action", "Credit-Notice")(msg) and
+        Handlers.utils.hasMatchingTag("X-Action", "Register-AMM")(msg) and
+        msg.From == DEXI_TOKEN
+  end,
+  recordRegisterAMMPayment
 )
 
 Handlers.add(
