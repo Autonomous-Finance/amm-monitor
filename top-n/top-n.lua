@@ -1,4 +1,4 @@
-local sqlschema = require('dexi-core.sqlschema')
+local dbUtils = require('db.utils')
 local json = require('json')
 
 local topN = {}
@@ -35,7 +35,7 @@ function sql.queryTopNMarketData(quoteToken)
   stmt:bind_names({
     quoteToken = quoteToken,
   })
-  return sqlschema.queryMany(stmt)
+  return dbUtils.queryMany(stmt)
 end
 
 function sql.updateTopNTokenSet(specificSubscriber)
@@ -132,7 +132,7 @@ function topN.updateTopNTokenSet(specificSubscriber)
   sql.updateTopNTokenSet(specificSubscriber)
 end
 
-function topN.getTopNMarketData(msg)
+function topN.handleGetTopNMarketData(msg)
   local quoteToken = msg.Tags['Quote-Token']
   if not quoteToken then
     error('Quote-Token is required')

@@ -1,9 +1,10 @@
 local json = require('json')
 
 local validationSchemas = require('validation.validation-schemas')
-local topNMarketData = require('top-n.top-n')
-local sqlschema = require('dexi-core.sqlschema')
+local dbUtils = require('db.utils')
+local dexiCore = require('dexi-core.dexi-core')
 local indicators = require('indicators.indicators')
+local topN = require('top-n.top-n')
 
 local ingest = {}
 
@@ -21,7 +22,7 @@ function ingestSql.getGatewayHeight(msg)
 
   stmt:bind_names({ amm = msg.Tags.AMM })
 
-  local row = sqlschema.queryOne(stmt)
+  local row = dbUtils.queryOne(stmt)
   local gatewayHeight = row and row.max_height or 0
 
   stmt:reset()
@@ -143,7 +144,7 @@ local function recordSwap(msg, source, sourceAmm)
             the overall ranking by market cap =>
               the top N token sets
     ]]
-  sqlschema.updateTopNTokenSet()
+  topN.updateTopNTokenSet()
 end
 
 -- ==================== EXPORT ===================== --
@@ -157,18 +158,18 @@ end
 
 -- INGEST SWAP PARAMS CHANGES
 
-function ingest.monitorIngestSwapParamsChange(msg)
-  local ammProcessId = sqlschema.isKnownAmm(msg.From)
+function ingest.handleMonitorIngestSwapParamsChange(msg)
+  local ammProcessId = dexiCore.isKnownAmm(msg.From)
       and msg.From
       or (msg.From == Owner and msg.Tags["AMM"] or nil)
   if ammProcessId then
     local now = math.floor(msg.Timestamp / 1000)
     recordChangeInSwapParams(msg, 'message', ammProcessId, 'swap-params-change')
-    topNMarketData.dispatchMarketDataIncludingAMM(now, ammProcessId)
+    topN.dispatchMarketDataIncludingAMM(now, ammProcessId)
   end
 end
 
-function ingest.feedIngestSwapParamsChange(msg)
+function ingest.handleFeedIngestSwapParamsChange(msg)
   if msg.From == OFFCHAIN_FEED_PROVIDER then
     local data = json.decode(msg.Data)
     for _, liquidityUpdate in ipairs(data) do
@@ -178,15 +179,15 @@ function ingest.feedIngestSwapParamsChange(msg)
     local isLatestSwapParamsChange = false -- TODO implement; check if data goes up to present and this is the latest data entry;
     if isLatestSwapParamsChange then
       local now = math.floor(msg.Timestamp / 1000)
-      topNMarketData.dispatchMarketDataIncludingAMM(now, msg.Tags['AMM'])
+      topN.dispatchMarketDataIncludingAMM(now, msg.Tags['AMM'])
     end
   end
 end
 
 -- INGEST SWAPS
 
-function ingest.monitorIngestSwap(msg)
-  local ammProcessId = sqlschema.isKnownAmm(msg.From)
+function ingest.handleMonitorIngestSwap(msg)
+  local ammProcessId = dexiCore.isKnownAmm(msg.From)
       and msg.From
       or (msg.From == Owner and msg.Tags["AMM"] or nil)
   if ammProcessId then
@@ -199,11 +200,11 @@ function ingest.monitorIngestSwap(msg)
 
     recordChangeInSwapParams(msg, 'message', ammProcessId, 'swap')
 
-    topNMarketData.dispatchMarketDataIncludingAMM(now, ammProcessId)
+    topN.dispatchMarketDataIncludingAMM(now, ammProcessId)
   end
 end
 
-function ingest.feedIngestSwaps(msg)
+function ingest.handleFeedIngestSwaps(msg)
   if msg.From == OFFCHAIN_FEED_PROVIDER then
     local data = json.decode(msg.Data)
     for _, swap in ipairs(data) do
@@ -224,7 +225,7 @@ function ingest.feedIngestSwaps(msg)
                 the overall ranking by market cap =>
                   the top N token sets
         ]]
-        sqlschema.updateTopNTokenSet()
+        topN.updateTopNTokenSet()
 
         recordChangeInSwapParams(msg, 'gateway', swap.Tags['AMM'], 'swap')
       end

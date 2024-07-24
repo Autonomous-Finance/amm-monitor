@@ -1,4 +1,4 @@
-local sqlschema = require('dexi-core.sqlschema')
+local dbUtils = require('db.utils')
 
 local overview = {}
 
@@ -61,7 +61,7 @@ function overview.getOverview(now, orderBy)
     now = now
   })
 
-  return sqlschema.queryMany(stmt)
+  return dbUtils.queryMany(stmt)
 end
 
 return overview

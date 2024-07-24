@@ -1,4 +1,4 @@
-local sqlschema = require('dexi-core.sqlschema')
+local dbUtils = require('db.utils')
 local calc = require('indicators.calc')
 
 local indicators = {}
@@ -27,7 +27,7 @@ local function getDailyStats(ammProcessId, startDate, endDate)
     start_date = startDate,
     end_date = endDate
   })
-  return sqlschema.queryMany(stmt)
+  return dbUtils.queryMany(stmt)
 end
 
 local function getSubscribersToProcess(ammProcessId)

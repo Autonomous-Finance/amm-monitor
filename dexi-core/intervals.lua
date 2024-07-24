@@ -1,6 +1,5 @@
 local intervals = {}
 
-
 intervals.IntervalSecondsMap = {
   ["5m"] = 300,
   ["15m"] = 900,
@@ -14,7 +13,7 @@ intervals.IntervalSecondsMap = {
 }
 
 function intervals.getIntervalStart(timestamp, interval)
-  timestamp = math.floor(timestamp)   -- Ensure timestamp is an integer
+  timestamp = math.floor(timestamp) -- Ensure timestamp is an integer
   local date = os.date("!*t", timestamp)
 
   if interval == "1h" then

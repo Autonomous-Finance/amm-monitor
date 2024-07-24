@@ -3,7 +3,7 @@ do
   package.preload["candles"] = function(...)
     local arg = _G.arg;
     local intervals = require('dexis.intervals')
-    local sqlschema = require('dexi-core.sqlschema')
+    local sqlschema = require('db.sqlschema')
     local candles = {}
 
     function candles.generateCandlesForXDaysInIntervalY(xDays, yInterval, endTime, ammProcessId)
@@ -76,7 +76,7 @@ do
   local _ENV = _ENV
   package.preload["indicators"] = function(...)
     local arg = _G.arg;
-    local sqlschema = require('dexi-core.sqlschema')
+    local sqlschema = require('db.sqlschema')
     local indicators = {}
 
     function indicators.getDailyStats(ammProcessId, startDate, endDate)
@@ -881,15 +881,15 @@ LEFT JOIN token_registry tq ON tq.token_process = amm_token1
 
     function sqlschema.registerToken(processId, name, denominator, totalSupply, fixedSupply, updatedAt)
       local stmt = db:prepare [[
-    INSERT INTO token_registry (token_process, token_name, denominator, total_supply, fixed_supply, token_updated_at_ts)
-    VALUES (:process_id, :token_name, :denominator, :total_supply, :fixed_supply, :token_updated_at_ts)
-    ON CONFLICT(token_process) DO UPDATE SET
-    token_name = excluded.token_name,
-    denominator = excluded.denominator,
-    total_supply = excluded.total_supply,
-    fixed_supply = excluded.fixed_supply,
-    token_updated_at_ts = excluded.token_updated_at_ts;
-  ]]
+        INSERT INTO token_registry (token_process, token_name, denominator, total_supply, fixed_supply, token_updated_at_ts)
+        VALUES (:process_id, :token_name, :denominator, :total_supply, :fixed_supply, :token_updated_at_ts)
+        ON CONFLICT(token_process) DO UPDATE SET
+        token_name = excluded.token_name,
+        denominator = excluded.denominator,
+        total_supply = excluded.total_supply,
+        fixed_supply = excluded.fixed_supply,
+        token_updated_at_ts = excluded.token_updated_at_ts;
+      ]]
       if not stmt then
         error("Failed to prepare SQL statement for registering token: " .. db:errmsg())
       end
@@ -910,8 +910,8 @@ LEFT JOIN token_registry tq ON tq.token_process = amm_token1
 
     function sqlschema.updateTokenSupply(processId, totalSupply, fixedSupply, updatedAt)
       local stmt = db:prepare [[
-    UPDATE token_registry SET total_supply = :total_supply, fixed_supply = :fixed_supply, token_updated_at_ts = :token_updated_at_ts WHERE token_process = :token_process;
-  ]]
+        UPDATE token_registry SET total_supply = :total_supply, fixed_supply = :fixed_supply, token_updated_at_ts = :token_updated_at_ts WHERE token_process = :token_process;
+      ]]
       if not stmt then
         error("Failed to prepare SQL statement for updating token supply: " .. db:errmsg())
       end
@@ -963,7 +963,7 @@ do
   local _ENV = _ENV
   package.preload["stats"] = function(...)
     local arg = _G.arg;
-    local sqlschema = require('dexi-core.sqlschema')
+    local sqlschema = require('db.sqlschema')
     local stats = {}
 
     function stats.getAggregateStats(minTimestamp, ammProcessId)
@@ -1005,7 +1005,7 @@ do
   local _ENV = _ENV
   package.preload["top-n-consumers"] = function(...)
     local arg = _G.arg;
-    local sqlschema = require('dexi-core.sqlschema')
+    local sqlschema = require('db.sqlschema')
     local topNConsumers = {}
 
     function topNConsumers.dispatchMarketData(now)
@@ -1458,7 +1458,7 @@ local candles = require "dexi-core.candles"
 local stats = require "dexi-core.stats"
 local schemas = require "schemas"
 local sqlite3 = require("lsqlite3")
-local sqlschema = require("dexi-core.sqlschema")
+local sqlschema = require("db.sqlschema")
 local indicators = require("indicators.indicators")
 local topNConsumers = require("top-n-consumers")
 
