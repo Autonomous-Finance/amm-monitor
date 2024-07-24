@@ -40,3 +40,6 @@ dexi-monitor-test-v2-8:
 dexi-monitor-test-v2-9-top-n:
   processId: CB0xQbijoJLMPNu8GNFmtS64oBEA7G6kwXUGeuN_M_w
   hash: 5825c0425783200a2a5f73913610ba5f031fc7ae005bb634087ba6f2038dd6b7
+dexi-full-test-v1:
+  processId: OyxcV9DqU9Bf9ZG9C6VF9_A-XkwDFUopjbQeduUXS_0
+  hash: e45853a9b79291c3dfaa3d4a786b526946217e5dd4b8d9cc48b33e4272a57993
