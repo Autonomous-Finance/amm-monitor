@@ -1,20 +1,44 @@
-# DEXI AMM Monitor Autonomous Agent
+# Dexi AMM Monitor Autonomous Agent
 
 ## Overview
-The DEXI AMM Monitor Autonomous Agent is designed to aggregate and process data from Automated Market Makers (AMMs). This agent operates in two modes:
-- **Pull Mode:** Loads data from the gateway.
-- **Push Mode:** Receives data directly from the AMM processes.
-These modes work in conjunction to ensure the agent maintains up-to-date AMM statistics, which are accessible and displayable through the frontend via dry runs.
+
+The Dexi AMM Monitor Autonomous Agent is designed to **aggregate and process data** from Automated Market Makers (AMMs).
+
+With the aggregated data, Dexi 
+
+- provides stats **on request**
+- offers data feeds **on a subscription basis**
+
+### Dexi: Consumer and Producer
+
+In order to do its work, Dexi is both a **subscription consumer** and a **subscription provider**:
+
+#### Dexi subscribes to AMMs
+
+> AMMs ----- [ swaps             ] -------- - - - - >      Dexi   
+>            [ liquidity changes ]                      (aggregate)
+>            [ fee changes       ] 
+
+#### Agents subscribe to DEXI
+
+>    Dexi      ------ [ market indicators                     ] - - - - > Agents
+> (aggregate)         [ top n tokens by m_cap (w/ price data) ]
 
 
-## State Maintenance
-The Autonomous Agent actively receives data from AMMs and, to guarantee data consistency, it periodically pulls data from the gateway. 
 
-## DEXI Core
+## Aggregation
 
-### Register-Process
-The 'Register-Process' handler is used to register a process to monitor a specific AMM. The handler expects input tags for the AMM identifier (AMM-Process-Id), an Owner-Id and the process identifier (Subscriber-Process-Id).
-Once registered the owner (wallet with Owner-Id) has to send 1 AOCred to the Dexi process to activate the subscription.
+As an aggregator, Dexi passively receives data from the AMM processes. 
+
+In principle, Dexi can also operate in a **Pull Mode**, meaning that it loads AMM data from the gateway. This helps ensure data consistency, when used to backfill periodically via an external system (not on AO). This feature was successfully used on the testnet in the initial Dexi release but is **disabled in the v1 release**.
+
+### Subscribing to an AMM
+
+1. AMMs require the capability to provide such subscriptions. [Bark](https://github.com/Autonomous-Finance/bark-amm) AMMs have it by default. Typically, subscribing to an AMM involves a **payment**.
+2. DEXI needs to subscribe to each registered AMM. This step is typically triggered by an **AMM creator** who is interested in having their AMM integrated with DEXI. The payment tokens would typically be provided by that AMM creator.  
+
+
+## Dexi Data - Core
 
 ### Get-Candles
 The handler expects input tags for the number of days (Days), the interval (Interval), and the AMM identifier (AMM). The handler outputs a JSON-encoded response containing candlestick data (open, high, low, close, volume) for the specified AMM over the given time period and interval.
@@ -60,13 +84,31 @@ This handler can be used to obtain a list of the AMMs currently monitored by DEX
 
 [TODO]
 
-### SubscribeIndicators
+## Dexi Data - Market Indicators
 
-This handler can be used to subscribe for various indicators (SMA, EMA, MACD, Bollinger Bands).
+DEXI provides a few indicators related to the monitored AMMs, along with the associated candles and volume data
+
+- SMA
+- EMA (not in v1)
+- MACD (not in v1)
+- Bollinger Bands (not in v1)
+
+### Handlers
+
+#### Get-Indicators
 
 [TODO]
 
-## Top N Market Data
+#### Subscribe-Indicators
+
+This handler can be used to subscribe to indicators data.
+
+The 'Register-Process' handler is used to register a process to monitor a specific AMM. The handler expects input tags for the AMM identifier (AMM-Process-Id), an Owner-Id and the process identifier (Subscriber-Process-Id).
+Once registered the owner (wallet with Owner-Id) has to send 1 DEXI to the Dexi process to activate the subscription.
+
+[TODO]
+
+## Dexi Data - Top N Market Data
 
 DEXI can provide **market data** on the tokens that it tracks, catering to the needs of agents which require **live data on top coins, as ranked by market cap**.
 
@@ -129,8 +171,7 @@ ao.send({
     ['Quote-Token'] = 'abc_TokenProcessId_xyz'
 })
 ```
-As with subscriptions for regular AMM data, once registered the owner (wallet with `Owner-Id`) has to send 1 AOCred to the Dexi process to activate the subscription.
-
+As with subscriptions for regular AMM data, once registered the owner (wallet with `Owner-Id`) has to send 1 DEXI to the Dexi process to activate the subscription.
 
 
 
@@ -163,10 +204,8 @@ npx aoform apply
 
 ## TODO
 
-- use subscribable package
 - use squishy and remap package paths
 - move .lua files into a src/
-- dispatch indicators on feed ingestion
 
 - graceful error handling
   

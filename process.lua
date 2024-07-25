@@ -98,7 +98,7 @@ Handlers.add(
 -- INDICATORS --
 
 Handlers.add(
-  "SubscribeIndicators",
+  "Subscribe-Indicators",
   Handlers.utils.hasMatchingTag("Action", "Subscribe-Indicators"),
   subscriptions.handleSubscribeForIndicators
 )
