@@ -97,16 +97,32 @@ DEXI provides a few indicators related to the monitored AMMs, along with the ass
 
 #### Get-Indicators
 
-[TODO]
+This handler can be used to request a single instance of indicators data.
+
+```lua
+ao.send({
+  Target = <DEXI_PROCESS>,      -- the Dexi process ID
+  Action = 'Get-Indicators',
+  AMM = <AMM_PROCESS>           -- AMM of the token pair of interest
+})
+```
 
 #### Subscribe-Indicators
 
 This handler can be used to subscribe to indicators data.
 
-The 'Register-Process' handler is used to register a process to monitor a specific AMM. The handler expects input tags for the AMM identifier (AMM-Process-Id), an Owner-Id and the process identifier (Subscriber-Process-Id).
+The 'Susbcribe-Indicators' handler is used to register a process to monitor a specific AMM. The handler expects input tags for the AMM identifier (AMM-Process-Id), an Owner-Id and the process identifier (Subscriber-Process-Id).
 Once registered the owner (wallet with Owner-Id) has to send 1 DEXI to the Dexi process to activate the subscription.
 
-[TODO]
+```lua
+ao.send({
+    Target = <DEXI_PROCESS>,
+    Action = 'Subscribe-Indicators',
+    ['Subscriber-Process-Id'] = ao.id,          -- Process that is being subscribed
+    ['Owner-Id'] = Owner,                       -- Entity that will pay for this particular subscription (can be the subscriber process itself)
+    ['AMM'] = <AMM_PROCESS>,                    -- AMM of the token pair of interest
+})
+```
 
 ## Dexi Data - Top N Market Data
 
@@ -158,17 +174,25 @@ The handler returns a JSON-encoded response containing specific market data rela
 
 The latest price of an AMM is the price of the last trade that took place, and may not be representative at all for trades that involve volumes of significantly different magnitude than that specific trade. Therefore, the market data also includes the latest reserves of the AMM, as well as the current swap fee. This allows consumers of this data to very accurately predict an expected swap output for a trade with a specific input amount, without the need to send a dedicated message to the AMM process.
 
-This data can be obtained not only by calling the `Get-Top-N-Market-Data` handler, but also by subscribing to the data (see next section)
-
-#### Subscribe-Top-N
-Here is how a process like a token index fund agent would subscribe itself to DEXI in order to receive Top-N-Market-Data.
 ```lua
 ao.send({
-    Target = DEXI_PROCESS_ID,
+  Target = <DEXI_PROCESS>,                -- the Dexi process ID
+  Action = 'Get-Top-N-Market-Data',
+  ["Top-N"] = <number_of_tokens>          -- Given the list of tokens sorted descending by market cap, how many tokens to include
+  ["Quote-Token"] = <quote_token>         -- Quote Token by which the market cap is determined (currently only BARK is supported)
+})
+```
+
+#### Subscribe-Top-N
+Here is how a process like a token index fund agent would be subscribed to Dexi in order to receive Top-N-Market-Data.
+```lua
+ao.send({
+    Target = <DEXI_PROCESS>,                    -- the Dexi process ID
     Action = 'Subscribe-Top-N',
-    ['Subscriber-Process-Id'] = ao.id,
-    ['Owner-Id'] = Owner,
-    ['Quote-Token'] = 'abc_TokenProcessId_xyz'
+    ['Subscriber-Process-Id'] = ao.id,          -- Process that is being subscribed
+    ['Owner-Id'] = Owner,                       -- Entity that will pay for this particular subscription (can be the subscriber process itself)
+    ['Top-N'] = '5',                            -- Will always send for top 5 tokens in market cap ranking
+    ['Quote-Token'] = 'abc_TokenProcessId_xyz'  -- Quote Token by which the market cap is determined (currently only BARK is supported)****
 })
 ```
 As with subscriptions for regular AMM data, once registered the owner (wallet with `Owner-Id`) has to send 1 DEXI to the Dexi process to activate the subscription.
@@ -203,6 +227,9 @@ npx aoform apply
 ```
 
 ## TODO
+
+- separate subscription & registration (like subscribable package)
+- canceling subscriptions (incl. operator handlers)
 
 - use squishy and remap package paths
 - move .lua files into a src/

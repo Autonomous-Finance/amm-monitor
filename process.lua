@@ -98,6 +98,12 @@ Handlers.add(
 -- INDICATORS --
 
 Handlers.add(
+  "Get-Indicators",
+  Handlers.utils.hasMatchingTag("Action", "Get-Indicators"),
+  indicators.handleGetIndicators
+)
+
+Handlers.add(
   "Subscribe-Indicators",
   Handlers.utils.hasMatchingTag("Action", "Subscribe-Indicators"),
   subscriptions.handleSubscribeForIndicators

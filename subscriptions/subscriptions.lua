@@ -30,7 +30,7 @@ function sql.registerIndicatorSubscriber(processId, ownerId, ammProcessId)
   end
 end
 
-function sql.registerTopNSubscriber(processId, ownerId, quoteToken, topN)
+function sql.registerTopNSubscriber(processId, ownerId, quoteToken, nInTopN)
   local stmt = db:prepare [[
     INSERT INTO top_n_subscriptions (process_id, owner_id, quote_token, top_n)
     VALUES (:process_id, :owner_id, :quote_token, :top_n)
@@ -46,7 +46,7 @@ function sql.registerTopNSubscriber(processId, ownerId, quoteToken, topN)
     process_id = processId,
     owner_id = ownerId,
     quote_token = quoteToken,
-    top_n = topN
+    top_n = nInTopN
   })
   local result, err = stmt:step()
   stmt:finalize()
@@ -107,6 +107,7 @@ subscriptions.handleSubscribeForTopN = function(msg)
   local processId = msg.Tags['Subscriber-Process-Id']
   local ownerId = msg.Tags['Owner-Id']
   local quoteToken = msg.Tags['Quote-Token']
+  local nInTopN = msg.Tags['Top-N']
 
   if not quoteToken then
     error('Quote-Token is required')
@@ -118,7 +119,7 @@ subscriptions.handleSubscribeForTopN = function(msg)
 
   print('Registering subscriber to top N market data: ' ..
     processId .. ' for quote token: ' .. quoteToken .. ' with owner: ' .. ownerId)
-  topN.registerTopNSubscriber(processId, ownerId, quoteToken)
+  sql.registerTopNSubscriber(processId, ownerId, quoteToken, nInTopN)
 
   -- determine top N token set for this subscriber
   topN.updateTopNTokenSet(processId)
