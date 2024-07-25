@@ -1,3 +1,4 @@
+package.loaded["subscriptions.subscriptions"] = nil
 package.loaded["validation.validation"] = nil
 package.loaded["validation.validation-schemas"] = nil
 package.loaded["db.sqlschema"] = nil

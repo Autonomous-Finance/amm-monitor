@@ -1,10 +1,9 @@
 local sqlite3 = require("lsqlite3")
 
 local dexiCore = require("dexi-core.dexi-core")
-local sqlschema = require("db.sqlschema")
+local subscriptions = require("subscriptions.subscriptions")
 local seeder = require("db.seed")
 local ingest = require("ingest.ingest")
-local indicators = require("indicators.indicators")
 local topN = require("top-n.top-n")
 local debug = require("utils.debug")
 
@@ -20,68 +19,11 @@ ao = ao or {}
 
 OFFCHAIN_FEED_PROVIDER = OFFCHAIN_FEED_PROVIDER or ao.env.Process.Tags["Offchain-Feed-Provider"]
 QUOTE_TOKEN_PROCESS = QUOTE_TOKEN_PROCESS or ao.env.Process.Tags["Quote-Token-Process"]
+QUOTE_TOKEN_TICKER = QUOTE_TOKEN_TICKER or ao.env.Process.Tags["Quote-Token-Ticker"]
 SUPPLY_UPDATES_PROVIDER = SUPPLY_UPDATES_PROVIDER or
     ao.env.Process.Tags["Offchain-Supply-Updates-Provider"]
-
--- -------------- SUBSCRIPTIONS -------------- --
--- TODO move out or remove with refactoring that integrates subscribable package
-
-local recordPayment = function(msg)
-  if msg.From == 'Sa0iBLPNyJQrwpTTG-tWLQU-1QeUAJA73DdxGGiKoJc' then
-    sqlschema.updateBalance(msg.Tags.Sender, msg.From, tonumber(msg.Tags.Quantity), true)
-  end
-end
-
-local handleSubscribeForIndicators = function(msg)
-  local processId = msg.Tags['Subscriber-Process-Id']
-  local ownerId = msg.Tags['Owner-Id']
-  local ammProcessId = msg.Tags['AMM-Process-Id']
-
-  print('Registering subscriber to indicator data: ' ..
-    processId .. ' for amm: ' .. ammProcessId .. ' with owner: ' .. ownerId)
-  indicators.registerIndicatorSubscriber(processId, ownerId, ammProcessId)
-
-  ao.send({
-    Target = ao.id,
-    Assignments = { ownerId, processId },
-    Action = 'Dexi-Indicator-Subscription-Confirmation',
-    AMM = ammProcessId,
-    Process = processId,
-    OK = 'true'
-  })
-end
-
-local handleSubscribeForTopN = function(msg)
-  local processId = msg.Tags['Subscriber-Process-Id']
-  local ownerId = msg.Tags['Owner-Id']
-  local quoteToken = msg.Tags['Quote-Token']
-
-  if not quoteToken then
-    error('Quote-Token is required')
-  end
-
-  if quoteToken ~= QUOTE_TOKEN_PROCESS then
-    error('Quote token not available (only BRK): ' .. quoteToken)
-  end
-
-  print('Registering subscriber to top N market data: ' ..
-    processId .. ' for quote token: ' .. quoteToken .. ' with owner: ' .. ownerId)
-  topN.registerTopNSubscriber(processId, ownerId, quoteToken)
-
-  -- determine top N token set for this subscriber
-  topN.updateTopNTokenSet(processId)
-
-  ao.send({
-    Target = ao.id,
-    Assignments = { ownerId, processId },
-    Action = 'Dexi-Top-N-Subscription-Confirmation',
-    QuoteToken = quoteToken,
-    Process = processId,
-    OK = 'true'
-  })
-end
-
--- -------------------------------------------- --
+PAYMENT_TOKEN_PROCESS = PAYMENT_TOKEN_PROCESS or ao.env.Process.Tags["Payment-Token-Process"]
+PAYMENT_TOKEN_TICKER = PAYMENT_TOKEN_TICKER or ao.env.Process.Tags["Payment-Token-Ticker"]
 
 -- CORE --
 
@@ -158,7 +100,7 @@ Handlers.add(
 Handlers.add(
   "SubscribeIndicators",
   Handlers.utils.hasMatchingTag("Action", "Subscribe-Indicators"),
-  handleSubscribeForIndicators
+  subscriptions.handleSubscribeForIndicators
 )
 
 -- TOP N --
@@ -172,7 +114,7 @@ Handlers.add(
 Handlers.add(
   "Subscribe-Top-N",
   Handlers.utils.hasMatchingTag("Action", "Subscribe-Top-N"),
-  handleSubscribeForTopN
+  subscriptions.handleSubscribeForTopN
 )
 
 -- PAYMENTS
@@ -180,7 +122,7 @@ Handlers.add(
 Handlers.add(
   "CreditNotice",
   Handlers.utils.hasMatchingTag("Action", "Credit-Notice"),
-  recordPayment
+  subscriptions.recordPayment
 )
 
 -- DEBUG
@@ -196,23 +138,3 @@ Handlers.add(
   Handlers.utils.hasMatchingTag("Action", "Dump-Table-To-CSV"),
   debug.dumpToCSV
 )
-
-
--- Handlers.add(
---   "receive-data-feed",
---   Handlers.utils.hasMatchingTag("Action", "Receive-data-feed"),
---   function (msg)
---     local data = json.decode(msg.Data)
---     if data.data.transactions then
---       updateTransactions(data.data.transactions.edges)
---       print('transactions updated')
---       if #data.data.transactions.edges > 0 then
---         requestTransactions(100)
---       end
---       requestBlocks()
---     elseif data.data.blocks then
---       updateBlockTimestamps(data.data.blocks.edges)
---       print('blocks updated')
---     end
---   end
--- )
