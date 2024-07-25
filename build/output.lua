@@ -73,12 +73,12 @@ function dbSeed.seed()
 end
 
 function dbSeed.handleResetDBState(msg)
-  if msg.From ~= Owner then
-    error('Only the owner can reset-and-seed the database')
+  if msg.From ~= Owner and msg.From ~= ao.id then
+    error('Only the owner and the process itself can reset-and-seed the database')
   end
 
   db:exec("DROP TABLE IF EXISTS amm_transactions;")
-  dbSeed.createTableIfNotExists()
+  dbSeed.createMissingTables()
   dbSeed.seed()
 end
 
@@ -106,7 +106,7 @@ CREATE TABLE IF NOT EXISTS amm_transactions (
     from_quantity TEXT NOT NULL,
     to_quantity TEXT NOT NULL,
     fee_percentage TEXT NOT NULL,
-    amm_process TEXT NOT NULL,
+    amm_process TEXT NOT NULL
 );
 ]]
 
@@ -129,7 +129,7 @@ CREATE TABLE IF NOT EXISTS amm_swap_params_changes (
     reserves_0 TEXT NOT NULL,
     reserves_1 TEXT NOT NULL,
     fee_percentage TEXT NOT NULL,
-    amm_process TEXT NOT NULL,
+    amm_process TEXT NOT NULL
 );
 ]]
 
@@ -140,7 +140,7 @@ CREATE TABLE IF NOT EXISTS token_supply_changes (
     block_id TEXT,
     supply_changed_at_ts INTEGER,
     token TEXT NOT NULL,
-    total_supply TEXT NOT NULL,
+    total_supply TEXT NOT NULL
 );
 ]]
 
@@ -263,15 +263,15 @@ LEFT JOIN token_registry tq ON tq.token_process = amm_token1
 
 --! only includes token pairs with BRK
 sqlschema.create_market_cap_view = [[
-CREATE VIEW market_cap_view AS
+CREATE VIEW amm_market_cap_view AS
 SELECT
   r.amm_base_token AS token_process,
   t.total_supply * current_price AS market_cap,
   r.amm_quote_token AS quote_token_process,
-  rank() OVER (ORDER BY t.total_supply * current_price DESC) AS market_cap_rank,
+  rank() OVER (ORDER BY t.total_supply * current_price DESC) AS market_cap_rank
 FROM amm_registry r
-WHERE r.amm_quote_token IS NOT NULL
 LEFT JOIN token_registry t ON t.token_process = r.amm_base_token
+WHERE r.amm_quote_token IS NOT NULL
 ORDER BY market_cap DESC
 LIMIT 100
 ]]
@@ -506,8 +506,10 @@ function sql.registerAMM(name, processId, token0, token1, discoveredAt)
     base_token = token0 == QUOTE_TOKEN_PROCESS and token1 or token0,
     discovered_at = discoveredAt
   })
-  stmt:step()
-  print("Err: " .. db:errmsg())
+  local result, err = stmt:step()
+  if err then
+    print("Err: " .. db:errmsg())
+  end
   stmt:reset()
 end
 

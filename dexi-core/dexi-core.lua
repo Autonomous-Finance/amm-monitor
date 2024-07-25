@@ -39,8 +39,10 @@ function sql.registerAMM(name, processId, token0, token1, discoveredAt)
     base_token = token0 == QUOTE_TOKEN_PROCESS and token1 or token0,
     discovered_at = discoveredAt
   })
-  stmt:step()
-  print("Err: " .. db:errmsg())
+  local result, err = stmt:step()
+  if err then
+    print("Err: " .. db:errmsg())
+  end
   stmt:reset()
 end
 
