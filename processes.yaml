@@ -56,7 +56,26 @@
 #     - name: Process-Type
 #       value: Dexi-Aggregator-Test
 
-- name: dexi-full-test-v1
+#- name: dexi-full-test-v1
+#  file: build/output.lua
+#  prerun: reset-modules.lua
+#  scheduler: _GQ33BkPtZrqxA84vM8Zk-N2aO0toNNu_C-l-rawrBA
+#  module: GYrbbe0VbHim_7Hi6zrOpHQXrSQz07XNtwCnfbFo2I0
+#  tags:
+#    - name: Process-Type
+#      value: Dexi-Aggregator-Test
+#    - name: Offchain-Feed-Provider
+#      value: P6i7xXWuZtuKJVJYNwEqduj0s8R_G4wZJ38TB5Knpy4
+#    - name: Quote-Token-Process
+#      value: -EAOD6s58Qg0N1ZBrygin6gc1ZtxAzu5YJ20NoSlico
+#    - name: Offchain-Supply-Updates-Provider
+#      value: P6i7xXWuZtuKJVJYNwEqduj0s8R_G4wZJ38TB5Knpy4
+#    - name: Dexi-Token-Process
+#      value: Dexi___TESTtestTESTtestTESTtestTESTtest____
+#    - name: Dexi-Token-Ticker
+#      value: DEXI
+
+- name: dexi-amm-register-test-1
   file: build/output.lua
   prerun: reset-modules.lua
   scheduler: _GQ33BkPtZrqxA84vM8Zk-N2aO0toNNu_C-l-rawrBA
@@ -71,7 +90,7 @@
     - name: Offchain-Supply-Updates-Provider
       value: P6i7xXWuZtuKJVJYNwEqduj0s8R_G4wZJ38TB5Knpy4
     - name: Dexi-Token-Process
-      value: Dexi___TESTtestTESTtestTESTtestTESTtest____
+      value: eM6NGBSgwyDTqQ0grng1fQvBF-5HcMeshLcz9QPE-0A
     - name: Dexi-Token-Ticker
       value: DEXI
 
