@@ -70,12 +70,12 @@ function dbSeed.seed()
 end
 
 function dbSeed.handleResetDBState(msg)
-  if msg.From ~= Owner then
-    error('Only the owner can reset-and-seed the database')
+  if msg.From ~= Owner and msg.From ~= ao.id then
+    error('Only the owner and the process itself can reset-and-seed the database')
   end
 
   db:exec("DROP TABLE IF EXISTS amm_transactions;")
-  dbSeed.createTableIfNotExists()
+  dbSeed.createMissingTables()
   dbSeed.seed()
 end
 

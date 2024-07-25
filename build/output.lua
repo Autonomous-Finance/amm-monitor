@@ -73,12 +73,12 @@ function dbSeed.seed()
 end
 
 function dbSeed.handleResetDBState(msg)
-  if msg.From ~= Owner then
-    error('Only the owner can reset-and-seed the database')
+  if msg.From ~= Owner and msg.From ~= ao.id then
+    error('Only the owner and the process itself can reset-and-seed the database')
   end
 
   db:exec("DROP TABLE IF EXISTS amm_transactions;")
-  dbSeed.createTableIfNotExists()
+  dbSeed.createMissingTables()
   dbSeed.seed()
 end
 
@@ -506,8 +506,10 @@ function sql.registerAMM(name, processId, token0, token1, discoveredAt)
     base_token = token0 == QUOTE_TOKEN_PROCESS and token1 or token0,
     discovered_at = discoveredAt
   })
-  stmt:step()
-  print("Err: " .. db:errmsg())
+  local result, err = stmt:step()
+  if err then
+    print("Err: " .. db:errmsg())
+  end
   stmt:reset()
 end
 
