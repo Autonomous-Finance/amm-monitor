@@ -139,6 +139,10 @@ dexiCore.registerToken = function(processId, name, denominator, totalSupply, fix
   sql.registerToken(processId, name, denominator, totalSupply, fixedSupply, updatedAt)
 end
 
+dexiCore.registerAMM = function(name, processId, token0, token1, discoveredAt)
+  sql.registerAMM(name, processId, token0, token1, discoveredAt)
+end
+
 dexiCore.handleGetRegisteredAMMs = function(msg)
   ao.send({
     ['App-Name'] = 'Dexi',

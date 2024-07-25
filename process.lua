@@ -118,7 +118,7 @@ Handlers.add(
 Handlers.add(
   'Update-Total-Supply',
   Handlers.utils.hasMatchingTag("Action", "Update-Total-Supply"),
-  dexiCore.handleUpdateTotalSupply
+  dexiCore.handleUpdateTokenSupply
 )
 
 -- SWAP & SWAP PARAMS CHANGES INGESTION --
