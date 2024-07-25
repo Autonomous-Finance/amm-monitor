@@ -11,14 +11,13 @@ local debug = require("utils.debug")
 db = db or sqlite3.open_memory()
 
 seeder.createMissingTables()
-seeder.seed() -- TODO eliminate in production
+-- seeder.seed() -- TODO eliminate in production
 
 -- eliminate warnings
 Owner = Owner or ao.env.Process.Owner
 Handlers = Handlers or {}
 ao = ao or {}
 
-DEXI_TOKEN = "eM6NGBSgwyDTqQ0grng1fQvBF-5HcMeshLcz9QPE-0A"
 TOKEN = ao.env.Process.Tags["Base-Token"]
 AMM = ao.env.Process.Tags["Monitor-For"]
 
@@ -27,6 +26,7 @@ OFFCHAIN_FEED_PROVIDER = OFFCHAIN_FEED_PROVIDER or ao.env.Process.Tags["Offchain
 QUOTE_TOKEN_PROCESS = QUOTE_TOKEN_PROCESS or ao.env.Process.Tags["Quote-Token-Process"]
 SUPPLY_UPDATES_PROVIDER = SUPPLY_UPDATES_PROVIDER or
     ao.env.Process.Tags["Offchain-Supply-Updates-Provider"]
+DEXI_TOKEN_PROCESS = DEXI_TOKEN_PROCESS or ao.env.Process.Tags["Dexi-Token-Process"]
 
 -- -------------- SUBSCRIPTIONS -------------- --
 -- TODO move out or remove with refactoring that integrates subscribable package
@@ -52,7 +52,7 @@ local recordRegisterAMMPayment = function(msg)
 
   -- Pay for the Subscription
   ao.send({
-    Target = DEXI_TOKEN,
+    Target = DEXI_TOKEN_PROCESS,
     Action = "Transfer",
     Tags = {
       Receiver = msg.Tags["AMM-Process"],
@@ -88,7 +88,7 @@ local recordPayment = function(msg)
     sqlschema.updateBalance(msg.Tags.Sender, msg.From, tonumber(msg.Tags.Quantity), true)
   end
 
-  if msg.From == DEXI_TOKEN and msg.Tags["X-Action"] == "Register-AMM" then
+  if msg.From == DEXI_TOKEN_PROCESS and msg.Tags["X-Action"] == "Register-AMM" then
     recordRegisterAMMPayment(msg)
   end
 end

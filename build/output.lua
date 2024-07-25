@@ -1644,6 +1644,60 @@ end
 
 do
 local _ENV = _ENV
+package.preload[ "utils.debug" ] = function( ... ) local arg = _G.arg;
+local dbUtils = require('db.utils')
+
+local debug = {}
+
+function debug.dumpToCSV(msg)
+  local stmt = db:prepare [[
+    SELECT *
+    FROM amm_transactions;
+  ]]
+
+  local rows = {}
+  local row = stmt:step()
+  while row do
+    table.insert(rows, row)
+    row = stmt:step()
+  end
+
+  stmt:reset()
+
+  local csvHeader =
+  "id,source,block_height,block_id,from,timestamp,is_buy,price,volume,to_token,from_token,from_quantity,to_quantity,fee,amm_process\n"
+  local csvData = csvHeader
+
+  for _, row in ipairs(rows) do
+    local rowData = string.format("%s,%s,%d,%s,%s,%d,%d,%.8f,%.8f,%s,%s,%.8f,%.8f,%.8f,%s\n",
+      row.id, row.source, row.block_height, row.block_id, row["from"], row["timestamp"],
+      row.is_buy, row.price, row.volume, row.to_token, row.from_token, row.from_quantity,
+      row.to_quantity, row.fee, row.amm_process)
+    csvData = csvData .. rowData
+  end
+
+  ao.send({
+    Target = msg.From,
+    Data = csvData
+  })
+end
+
+function debug.debugTable()
+  local stmt = db:prepare [[
+    SELECT * FROM amm_transactions ORDER BY created_at_ts LIMIT 100;
+  ]]
+  if not stmt then
+    error("Failed to prepare SQL statement: " .. db:errmsg())
+  end
+  return dbUtils.queryMany(stmt)
+end
+
+return debug
+end
+end
+
+do
+local _ENV = _ENV
 package.preload[ "validation.validation" ] = function( ... ) local arg = _G.arg;
 -- @file        validation.lua
 -- @author      Théo Brigitte <theo.brigitte@gmail.com>
@@ -2113,24 +2167,85 @@ local debug = require("utils.debug")
 db = db or sqlite3.open_memory()
 
 seeder.createMissingTables()
-seeder.seed() -- TODO eliminate in production
+-- seeder.seed() -- TODO eliminate in production
 
 -- eliminate warnings
 Owner = Owner or ao.env.Process.Owner
 Handlers = Handlers or {}
 ao = ao or {}
 
+TOKEN = ao.env.Process.Tags["Base-Token"]
+AMM = ao.env.Process.Tags["Monitor-For"]
+
+-- ================== HANDLER LOGIC ================= --
 OFFCHAIN_FEED_PROVIDER = OFFCHAIN_FEED_PROVIDER or ao.env.Process.Tags["Offchain-Feed-Provider"]
 QUOTE_TOKEN_PROCESS = QUOTE_TOKEN_PROCESS or ao.env.Process.Tags["Quote-Token-Process"]
 SUPPLY_UPDATES_PROVIDER = SUPPLY_UPDATES_PROVIDER or
     ao.env.Process.Tags["Offchain-Supply-Updates-Provider"]
+DEXI_TOKEN_PROCESS = DEXI_TOKEN_PROCESS or ao.env.Process.Tags["Dexi-Token-Process"]
 
 -- -------------- SUBSCRIPTIONS -------------- --
 -- TODO move out or remove with refactoring that integrates subscribable package
 
+local recordRegisterAMMPayment = function(msg)
+  assert(msg.Tags.Quantity, 'Credit notice data must contain a valid quantity')
+  assert(msg.Tags.Sender, 'Credit notice data must contain a valid sender')
+  assert(msg.Tags["AMM-Process"], 'Credit notice data must contain a valid amm-process')
+  assert(msg.Tags["Token-A"], 'Credit notice data must contain a valid token-a')
+  assert(msg.Tags["Token-B"], 'Credit notice data must contain a valid token-b')
+  assert(msg.Tags["Name"], 'Credit notice data must contain a valid fee-percentage')
+
+  -- send Register-Subscriber to amm process
+  ao.send({
+    Target = msg.Tags["AMM-Process"],
+    Action = "Register-Subscriber",
+    Tags = {
+      ["Subscriber-Process-Id"] = ao.id,
+      ["Owner-Id"] = msg.Tags.Sender,
+      ['Topics'] = json.encode({ "order-confirmation", "liquidity-change" })
+    }
+  })
+
+  -- Pay for the Subscription
+  ao.send({
+    Target = DEXI_TOKEN_PROCESS,
+    Action = "Transfer",
+    Tags = {
+      Receiver = msg.Tags["AMM-Process"],
+      Quantity = msg.Tags.Quantity,
+      ["X-Action"] = "Pay-For-Subscription"
+    }
+  })
+
+  sqlschema.registerAMM(
+    msg.Tags["Name"],
+    msg.Tags["AMM-Process"],
+    msg.Tags["Token-A"],
+    msg.Tags["Token-B"],
+    msg.Timestamp
+  )
+
+  -- send confirmation to sender
+  ao.send({
+    Target = msg.Tags.Sender,
+    Action = "Dexi-AMM-Registration-Confirmation",
+    Tags = {
+      ["AMM-Process"] = msg.Tags["AMM-Process"],
+      ["Token-A"] = msg.Tags["Token-A"],
+      ["Token-B"] = msg.Tags["Token-B"],
+      ["Name"] = msg.Tags["Name"]
+    }
+
+  })
+end
+
 local recordPayment = function(msg)
   if msg.From == 'Sa0iBLPNyJQrwpTTG-tWLQU-1QeUAJA73DdxGGiKoJc' then
     sqlschema.updateBalance(msg.Tags.Sender, msg.From, tonumber(msg.Tags.Quantity), true)
+  end
+
+  if msg.From == DEXI_TOKEN_PROCESS and msg.Tags["X-Action"] == "Register-AMM" then
+    recordRegisterAMMPayment(msg)
   end
 end
 
