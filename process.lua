@@ -31,9 +31,65 @@ SUPPLY_UPDATES_PROVIDER = SUPPLY_UPDATES_PROVIDER or
 -- -------------- SUBSCRIPTIONS -------------- --
 -- TODO move out or remove with refactoring that integrates subscribable package
 
+local recordRegisterAMMPayment = function(msg)
+  assert(msg.Tags.Quantity, 'Credit notice data must contain a valid quantity')
+  assert(msg.Tags.Sender, 'Credit notice data must contain a valid sender')
+  assert(msg.Tags["AMM-Process"], 'Credit notice data must contain a valid amm-process')
+  assert(msg.Tags["Token-A"], 'Credit notice data must contain a valid token-a')
+  assert(msg.Tags["Token-B"], 'Credit notice data must contain a valid token-b')
+  assert(msg.Tags["Name"], 'Credit notice data must contain a valid fee-percentage')
+
+  -- send Register-Subscriber to amm process
+  ao.send({
+    Target = msg.Tags["AMM-Process"],
+    Action = "Register-Subscriber",
+    Tags = {
+      ["Subscriber-Process-Id"] = ao.id,
+      ["Owner-Id"] = msg.Tags.Sender,
+      ['Topics'] = json.encode({ "order-confirmation", "liquidity-change" })
+    }
+  })
+
+  -- Pay for the Subscription
+  ao.send({
+    Target = DEXI_TOKEN,
+    Action = "Transfer",
+    Tags = {
+      Receiver = msg.Tags["AMM-Process"],
+      Quantity = msg.Tags.Quantity,
+      ["X-Action"] = "Pay-For-Subscription"
+    }
+  })
+
+  sqlschema.registerAMM(
+    msg.Tags["Name"],
+    msg.Tags["AMM-Process"],
+    msg.Tags["Token-A"],
+    msg.Tags["Token-B"],
+    msg.Timestamp
+  )
+
+  -- send confirmation to sender
+  ao.send({
+    Target = msg.Tags.Sender,
+    Action = "Dexi-AMM-Registration-Confirmation",
+    Tags = {
+      ["AMM-Process"] = msg.Tags["AMM-Process"],
+      ["Token-A"] = msg.Tags["Token-A"],
+      ["Token-B"] = msg.Tags["Token-B"],
+      ["Name"] = msg.Tags["Name"]
+    }
+
+  })
+end
+
 local recordPayment = function(msg)
   if msg.From == 'Sa0iBLPNyJQrwpTTG-tWLQU-1QeUAJA73DdxGGiKoJc' then
     sqlschema.updateBalance(msg.Tags.Sender, msg.From, tonumber(msg.Tags.Quantity), true)
+  end
+
+  if msg.From == DEXI_TOKEN and msg.Tags["X-Action"] == "Register-AMM" then
+    recordRegisterAMMPayment(msg)
   end
 end
 
@@ -83,58 +139,6 @@ local handleSubscribeForTopN = function(msg)
     QuoteToken = quoteToken,
     Process = processId,
     OK = 'true'
-  })
-end
-
-local recordRegisterAMMPayment = function(msg)
-  assert(msg.Tags.Quantity, 'Credit notice data must contain a valid quantity')
-  assert(msg.Tags.Sender, 'Credit notice data must contain a valid sender')
-  assert(msg.Tags["AMM-Process"], 'Credit notice data must contain a valid amm-process')
-  assert(msg.Tags["Token-A"], 'Credit notice data must contain a valid token-a')
-  assert(msg.Tags["Token-B"], 'Credit notice data must contain a valid token-b')
-  assert(msg.Tags["Name"], 'Credit notice data must contain a valid fee-percentage')
-
-  -- send Register-Subscriber to amm process
-  ao.send({
-    Target = msg.Tags["AMM-Process"],
-    Action = "Register-Subscriber",
-    Tags = {
-      ["Subscriber-Process-Id"] = ao.id,
-      ["Owner-Id"] = msg.Tags.Sender,
-      ['Topics'] = json.encode({ "order-confirmation", "liquidity-change" })
-    }
-  })
-
-  -- Pay for the Subscription
-  ao.send({
-    Target = DEXI_TOKEN,
-    Action = "Transfer",
-    Tags = {
-      Receiver = msg.Tags["AMM-Process"],
-      Quantity = msg.Tags.Quantity,
-      ["X-Action"] = "Pay-For-Subscription"
-    }
-  })
-
-  sqlschema.registerAMM(
-    msg.Tags["Name"],
-    msg.Tags["AMM-Process"],
-    msg.Tags["Token-A"],
-    msg.Tags["Token-B"],
-    msg.Timestamp
-  )
-
-  -- send confirmation to sender
-  ao.send({
-    Target = msg.Tags.Sender,
-    Action = "Dexi-AMM-Registration-Confirmation",
-    Tags = {
-      ["AMM-Process"] = msg.Tags["AMM-Process"],
-      ["Token-A"] = msg.Tags["Token-A"],
-      ["Token-B"] = msg.Tags["Token-B"],
-      ["Name"] = msg.Tags["Name"]
-    }
-  
   })
 end
 
@@ -202,16 +206,6 @@ Handlers.add(
   "ReceiveOffchainFeed-Swap-Params-Changes",
   Handlers.utils.hasMatchingTag("Action", "Receive-Offchain-Feed-Swap-Params-Changes"),
   ingest.handleFeedIngestSwapParamsChange
-)
-
-Handlers.add(
-  "CreditNoticeRegisterAMM",
-  function(msg)
-    return Handlers.utils.hasMatchingTag("Action", "Credit-Notice")(msg) and
-        Handlers.utils.hasMatchingTag("X-Action", "Register-AMM")(msg) and
-        msg.From == DEXI_TOKEN
-  end,
-  recordRegisterAMMPayment
 )
 
 Handlers.add(

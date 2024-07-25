@@ -19,6 +19,7 @@ $BIN_PATH/luacheck process.lua \
 
 $BIN_PATH/amalg.lua -s process.lua -o build/output.lua \
     validation.validation validation.validation-schemas \
+    utils.debug \
     db.sqlschema db.seed db.utils \
     dexi-core.dexi-core \
     dexi-core.intervals dexi-core.candles dexi-core.stats dexi-core.overview dexi-core.price-around\
