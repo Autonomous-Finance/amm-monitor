@@ -282,8 +282,31 @@ npx aoform apply
 
 ## TODO
 
+
+- unit tests (no deployments required)
+  - seed with 5 amms, 5 tokens
+    - check correct top N 
+      - mcap ranking given total supplies
+      - correct reserves given amm data initialization
+  - simulate amm swaps => ingest TXs (with reserves updates)
+    - check reserves have updated correctly
+  - simulate a few subscriptions, with some of them for indicators, some for top N 
+    - check top N token sets correclty determined
+    - perform new swap
+    - check if attempts to dispatch occur for both topN and indicators
+    - check if topN payload is as expected
+  - simulate huge swap to increase price of the coin with smallest mcap => bring to top of the ranking
+    - check if token is at top of the ranking
+    - check if top N token sets are correclty updated
+    - check if top N updates are dispatched correctly
+
+
+
+
 - use squishy and remap package paths
 - move .lua files into a src/
+
+- thorough validations
 
 - graceful error handling
   
