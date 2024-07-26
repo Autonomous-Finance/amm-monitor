@@ -153,6 +153,16 @@ function topN.handleGetTopNMarketData(msg)
 end
 
 function topN.dispatchMarketDataIncludingAMM(now, ammProcessId)
+  if not DISPATCH_ACTIVE then
+    if LOGGING_ACTIVE then
+      ao.send({
+        Target = ao.id,
+        Action = 'Log',
+        Data = 'Skipping Dispatch for Top N'
+      })
+    end
+    return
+  end
   local subscribersAndMD = sql.getSubscribersWithMarketDataForAmm(now, ammProcessId)
 
   print('sending market data updates to affected subscribers')

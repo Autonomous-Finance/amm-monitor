@@ -35,7 +35,7 @@ function debug.dumpToCSV(msg)
   })
 end
 
-function debug.debugTable()
+function debug.debugTransactions()
   local stmt = db:prepare [[
     SELECT * FROM amm_transactions ORDER BY created_at_ts LIMIT 100;
   ]]

@@ -177,7 +177,18 @@ function indicators.dispatchIndicatorsForAMM(now, ammProcessId)
 
   local processes = sql.getSubscribersToProcess(ammProcessId)
 
-  local indicatorsResults = getIndicators(ammProcessId, startTimestamp, now)
+  local indicatorsResults = getIndicators(ammProcessId, startTimestamp)
+
+  if not DISPATCH_ACTIVE then
+    if LOGGING_ACTIVE then
+      ao.send({
+        Target = ao.id,
+        Action = 'Log',
+        Data = 'Skipping Dispatch for Indicators (AMM: ' .. ammProcessId .. ')'
+      })
+    end
+    return
+  end
 
   print('sending indicators to ' .. #processes .. ' processes')
 

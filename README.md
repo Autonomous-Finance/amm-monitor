@@ -37,6 +37,60 @@ In principle, Dexi can also operate in a **Pull Mode**, meaning that it loads AM
 1. AMMs require the capability to provide such subscriptions. [Bark](https://github.com/Autonomous-Finance/bark-amm) AMMs have it by default. Typically, subscribing to an AMM involves a **payment**.
 2. DEXI needs to subscribe to each registered AMM. This step is typically triggered by an **AMM creator** who is interested in having their AMM integrated with DEXI. The payment tokens would typically be provided by that AMM creator.  
 
+## Dexi-Provided Subscriptions
+
+A process can be subscribed to Dexi in order to receive data feeds. Currently there are 2 topics available
+
+- Market Indicators
+  - parameter: AMM pool
+  - returns: trading candles, volume, indicators (sma, ema, macd, bollinger bands) for specified AMM pool
+- Top N Market Data
+  - paramter: N
+  - returns: market data (AMM pool reserves & fees) for the top N tokens ranked by market cap
+
+### Subscription pattern
+
+An active subscription involves 2 parts
+
+1. establishing the subscription ( a process is registered as a subscriber to a given topic )
+2. activating it via a payment
+
+- **Anyone can register** a process as a subscriber. (including the process itself)
+- Registration involves the naming of a **subscription owner**. (can be the process itself)
+- The **owner is required to pay** in order for that owners' subscriptions to be active.
+  - Dexi tracks payments per subscription owners, not per individual subscriptions.
+  - Dexi requires **one-time payments**, so it's not related to the duration of the subscription or actual data provided. It is rather a means to prevent abuse of the service.
+  - Once an owner has paid, any **subsequent registrations** involving that owner (regardless of the registered subscriber process) are considered paid for
+
+Subscriptions can also be **canceled by the subscription owner**. In v1, Dexi subscriptions run until canceled.
+
+#### No Changes to Subscription Owner 
+
+Dexi v1 doesn't support changing a subscription owner. If needed, a subscription can be canceled and reestablished with a different `Owner-Id`.
+
+#### No Duplicate Subscriptions
+
+Dexi v1 supports **no duplicate subscriptions**. It taking into consideration the nature of the parameters so that "duplication" is defined in a way that suits the expected needs of subscribers.
+
+Specifically:
+- for indicators, the combination (subscriber_id, amm_id) must be unique
+- for top n market data, the combination (subscriber_id, quote_token) must be unique
+
+**Example Scenario 1**
+
+A process has a subscription to "indicators" for TRUNK-BARK and a subscription to "indicators" for EXP-BARK. This works. 
+
+However, it cannot have one more "indicators" subscription for TRUNK-BARK. 
+
+The limitation applies even if the subscription owners are different.
+
+**Example Scenario 2**
+
+A process has a subscription to "top n market data" for the **top 5** tokens by market cap, with market cap expressed in **BARK**. Furthermore, it has a subscription to "top n market data" for the **top 5**, with market cap expressed in **wAR**. Having these 2 at the same time works. 
+
+However, the process cannot have one more "top n market data" subscription for the **top 3** tokens, with market cap expressed in **BARK** or **wAR**. In this case, the difference in the `N` parameter doesn't matter. 
+
+And, just like with "indicators", the limitiation applies even if the subscription owners are different.
 
 ## Dexi Data - Core
 
@@ -228,12 +282,9 @@ npx aoform apply
 
 ## TODO
 
-- separate subscription & registration (like subscribable package)
-- canceling subscriptions (incl. operator handlers)
-
 - use squishy and remap package paths
 - move .lua files into a src/
 
 - graceful error handling
   
-- test suite
+- tests

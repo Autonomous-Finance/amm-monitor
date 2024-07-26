@@ -26,6 +26,11 @@ SUPPLY_UPDATES_PROVIDER = SUPPLY_UPDATES_PROVIDER or
 PAYMENT_TOKEN_PROCESS = PAYMENT_TOKEN_PROCESS or ao.env.Process.Tags["Payment-Token-Process"]
 PAYMENT_TOKEN_TICKER = PAYMENT_TOKEN_TICKER or ao.env.Process.Tags["Payment-Token-Ticker"]
 
+DISPATCH_ACTIVE = DISPATCH_ACTIVE or true
+LOGGING_ACTIVE = LOGGING_ACTIVE or true
+
+OPERATOR = OPERATOR or ao.env.Process.Tags["Operator"]
+
 -- CORE --
 
 Handlers.add(
@@ -110,6 +115,12 @@ Handlers.add(
   subscriptions.handleSubscribeForIndicators
 )
 
+Handlers.add(
+  "Unsubscribe-Indicators",
+  Handlers.utils.hasMatchingTag("Action", "Unsubscribe-Indicators"),
+  subscriptions.handleUnsubscribeForIndicators
+)
+
 -- TOP N --
 
 Handlers.add(
@@ -124,15 +135,25 @@ Handlers.add(
   subscriptions.handleSubscribeForTopN
 )
 
+Handlers.add(
+  "Unsubscribe-Top-N",
+  Handlers.utils.hasMatchingTag("Action", "Unsubscribe-Top-N"),
+  subscriptions.handleUnsubscribeForTopN
+)
+
 -- PAYMENTS
 
 Handlers.add(
-  "CreditNotice",
-  Handlers.utils.hasMatchingTag("Action", "Credit-Notice"),
+  "Receive-Payment",
+  function(msg)
+    return Handlers.utils.hasMatchingTag("Action", "Credit-Notice")(msg)
+        and Handlers.utils.hasMatchingTag("X-Action", "Pay-For-Subscriptions")(msg)
+        and msg.From == PAYMENT_TOKEN_PROCESS
+  end,
   subscriptions.recordPayment
 )
 
--- DEBUG
+-- MAINTENANCE
 
 Handlers.add(
   "Reset-DB-State",
@@ -144,4 +165,36 @@ Handlers.add(
   "DumpTableToCSV",
   Handlers.utils.hasMatchingTag("Action", "Dump-Table-To-CSV"),
   debug.dumpToCSV
+)
+
+Handlers.add(
+  "Debug-Table",
+  Handlers.utils.hasMatchingTag("Action", "Debug-Table"),
+  debug.debugTransactions
+)
+
+Handlers.add(
+  "Toggle-Dispatch-Active",
+  Handlers.utils.hasMatchingTag("Action", "Toggle-Dispatch-Active"),
+  function(msg)
+    assert(msg.From == OPERATOR, "Only the operator can toggle dispatching")
+    DISPATCH_ACTIVE = not DISPATCH_ACTIVE
+    ao.send({
+      Target = msg.From,
+      Data = "Dispatching toggled to " .. tostring(not DISPATCH_ACTIVE)
+    })
+  end
+)
+
+Handlers.add(
+  "Toggle-Logging-Active",
+  Handlers.utils.hasMatchingTag("Action", "Toggle-Logging-Active"),
+  function(msg)
+    assert(msg.From == OPERATOR, "Only the operator can toggle logging")
+    LOGGING_ACTIVE = not LOGGING_ACTIVE
+    ao.send({
+      Target = msg.From,
+      Data = "Logging toggled to " .. tostring(not LOGGING_ACTIVE)
+    })
+  end
 )
