@@ -2,6 +2,7 @@ local sqlite3 = require("lsqlite3")
 
 local dexiCore = require("dexi-core.dexi-core")
 local subscriptions = require("subscriptions.subscriptions")
+local indicators = require("indicators.indicators")
 local seeder = require("db.seed")
 local ingest = require("ingest.ingest")
 local topN = require("top-n.top-n")
