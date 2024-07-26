@@ -8,7 +8,7 @@ local topN = {}
 local sql = {}
 
 
-function sql.queryTopNMarketData(quoteToken)
+function sql.queryTopNMarketData(quoteToken, limit)
   local orderByClause = "market_cap_rank DESC"
   local stmt = db:prepare([[
   SELECT
@@ -25,7 +25,7 @@ function sql.queryTopNMarketData(quoteToken)
   LEFT JOIN token_registry t ON t.token_process = r.amm_base_token
   LEFT JOIN amm_swap_params_view scv ON scv.amm_process = r.amm_process
   WHERE r.amm_quote_token = :quoteToken
-  LIMIT 100
+  LIMIT :limit
   ]], orderByClause)
 
   if not stmt then
@@ -34,6 +34,7 @@ function sql.queryTopNMarketData(quoteToken)
 
   stmt:bind_names({
     quoteToken = quoteToken,
+    limit = limit
   })
   return dbUtils.queryMany(stmt)
 end
@@ -134,6 +135,7 @@ end
 
 function topN.handleGetTopNMarketData(msg)
   local quoteToken = msg.Tags['Quote-Token']
+  local n = tonumber(msg.Tags['Top-N']) or 100
   if not quoteToken then
     error('Quote-Token is required')
   end
@@ -143,14 +145,24 @@ function topN.handleGetTopNMarketData(msg)
   end
 
   ao.send({
-    ['App-Name'] = 'Dexi',
-    ['Payload'] = 'Top-N-Market-Data',
     Target = msg.From,
-    Data = json.encode(sql.getSubscribersWithMarketDataForAmm(quoteToken))
+    ['App-Name'] = 'Dexi',
+    ['Response-For'] = 'Get-Top-N-Market-Data',
+    Data = json.encode(sql.queryTopNMarketData(quoteToken, n))
   })
 end
 
 function topN.dispatchMarketDataIncludingAMM(now, ammProcessId)
+  if not DISPATCH_ACTIVE then
+    if LOGGING_ACTIVE then
+      ao.send({
+        Target = ao.id,
+        Action = 'Log',
+        Data = 'Skipping Dispatch for Top N'
+      })
+    end
+    return
+  end
   local subscribersAndMD = sql.getSubscribersWithMarketDataForAmm(now, ammProcessId)
 
   print('sending market data updates to affected subscribers')
@@ -158,6 +170,7 @@ function topN.dispatchMarketDataIncludingAMM(now, ammProcessId)
   for _, subscriberWithMD in ipairs(subscribersAndMD) do
     ao.send({
       ['Target'] = subscriberWithMD.process_id,
+      ['App-Name'] = 'Dexi',
       ['Action'] = 'TopNMarketData',
       ['Data'] = json.encode(subscriberWithMD.swap_params)
     })

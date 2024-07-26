@@ -1,3 +1,4 @@
+package.loaded["subscriptions.subscriptions"] = nil
 package.loaded["validation.validation"] = nil
 package.loaded["validation.validation-schemas"] = nil
 package.loaded["db.sqlschema"] = nil
@@ -13,3 +14,4 @@ package.loaded["ingest.ingest"] = nil
 package.loaded["indicators.indicators"] = nil
 package.loaded["indicators.calc"] = nil
 package.loaded["top-n.top-n"] = nil
+package.loaded["utils.debug"] = nil

@@ -87,12 +87,15 @@
       value: P6i7xXWuZtuKJVJYNwEqduj0s8R_G4wZJ38TB5Knpy4
     - name: Quote-Token-Process
       value: -EAOD6s58Qg0N1ZBrygin6gc1ZtxAzu5YJ20NoSlico
+    - name: Quote-Token-Ticker
+      value: HBRK
     - name: Offchain-Supply-Updates-Provider
       value: P6i7xXWuZtuKJVJYNwEqduj0s8R_G4wZJ38TB5Knpy4
-    - name: Dexi-Token-Process
+    - name: Payment-Token-Process
       value: eM6NGBSgwyDTqQ0grng1fQvBF-5HcMeshLcz9QPE-0A
-    - name: Dexi-Token-Ticker
+    - name: Payment-Token-Ticker
       value: DEXI
+    
 
 # - name: monitor-trunk_aocred5
 #   file: build/output.lua

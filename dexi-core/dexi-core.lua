@@ -16,6 +16,7 @@ local dexiCore = {}
 local sql = {}
 
 function sql.registerAMM(name, processId, token0, token1, discoveredAt)
+  print('Registering AMM:')
   print({
     "process", processId,
     "name", name,
@@ -47,6 +48,15 @@ function sql.registerAMM(name, processId, token0, token1, discoveredAt)
 end
 
 function sql.registerToken(processId, name, denominator, totalSupply, fixedSupply, updatedAt)
+  print('Registering Token:')
+  print({
+    "process", processId,
+    "name", name,
+    "denominator", denominator,
+    "totalSupply", totalSupply,
+    "fixedSupply", fixedSupply,
+    "updatedAt", updatedAt
+  })
   local stmt = db:prepare [[
     INSERT INTO token_registry (token_process, token_name, denominator, total_supply, fixed_supply, token_updated_at_ts)
     VALUES (:process_id, :token_name, :denominator, :total_supply, :fixed_supply, :token_updated_at_ts)

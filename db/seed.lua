@@ -9,37 +9,37 @@ function dbSeed.createMissingTables()
   db:exec(sqlschema.create_amm_swap_params_changes_table)
 
   db:exec(sqlschema.create_amm_swap_params_table)
-  print("Err: " .. db:errmsg())
+  print("create_amm_swap_params_table: " .. db:errmsg() == 'not an error' and '✅' or db:errmsg())
 
   db:exec(sqlschema.create_token_supply_changes_table)
-  print("Err: " .. db:errmsg())
+  print("create_token_supply_changes_table: " .. db:errmsg() == 'not an error' and '✅' or db:errmsg())
 
   db:exec(sqlschema.create_amm_registry_table)
-  print("Err: " .. db:errmsg())
+  print("create_amm_registry_table: " .. (db:errmsg() == 'not an error' and '✅' or db:errmsg()))
 
   db:exec("DROP VIEW IF EXISTS amm_transactions_view;")
-  print("Err: " .. db:errmsg())
+  print("DROP amm_transactions_view : " .. (db:errmsg() == 'not an error' and '✅' or db:errmsg()))
 
   db:exec(sqlschema.create_transactions_view)
-  print("Err: " .. db:errmsg())
+  print("create_transactions_view: " .. (db:errmsg() == 'not an error' and '✅' or db:errmsg()))
 
   db:exec("DROP VIEW IF EXISTS amm_market_cap_view;")
-  print("Err: " .. db:errmsg())
+  print("DROP amm_market_cap_view " .. (db:errmsg() == 'not an error' and '✅' or db:errmsg()))
 
   db:exec(sqlschema.create_market_cap_view)
-  print("Err: " .. db:errmsg())
+  print("create_market_cap_view: " .. (db:errmsg() == 'not an error' and '✅' or db:errmsg()))
 
   db:exec(sqlschema.create_balances_table)
-  print("Err: " .. db:errmsg())
+  print("create_balances_table: " .. (db:errmsg() == 'not an error' and '✅' or db:errmsg()))
 
   db:exec(sqlschema.create_indicator_subscriptions_table)
-  print("Err: " .. db:errmsg())
+  print("create_indicator_subscriptions_table: " .. (db:errmsg() == 'not an error' and '✅' or db:errmsg()))
 
   db:exec(sqlschema.create_top_n_subscriptions_table)
-  print("Err: " .. db:errmsg())
+  print("create_top_n_subscriptions_table: " .. (db:errmsg() == 'not an error' and '✅' or db:errmsg()))
 
   db:exec(sqlschema.create_token_registry_table)
-  print("Err: " .. db:errmsg())
+  print("create_token_registry_table: " .. (db:errmsg() == 'not an error' and '✅' or db:errmsg()))
 end
 
 local function seedAMMs()

@@ -1,10 +1,10 @@
 local sqlite3 = require("lsqlite3")
 
 local dexiCore = require("dexi-core.dexi-core")
-local sqlschema = require("db.sqlschema")
+local subscriptions = require("subscriptions.subscriptions")
+local indicators = require("indicators.indicators")
 local seeder = require("db.seed")
 local ingest = require("ingest.ingest")
-local indicators = require("indicators.indicators")
 local topN = require("top-n.top-n")
 local debug = require("utils.debug")
 local json = require("json")
@@ -25,125 +25,16 @@ AMM = ao.env.Process.Tags["Monitor-For"]
 -- ================== HANDLER LOGIC ================= --
 OFFCHAIN_FEED_PROVIDER = OFFCHAIN_FEED_PROVIDER or ao.env.Process.Tags["Offchain-Feed-Provider"]
 QUOTE_TOKEN_PROCESS = QUOTE_TOKEN_PROCESS or ao.env.Process.Tags["Quote-Token-Process"]
+QUOTE_TOKEN_TICKER = QUOTE_TOKEN_TICKER or ao.env.Process.Tags["Quote-Token-Ticker"]
 SUPPLY_UPDATES_PROVIDER = SUPPLY_UPDATES_PROVIDER or
     ao.env.Process.Tags["Offchain-Supply-Updates-Provider"]
-DEXI_TOKEN_PROCESS = DEXI_TOKEN_PROCESS or ao.env.Process.Tags["Dexi-Token-Process"]
+PAYMENT_TOKEN_PROCESS = PAYMENT_TOKEN_PROCESS or ao.env.Process.Tags["Payment-Token-Process"]
+PAYMENT_TOKEN_TICKER = PAYMENT_TOKEN_TICKER or ao.env.Process.Tags["Payment-Token-Ticker"]
 
--- -------------- SUBSCRIPTIONS -------------- --
--- TODO move out or remove with refactoring that integrates subscribable package
+DISPATCH_ACTIVE = DISPATCH_ACTIVE or true
+LOGGING_ACTIVE = LOGGING_ACTIVE or true
 
-local recordRegisterAMMPayment = function(msg)
-  assert(msg.Tags.Quantity, 'Credit notice data must contain a valid quantity')
-  assert(msg.Tags.Sender, 'Credit notice data must contain a valid sender')
-  assert(msg.Tags["X-AMM-Process"], 'Credit notice data must contain a valid amm-process')
-  assert(msg.Tags["X-Token-A"], 'Credit notice data must contain a valid token-a')
-  assert(msg.Tags["X-Token-B"], 'Credit notice data must contain a valid token-b')
-  assert(msg.Tags["X-Name"], 'Credit notice data must contain a valid fee-percentage')
-
-  -- send Register-Subscriber to amm process
-  ao.send({
-    Target = msg.Tags["X-AMM-Process"],
-    Action = "Register-Subscriber",
-    Tags = {
-      ["Subscriber-Process-Id"] = ao.id,
-      ["Owner-Id"] = msg.Tags.Sender,
-      ['Topics'] = json.encode({ "order-confirmation", "liquidity-change" })
-    }
-  })
-
-  -- Pay for the Subscription
-  ao.send({
-    Target = DEXI_TOKEN_PROCESS,
-    Action = "Transfer",
-    Tags = {
-      Recipient = msg.Tags["X-AMM-Process"],
-      Quantity = msg.Tags.Quantity,
-      ["X-Action"] = "Pay-For-Subscription"
-    }
-  })
-
-  dexiCore.registerAMM(
-    msg.Tags["X-Name"],
-    msg.Tags["X-AMM-Process"],
-    msg.Tags["X-Token-A"],
-    msg.Tags["X-Token-B"],
-    msg.Timestamp
-  )
-
-  -- send confirmation to sender
-  ao.send({
-    Target = msg.Tags.Sender,
-    Action = "Dexi-AMM-Registration-Confirmation",
-    Tags = {
-      ["AMM-Process"] = msg.Tags["X-AMM-Process"],
-      ["Token-A"] = msg.Tags["X-Token-A"],
-      ["Token-B"] = msg.Tags["X-Token-B"],
-      ["Name"] = msg.Tags["X-Name"]
-    }
-
-  })
-end
-
-local recordPayment = function(msg)
-  if msg.From == 'Sa0iBLPNyJQrwpTTG-tWLQU-1QeUAJA73DdxGGiKoJc' then
-    sqlschema.updateBalance(msg.Tags.Sender, msg.From, tonumber(msg.Tags.Quantity), true)
-  end
-
-  if msg.From == DEXI_TOKEN_PROCESS and msg.Tags["X-Action"] == "Register-AMM" then
-    recordRegisterAMMPayment(msg)
-  end
-end
-
-local handleSubscribeForIndicators = function(msg)
-  local processId = msg.Tags['Subscriber-Process-Id']
-  local ownerId = msg.Tags['Owner-Id']
-  local ammProcessId = msg.Tags['AMM-Process-Id']
-
-  print('Registering subscriber to indicator data: ' ..
-    processId .. ' for amm: ' .. ammProcessId .. ' with owner: ' .. ownerId)
-  indicators.registerIndicatorSubscriber(processId, ownerId, ammProcessId)
-
-  ao.send({
-    Target = ao.id,
-    Assignments = { ownerId, processId },
-    Action = 'Dexi-Indicator-Subscription-Confirmation',
-    AMM = ammProcessId,
-    Process = processId,
-    OK = 'true'
-  })
-end
-
-local handleSubscribeForTopN = function(msg)
-  local processId = msg.Tags['Subscriber-Process-Id']
-  local ownerId = msg.Tags['Owner-Id']
-  local quoteToken = msg.Tags['Quote-Token']
-
-  if not quoteToken then
-    error('Quote-Token is required')
-  end
-
-  if quoteToken ~= QUOTE_TOKEN_PROCESS then
-    error('Quote token not available (only BRK): ' .. quoteToken)
-  end
-
-  print('Registering subscriber to top N market data: ' ..
-    processId .. ' for quote token: ' .. quoteToken .. ' with owner: ' .. ownerId)
-  topN.registerTopNSubscriber(processId, ownerId, quoteToken)
-
-  -- determine top N token set for this subscriber
-  topN.updateTopNTokenSet(processId)
-
-  ao.send({
-    Target = ao.id,
-    Assignments = { ownerId, processId },
-    Action = 'Dexi-Top-N-Subscription-Confirmation',
-    QuoteToken = quoteToken,
-    Process = processId,
-    OK = 'true'
-  })
-end
-
--- -------------------------------------------- --
+OPERATOR = OPERATOR or ao.env.Process.Tags["Operator"]
 
 -- CORE --
 
@@ -218,9 +109,21 @@ Handlers.add(
 -- INDICATORS --
 
 Handlers.add(
-  "SubscribeIndicators",
+  "Get-Indicators",
+  Handlers.utils.hasMatchingTag("Action", "Get-Indicators"),
+  indicators.handleGetIndicators
+)
+
+Handlers.add(
+  "Subscribe-Indicators",
   Handlers.utils.hasMatchingTag("Action", "Subscribe-Indicators"),
-  handleSubscribeForIndicators
+  subscriptions.handleSubscribeForIndicators
+)
+
+Handlers.add(
+  "Unsubscribe-Indicators",
+  Handlers.utils.hasMatchingTag("Action", "Unsubscribe-Indicators"),
+  subscriptions.handleUnsubscribeForIndicators
 )
 
 -- TOP N --
@@ -234,18 +137,28 @@ Handlers.add(
 Handlers.add(
   "Subscribe-Top-N",
   Handlers.utils.hasMatchingTag("Action", "Subscribe-Top-N"),
-  handleSubscribeForTopN
+  subscriptions.handleSubscribeForTopN
+)
+
+Handlers.add(
+  "Unsubscribe-Top-N",
+  Handlers.utils.hasMatchingTag("Action", "Unsubscribe-Top-N"),
+  subscriptions.handleUnsubscribeForTopN
 )
 
 -- PAYMENTS
 
 Handlers.add(
-  "CreditNotice",
-  Handlers.utils.hasMatchingTag("Action", "Credit-Notice"),
-  recordPayment
+  "Receive-Payment",
+  function(msg)
+    return Handlers.utils.hasMatchingTag("Action", "Credit-Notice")(msg)
+        and Handlers.utils.hasMatchingTag("X-Action", "Pay-For-Subscriptions")(msg)
+        and msg.From == PAYMENT_TOKEN_PROCESS
+  end,
+  subscriptions.recordPayment
 )
 
--- DEBUG
+-- MAINTENANCE
 
 Handlers.add(
   "Reset-DB-State",
@@ -259,22 +172,34 @@ Handlers.add(
   debug.dumpToCSV
 )
 
+Handlers.add(
+  "Debug-Table",
+  Handlers.utils.hasMatchingTag("Action", "Debug-Table"),
+  debug.debugTransactions
+)
 
--- Handlers.add(
---   "receive-data-feed",
---   Handlers.utils.hasMatchingTag("Action", "Receive-data-feed"),
---   function (msg)
---     local data = json.decode(msg.Data)
---     if data.data.transactions then
---       updateTransactions(data.data.transactions.edges)
---       print('transactions updated')
---       if #data.data.transactions.edges > 0 then
---         requestTransactions(100)
---       end
---       requestBlocks()
---     elseif data.data.blocks then
---       updateBlockTimestamps(data.data.blocks.edges)
---       print('blocks updated')
---     end
---   end
--- )
+Handlers.add(
+  "Toggle-Dispatch-Active",
+  Handlers.utils.hasMatchingTag("Action", "Toggle-Dispatch-Active"),
+  function(msg)
+    assert(msg.From == OPERATOR, "Only the operator can toggle dispatching")
+    DISPATCH_ACTIVE = not DISPATCH_ACTIVE
+    ao.send({
+      Target = msg.From,
+      Data = "Dispatching toggled to " .. tostring(not DISPATCH_ACTIVE)
+    })
+  end
+)
+
+Handlers.add(
+  "Toggle-Logging-Active",
+  Handlers.utils.hasMatchingTag("Action", "Toggle-Logging-Active"),
+  function(msg)
+    assert(msg.From == OPERATOR, "Only the operator can toggle logging")
+    LOGGING_ACTIVE = not LOGGING_ACTIVE
+    ao.send({
+      Target = msg.From,
+      Data = "Logging toggled to " .. tostring(not LOGGING_ACTIVE)
+    })
+  end
+)

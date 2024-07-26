@@ -1,11 +1,32 @@
 local dbUtils = require('db.utils')
 local calc = require('indicators.calc')
+local json = require("json")
 
 local indicators = {}
 
 -- ---------------- SQL
 
-local function getDailyStats(ammProcessId, startDate, endDate)
+local sql = {}
+
+function sql.getDiscoveredAt(ammProcessId)
+  local ammStmt = db:prepare([[
+    SELECT amm_discovered_at_ts
+    FROM amm_registry
+    WHERE amm_process = :amm_process_id
+  ]])
+  if not ammStmt then
+    error("Err: " .. db:errmsg())
+  end
+
+  ammStmt:bind_names({ amm_process_id = ammProcessId })
+
+  local row = ammStmt:step()
+  ammStmt:finalize()
+
+  return row.amm_discovered_at_ts
+end
+
+function sql.getDailyStats(ammProcessId, startDate, endDate)
   local stmt = db:prepare([[
     SELECT
       date(created_at_ts, 'unixepoch') AS date,
@@ -30,7 +51,7 @@ local function getDailyStats(ammProcessId, startDate, endDate)
   return dbUtils.queryMany(stmt)
 end
 
-local function getSubscribersToProcess(ammProcessId)
+function sql.getSubscribersToProcess(ammProcessId)
   local subscribersStmt = db:prepare([[
       SELECT s.process_id
       FROM indicator_subscriptions s
@@ -88,11 +109,11 @@ local function fillMissingDates(dailyStats, startDate, endDate)
   return filledDailyStats
 end
 
-local function getIndicators(ammProcessId, startTimestamp, endTimestamp)
+local function generateIndicatorsData(ammProcessId, startTimestamp, endTimestamp)
   local endDate = os.date("!%Y-%m-%d", endTimestamp)
   local startDate = os.date("!%Y-%m-%d", startTimestamp)
 
-  local dailyStats = getDailyStats(ammProcessId, startDate, endDate)
+  local dailyStats = sql.getDailyStats(ammProcessId, startDate, endDate)
   local filledDailyStats = fillMissingDates(dailyStats, startDate, endDate)
   local smas = calc.calculateSMAs(filledDailyStats)
   -- local ema12, ema26 = calculations.calculateEMAs(filledDailyStats)
@@ -127,19 +148,53 @@ local function getIndicators(ammProcessId, startTimestamp, endTimestamp)
   return result
 end
 
+local function getIndicators(ammProcessId, now)
+  local discoveredAt = sql.getDiscoveredAt(ammProcessId)
+  local oneWeekAgo = now - (7 * 24 * 60 * 60)
+  local startTimestamp = math.max(discoveredAt, oneWeekAgo)
+
+  return generateIndicatorsData(ammProcessId, startTimestamp, now)
+end
+
 -- ---------------- EXPORT
 
-function indicators.dispatchIndicatorsMessage(ammProcessId, startTimestamp, endTimestamp)
-  local processes = getSubscribersToProcess(ammProcessId)
+function indicators.handleGetIndicators(msg)
+  local ammProcessId = msg.Tags['AMM']
+  local now = math.floor(msg.Timestamp / 1000)
+  ao.send({
+    Target = msg.From,
+    ['App-Name'] = 'Dexi',
+    ['Response-For'] = 'Get-Indicators',
+    ['AMM'] = ammProcessId,
+    Data = json.encode(getIndicators(ammProcessId, now))
+  })
+end
 
-  local indicatorsResults = getIndicators(ammProcessId, startTimestamp, endTimestamp)
+function indicators.dispatchIndicatorsForAMM(now, ammProcessId)
+  local discoveredAt = sql.getDiscoveredAt(ammProcessId)
+  local oneWeekAgo = now - (7 * 24 * 60 * 60)
+  local startTimestamp = math.max(discoveredAt, oneWeekAgo)
 
-  local json = require("json")
+  local processes = sql.getSubscribersToProcess(ammProcessId)
+
+  local indicatorsResults = getIndicators(ammProcessId, startTimestamp)
+
+  if not DISPATCH_ACTIVE then
+    if LOGGING_ACTIVE then
+      ao.send({
+        Target = ao.id,
+        Action = 'Log',
+        Data = 'Skipping Dispatch for Indicators (AMM: ' .. ammProcessId .. ')'
+      })
+    end
+    return
+  end
 
   print('sending indicators to ' .. #processes .. ' processes')
 
   local message = {
     ['Target'] = ao.id,
+    ['App-Name'] = 'Dexi',
     ['Assignments'] = processes,
     ['Action'] = 'IndicatorsUpdate',
     ['AMM'] = ammProcessId,
@@ -147,33 +202,6 @@ function indicators.dispatchIndicatorsMessage(ammProcessId, startTimestamp, endT
   }
   ao.send(message)
 
-  -- for _, processId in ipairs(processes) do
-  --   message.Target = processId
-  -- ao.send(message)
-  -- end
-end
-
-function indicators.dispatchIndicatorsForAMM(now, ammProcessId)
-  local ammStmt = db:prepare([[
-      SELECT amm_discovered_at_ts
-      FROM amm_registry
-      WHERE amm_process = :amm_process_id
-    ]])
-  if not ammStmt then
-    error("Err: " .. db:errmsg())
-  end
-
-  ammStmt:bind_names({ amm_process_id = ammProcessId })
-
-  local oneWeekAgo = now - (7 * 24 * 60 * 60)
-
-  local row = ammStmt:step()
-  local discoveredAt = row.amm_discovered_at_ts
-
-  local startTimestamp = math.max(discoveredAt, oneWeekAgo)
-  indicators.dispatchIndicatorsMessage(ammProcessId, startTimestamp, now)
-
-  ammStmt:finalize()
   print('Dispatched indicators for all AMMs')
 end
 
