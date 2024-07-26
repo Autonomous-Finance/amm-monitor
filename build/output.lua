@@ -2169,11 +2169,12 @@ local ingest = require("ingest.ingest")
 local indicators = require("indicators.indicators")
 local topN = require("top-n.top-n")
 local debug = require("utils.debug")
+local json = require("json")
 
 db = db or sqlite3.open_memory()
 
 seeder.createMissingTables()
--- seeder.seed() -- TODO eliminate in production
+seeder.seed() -- TODO eliminate in production
 
 -- eliminate warnings
 Owner = Owner or ao.env.Process.Owner
@@ -2196,14 +2197,14 @@ DEXI_TOKEN_PROCESS = DEXI_TOKEN_PROCESS or ao.env.Process.Tags["Dexi-Token-Proce
 local recordRegisterAMMPayment = function(msg)
   assert(msg.Tags.Quantity, 'Credit notice data must contain a valid quantity')
   assert(msg.Tags.Sender, 'Credit notice data must contain a valid sender')
-  assert(msg.Tags["AMM-Process"], 'Credit notice data must contain a valid amm-process')
-  assert(msg.Tags["Token-A"], 'Credit notice data must contain a valid token-a')
-  assert(msg.Tags["Token-B"], 'Credit notice data must contain a valid token-b')
-  assert(msg.Tags["Name"], 'Credit notice data must contain a valid fee-percentage')
+  assert(msg.Tags["X-AMM-Process"], 'Credit notice data must contain a valid amm-process')
+  assert(msg.Tags["X-Token-A"], 'Credit notice data must contain a valid token-a')
+  assert(msg.Tags["X-Token-B"], 'Credit notice data must contain a valid token-b')
+  assert(msg.Tags["X-Name"], 'Credit notice data must contain a valid fee-percentage')
 
   -- send Register-Subscriber to amm process
   ao.send({
-    Target = msg.Tags["AMM-Process"],
+    Target = msg.Tags["X-AMM-Process"],
     Action = "Register-Subscriber",
     Tags = {
       ["Subscriber-Process-Id"] = ao.id,
@@ -2217,17 +2218,17 @@ local recordRegisterAMMPayment = function(msg)
     Target = DEXI_TOKEN_PROCESS,
     Action = "Transfer",
     Tags = {
-      Receiver = msg.Tags["AMM-Process"],
+      Recipient = msg.Tags["X-AMM-Process"],
       Quantity = msg.Tags.Quantity,
       ["X-Action"] = "Pay-For-Subscription"
     }
   })
 
-  sqlschema.registerAMM(
-    msg.Tags["Name"],
-    msg.Tags["AMM-Process"],
-    msg.Tags["Token-A"],
-    msg.Tags["Token-B"],
+  dexiCore.registerAMM(
+    msg.Tags["X-Name"],
+    msg.Tags["X-AMM-Process"],
+    msg.Tags["X-Token-A"],
+    msg.Tags["X-Token-B"],
     msg.Timestamp
   )
 
@@ -2236,10 +2237,10 @@ local recordRegisterAMMPayment = function(msg)
     Target = msg.Tags.Sender,
     Action = "Dexi-AMM-Registration-Confirmation",
     Tags = {
-      ["AMM-Process"] = msg.Tags["AMM-Process"],
-      ["Token-A"] = msg.Tags["Token-A"],
-      ["Token-B"] = msg.Tags["Token-B"],
-      ["Name"] = msg.Tags["Name"]
+      ["AMM-Process"] = msg.Tags["X-AMM-Process"],
+      ["Token-A"] = msg.Tags["X-Token-A"],
+      ["Token-B"] = msg.Tags["X-Token-B"],
+      ["Name"] = msg.Tags["X-Name"]
     }
 
   })
