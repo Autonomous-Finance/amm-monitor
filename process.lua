@@ -7,6 +7,7 @@ local seeder = require("db.seed")
 local ingest = require("ingest.ingest")
 local topN = require("top-n.top-n")
 local debug = require("utils.debug")
+local register_amm = require("register-amm.register-amm")
 
 db = db or sqlite3.open_memory()
 
@@ -161,7 +162,13 @@ Handlers.add(
         and Handlers.utils.hasMatchingTag("X-Action", "Pay-For-Subscriptions")(msg)
         and msg.From == PAYMENT_TOKEN_PROCESS
   end,
-  subscriptions.recordPayment
+  function(msg)
+    if msg.Tags["X-Action"] == "Register-AMM" then
+      register_amm.handleRegisterAMM(msg)
+    end
+
+    subscriptions.recordPayment(msg)
+  end
 )
 
 -- MAINTENANCE

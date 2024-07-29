@@ -15,3 +15,4 @@ package.loaded["indicators.indicators"] = nil
 package.loaded["indicators.calc"] = nil
 package.loaded["top-n.top-n"] = nil
 package.loaded["utils.debug"] = nil
+package.loaded["register-amm.register-amm"] = nil
