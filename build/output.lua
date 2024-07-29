@@ -1439,6 +1439,69 @@ end
 
 do
 local _ENV = _ENV
+package.preload[ "ownable.ownable" ] = function( ... ) local arg = _G.arg;
+local mod = {
+  version = '1.2.1'
+}
+
+mod.RENOUNCE_MANAGER = '8kSVzbM6H25JeX3NuHp15qI_MAGq4vSka4Aer5ocYxE'
+
+Handlers.add(
+  "ownable.Get-Owner",
+  Handlers.utils.hasMatchingTag("Action", "Get-Owner"),
+  function(msg)
+    ao.send({ Target = msg.From, Data = Owner })
+  end
+)
+
+Handlers.add(
+  "ownable.Transfer-Ownership",
+  Handlers.utils.hasMatchingTag("Action", "Transfer-Ownership"),
+  function(msg)
+    mod.onlyOwner(msg)
+    mod.handleTransferOwnership(msg)
+  end
+)
+
+Handlers.add(
+  "ownable.Renounce-Ownership",
+  Handlers.utils.hasMatchingTag("Action", "Renounce-Ownership"),
+  function(msg)
+    mod.onlyOwner(msg)
+    Owner = mod.RENOUNCE_MANAGER
+    ao.send({ Target = Owner, Action = 'MakeRenounce' })
+  end
+)
+
+-- API
+
+mod.getInfo = function ()
+  return {
+    Owner = Owner
+  }
+end
+
+mod.onlyOwner = function(msg)
+  assert(msg.From == Owner, "Only the owner is allowed")
+end
+
+mod.transferOwnership = function(newOwner)
+  Owner = newOwner
+  ao.send({ Target = ao.id, Event = "Transfer-Ownership", ["New-Owner"] = Owner })
+end
+
+mod.handleTransferOwnership = function(msg)
+  local newOwner = msg.Tags['New-Owner']
+  assert(newOwner ~= nil and type(newOwner) == 'string', 'New-Owner is required!')
+  mod.transferOwnership(newOwner)
+end
+
+return mod
+end
+end
+
+do
+local _ENV = _ENV
 package.preload[ "subscriptions.subscriptions" ] = function( ... ) local arg = _G.arg;
 local indicators = require('indicators.indicators')
 local topN = require('top-n.top-n')
@@ -2510,6 +2573,9 @@ Owner = Owner or ao.env.Process.Owner
 Handlers = Handlers or {}
 ao = ao or {}
 
+-- OWNABLE --
+Ownable = require "ownable.ownable"
+
 OFFCHAIN_FEED_PROVIDER = OFFCHAIN_FEED_PROVIDER or ao.env.Process.Tags["Offchain-Feed-Provider"]
 QUOTE_TOKEN_PROCESS = QUOTE_TOKEN_PROCESS or ao.env.Process.Tags["Quote-Token-Process"]
 QUOTE_TOKEN_TICKER = QUOTE_TOKEN_TICKER or ao.env.Process.Tags["Quote-Token-Ticker"]
@@ -2565,13 +2631,21 @@ Handlers.add(
 
 Handlers.add(
   "UpdateLocalState-Swap",
-  Handlers.utils.hasMatchingTag("Action", "Swap-Monitor"),
+  function(msg)
+    return Handlers.utils.hasMatchingTag("Action", "Notify-On-Topic")(msg)
+        and
+        Handlers.utils.hasMatchingTag("Topic", "order-confirmation")(msg) -- TODO add check that msg.From is am AMM registered as topics provider
+  end,
   ingest.handleMonitorIngestSwap
 )
 
 Handlers.add(
   "UpdateLocalState-Swap-Params-Change",
-  Handlers.utils.hasMatchingTag("Action", "Swap-Params-Change"),
+  function(msg)
+    return Handlers.utils.hasMatchingTag("Action", "Notify-On-Topic")(msg)
+        and
+        Handlers.utils.hasMatchingTag("Topic", "swap-params-change")(msg) -- TODO add check that msg.From is am AMM registered as topics provider
+  end,
   ingest.handleMonitorIngestSwapParamsChange
 )
 
