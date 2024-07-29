@@ -1437,3 +1437,1326 @@ return ingest
 end
 end
 
+do
+local _ENV = _ENV
+package.preload[ "register-amm.register-amm" ] = function( ... ) local arg = _G.arg;
+local json = require("json")
+local dexiCore = require("dexi-core.dexi-core")
+
+local register_amm = {}
+
+register_amm.handleRegisterAMM = function(msg)
+    assert(msg.Tags.Quantity, 'Credit notice data must contain a valid quantity')
+    assert(msg.Tags.Sender, 'Credit notice data must contain a valid sender')
+    assert(msg.Tags["X-AMM-Process"], 'Credit notice data must contain a valid amm-process')
+    assert(msg.Tags["X-Token-A"], 'Credit notice data must contain a valid token-a')
+    assert(msg.Tags["X-Token-B"], 'Credit notice data must contain a valid token-b')
+    assert(msg.Tags["X-Name"], 'Credit notice data must contain a valid fee-percentage')
+
+    -- send Register-Subscriber to amm process
+    ao.send({
+      Target = msg.Tags["X-AMM-Process"],
+      Action = "Register-Subscriber",
+      Tags = {
+        ["Subscriber-Process-Id"] = ao.id,
+        ["Owner-Id"] = msg.Tags.Sender,
+        ['Topics'] = json.encode({ "order-confirmation", "liquidity-change" })
+      }
+    })
+
+    -- Pay for the Subscription
+    ao.send({
+      Target = PAYMENT_TOKEN_PROCESS,
+      Action = "Transfer",
+      Tags = {
+        Recipient = msg.Tags["X-AMM-Process"],
+        Quantity = msg.Tags.Quantity,
+        ["X-Action"] = "Pay-For-Subscription"
+      }
+    })
+
+    dexiCore.registerAMM(
+      msg.Tags["X-Name"],
+      msg.Tags["X-AMM-Process"],
+      msg.Tags["X-Token-A"],
+      msg.Tags["X-Token-B"],
+      msg.Timestamp
+    )
+
+    -- send confirmation to sender
+    ao.send({
+      Target = msg.Tags.Sender,
+      Action = "Dexi-AMM-Registration-Confirmation",
+      Tags = {
+        ["AMM-Process"] = msg.Tags["X-AMM-Process"],
+        ["Token-A"] = msg.Tags["X-Token-A"],
+        ["Token-B"] = msg.Tags["X-Token-B"],
+        ["Name"] = msg.Tags["X-Name"]
+      }
+    })
+end
+
+return register_amm
+end
+end
+
+do
+local _ENV = _ENV
+package.preload[ "subscriptions.subscriptions" ] = function( ... ) local arg = _G.arg;
+local indicators = require('indicators.indicators')
+local topN = require('top-n.top-n')
+
+local subscriptions = {}
+
+-- ------------------- SQL
+
+local sql = {}
+
+-- INDICATORS SQL
+
+function sql.registerIndicatorSubscriber(processId, ownerId, ammProcessId)
+  local stmt = db:prepare [[
+    INSERT INTO indicator_subscriptions (process_id, owner_id, amm_process_id)
+    VALUES (:process_id, :owner_id, :amm_process_id)
+  ]]
+  if not stmt then
+    error("Failed to prepare SQL statement for registering process: " .. db:errmsg())
+  end
+  stmt:bind_names({
+    process_id = processId,
+    owner_id = ownerId,
+    amm_process_id = ammProcessId
+  })
+  local result, err = stmt:step()
+  stmt:finalize()
+  if err then
+    error("Err: " .. db:errmsg())
+  end
+end
+
+function sql.hasIndicatorsSubscription(processId, ammProcessId)
+  local stmt = db:prepare [[
+    SELECT 1
+    FROM indicator_subscriptions
+    WHERE process_id = :process_id AND amm_process_id = :amm_process_id;
+  ]]
+  if not stmt then
+    error("Failed to prepare SQL statement for checking indicators subscription: " .. db:errmsg())
+  end
+  stmt:bind_names({ process_id = processId, amm_process_id = ammProcessId })
+  local row = stmt:step()
+  stmt:finalize()
+  return row and true or false
+end
+
+function sql.getIndicatorsSubscriptionOwner(processId, ammProcessId)
+  local stmt = db:prepare [[
+    SELECT owner_id
+    FROM indicator_subscriptions
+    WHERE process_id = :process_id AND amm_process_id = :amm_process_id;
+  ]]
+  if not stmt then
+    error("Failed to prepare SQL statement for getting indicators subscription owner: " .. db:errmsg())
+  end
+  stmt:bind_names({
+    process_id = processId,
+    amm_process_id = ammProcessId
+  })
+  local row = stmt:step()
+  stmt:finalize()
+  return row.owner_id
+end
+
+function sql.unregisterIndicatorsSubscriber(processId, ammProcessId)
+  local stmt = db:prepare [[
+    DELETE FROM indicator_subscriptions
+    WHERE process_id = :process_id AND amm_process_id = :amm_process_id;
+  ]]
+  if not stmt then
+    error("Failed to prepare SQL statement for unregistering process: " .. db:errmsg())
+  end
+  stmt:bind_names({
+    process_id = processId,
+    amm_process_id = ammProcessId
+  })
+  local result, err = stmt:step()
+  stmt:finalize()
+  if err then
+    error("Err: " .. db:errmsg())
+  end
+end
+
+-- TOP N SQL
+
+function sql.registerTopNSubscriber(processId, ownerId, quoteToken, nInTopN)
+  local stmt = db:prepare [[
+    INSERT INTO top_n_subscriptions (process_id, owner_id, quote_token, top_n)
+    VALUES (:process_id, :owner_id, :quote_token, :top_n)
+    ON CONFLICT(process_id) DO UPDATE SET
+    owner_id = excluded.owner_id,
+    quote_token = excluded.quote_token,
+    top_n = excluded.top_n;
+  ]]
+  if not stmt then
+    error("Failed to prepare SQL statement for registering process: " .. db:errmsg())
+  end
+  stmt:bind_names({
+    process_id = processId,
+    owner_id = ownerId,
+    quote_token = quoteToken,
+    top_n = nInTopN
+  })
+  local result, err = stmt:step()
+  stmt:finalize()
+  if err then
+    error("Err: " .. db:errmsg())
+  end
+end
+
+function sql.hasTopNSubscription(processId, quoteToken)
+  local stmt = db:prepare [[
+    SELECT 1
+    FROM top_n_subscriptions
+    WHERE process_id = :process_id AND quote_token = :quote_token;
+  ]]
+  if not stmt then
+    error("Failed to prepare SQL statement for checking top N subscription: " .. db:errmsg())
+  end
+  stmt:bind_names({
+    process_id = processId,
+    quote_token = quoteToken,
+  })
+  local row = stmt:step()
+  stmt:finalize()
+  return row and true or false
+end
+
+function sql.getTopNSubscriptionOwner(processId, quoteToken)
+  local stmt = db:prepare [[
+    SELECT owner_id
+    FROM top_n_subscriptions
+    WHERE process_id = :process_id AND quote_token = :quote_token;
+  ]]
+  if not stmt then
+    error("Failed to prepare SQL statement for getting top N subscription owner: " .. db:errmsg())
+  end
+  stmt:bind_names({
+    process_id = processId,
+    quote_token = quoteToken
+  })
+  local row = stmt:step()
+  stmt:finalize()
+  return row.owner_id
+end
+
+function sql.unregisterTopNSubscriber(processId, ownerId, quoteToken, nInTopN)
+  local stmt = db:prepare [[
+    DELETE FROM top_n_subscriptions
+    WHERE process_id = :process_id AND owner_id = :owner_id AND quote_token = :quote_token AND top_n = :top_n;
+  ]]
+  if not stmt then
+    error("Failed to prepare SQL statement for unregistering process: " .. db:errmsg())
+  end
+  stmt:bind_names({
+    process_id = processId,
+    owner_id = ownerId,
+    quote_token = quoteToken,
+    top_n = nInTopN
+  })
+  local result, err = stmt:step()
+  stmt:finalize()
+  if err then
+    error("Err: " .. db:errmsg())
+  end
+end
+
+function sql.updateBalance(ownerId, tokenId, amount, isCredit)
+  local stmt = db:prepare [[
+    INSERT INTO balances (owner, token_id, balance)
+    VALUES (:owner_id, :token_id, :amount)
+    ON CONFLICT(owner) DO UPDATE SET
+      balance = CASE
+        WHEN :is_credit THEN balances.balance + :amount
+        ELSE balances.balance - :amount
+      END
+    WHERE balances.token_id = :token_id;
+  ]]
+  if not stmt then
+    error("Failed to prepare SQL statement for updating balance: " .. db:errmsg())
+  end
+  stmt:bind_names({
+    owner_id = ownerId,
+    token_id = tokenId,
+    amount = math.abs(amount), -- Ensure amount is positive
+    is_credit = isCredit
+  })
+  local result, err = stmt:step()
+  stmt:finalize()
+  if err then
+    error("Error updating balance: " .. db:errmsg())
+  end
+end
+
+-- ------------------- EXPORT
+
+subscriptions.handleSubscribeForIndicators = function(msg)
+  local processId = msg.Tags['Subscriber-Process-Id']
+  local ownerId = msg.Tags['Owner-Id']
+  local ammProcessId = msg.Tags['AMM-Process-Id']
+
+  if not processId then
+    error('Subscriber-Process-Id is required')
+  end
+
+  if not ammProcessId then
+    error('AMM-Process-Id is required')
+  end
+
+  if not ownerId then
+    error('Owner-Id is required')
+  end
+
+  if sql.hasIndicatorsSubscription(processId, ammProcessId) then
+    error('Indicators subscription already exists for process: ' .. processId .. ' and amm: ' .. ammProcessId)
+  end
+
+  print('Registering subscriber to indicator data: ' ..
+    processId .. ' for amm: ' .. ammProcessId .. ' with owner: ' .. ownerId)
+  indicators.registerIndicatorSubscriber(processId, ownerId, ammProcessId)
+
+  ao.send({
+    Target = ao.id,
+    Assignments = { ownerId, processId },
+    Action = 'Dexi-Indicator-Subscription-Confirmation',
+    AMM = ammProcessId,
+    Process = processId,
+    OK = 'true'
+  })
+end
+
+subscriptions.handleUnsubscribeForIndicators = function(msg)
+  local processId = msg.Tags['Subscriber-Process-Id']
+  local ownerId = msg.Tags['Owner-Id']
+  local ammProcessId = msg.Tags['AMM-Process-Id']
+
+  local owner = sql.getIndicatorsSubscriptionOwner(processId)
+
+  if not owner then
+    error('No indicator subscription found for process: ' .. processId .. ' and amm: ' .. ammProcessId)
+  end
+
+  if owner ~= ownerId then
+    error('Provided Owner-Id owns no indicator subscription for the process ' ..
+      processId .. ' and amm: ' .. ammProcessId)
+  end
+
+  if owner ~= msg.From and msg.From ~= OPERATOR then
+    error('Only an owner can unsubscribe its owned subscription. Indicator subscription for process ' ..
+      processId .. ' is owned by ' ..
+      owner .. ' not ' .. msg.From .. '(you)')
+  end
+
+  print('Unsubscribing subscriber from indicator data: ' ..
+    processId .. ' for amm: ' .. ammProcessId .. ' with owner: ' .. ownerId)
+  indicators.unregisterIndicatorSubscriber(processId, ammProcessId)
+
+  ao.send({
+    Target = ao.id,
+    Assignments = { ownerId, processId },
+    Action = 'Dexi-Indicator-Unsubscription-Confirmation',
+    AMM = ammProcessId,
+    Process = processId,
+    OK = 'true'
+  })
+end
+
+subscriptions.handleSubscribeForTopN = function(msg)
+  local processId = msg.Tags['Subscriber-Process-Id']
+  local ownerId = msg.Tags['Owner-Id']
+  local quoteToken = msg.Tags['Quote-Token']
+  local nInTopN = msg.Tags['Top-N']
+
+  if not quoteToken then
+    error('Quote-Token is required')
+  end
+
+  if quoteToken ~= QUOTE_TOKEN_PROCESS then
+    error('Quote token not available (only BRK): ' .. quoteToken)
+  end
+
+  if not nInTopN then
+    error('Top-N is required')
+  end
+
+  if sql.hasTopNSubscription(processId, quoteToken) then
+    error('Top N subscription already exists for process: ' .. processId .. ' and quote token: ' .. quoteToken)
+  end
+
+  print('Registering subscriber to top N market data: ' ..
+    processId .. ' for quote token: ' .. quoteToken .. ' with owner: ' .. ownerId)
+  sql.registerTopNSubscriber(processId, ownerId, quoteToken, nInTopN)
+
+  -- determine top N token set for this subscriber
+  topN.updateTopNTokenSet(processId)
+
+  ao.send({
+    Target = ao.id,
+    Assignments = { ownerId, processId },
+    Action = 'Dexi-Top-N-Subscription-Confirmation',
+    QuoteToken = quoteToken,
+    Process = processId,
+    OK = 'true'
+  })
+end
+
+function subscriptions.handleUnsubscribeForTopN(msg)
+  local processId = msg.Tags['Subscriber-Process-Id']
+  local ownerId = msg.Tags['Owner-Id']
+  local quoteToken = msg.Tags['Quote-Token']
+
+  local owner = sql.getTopNSubscriptionOwner(processId, quoteToken)
+
+  if not owner then
+    error('No top N subscription found for process: ' .. processId .. ' and quote token: ' .. quoteToken)
+  end
+
+  if owner ~= ownerId then
+    error('Provided Owner-Id owns no top N subscription for the process ' ..
+      processId .. ' and quote token: ' .. quoteToken)
+  end
+
+  if owner ~= msg.From and msg.From ~= OPERATOR then
+    error('Only an owner can unsubscribe its owned subscription. Top N subscription for process ' ..
+      processId .. ' is owned by ' ..
+      owner .. ' not ' .. msg.From .. '(you)')
+  end
+
+  print('Unsubscribing subscriber from top N market data: ' ..
+    processId .. ' for quote token: ' .. quoteToken .. ' with owner: ' .. ownerId)
+  sql.unregisterTopNSubscriber(processId, ownerId, quoteToken)
+
+  ao.send({
+    Target = ao.id,
+    Assignments = { ownerId, processId },
+    Action = 'Dexi-Top-N-Unsubscription-Confirmation',
+    QuoteToken = quoteToken,
+    Process = processId,
+    OK = 'true'
+  })
+end
+
+subscriptions.recordPayment = function(msg)
+  sql.updateBalance(msg.Tags.Sender, msg.From, tonumber(msg.Tags.Quantity), true)
+end
+
+return subscriptions
+end
+end
+
+do
+local _ENV = _ENV
+package.preload[ "top-n.top-n" ] = function( ... ) local arg = _G.arg;
+local dbUtils = require('db.utils')
+local json = require('json')
+
+local topN = {}
+
+-- ---------------- SQL
+
+local sql = {}
+
+
+function sql.queryTopNMarketData(quoteToken, limit)
+  local orderByClause = "market_cap_rank DESC"
+  local stmt = db:prepare([[
+  SELECT
+    mcv.*,
+    r.amm_name as amm_name,
+    r.amm_process as amm_process,
+    r.amm_token0 AS token0,
+    r.amm_token1 AS token1,
+    scv.reserves_0 AS reserves_0,
+    scv.reserves_1 AS reserves_1,
+    scv.fee_percentage AS fee_percentage
+  FROM market_cap_view mcv
+  LEFT JOIN amm_registry r ON mcv.token_process = r.amm_base_token
+  LEFT JOIN token_registry t ON t.token_process = r.amm_base_token
+  LEFT JOIN amm_swap_params_view scv ON scv.amm_process = r.amm_process
+  WHERE r.amm_quote_token = :quoteToken
+  LIMIT :limit
+  ]], orderByClause)
+
+  if not stmt then
+    error("Err: " .. db:errmsg())
+  end
+
+  stmt:bind_names({
+    quoteToken = quoteToken,
+    limit = limit
+  })
+  return dbUtils.queryMany(stmt)
+end
+
+function sql.updateTopNTokenSet(specificSubscriber)
+  local specificSubscriberClause = specificSubscriber
+      and " AND process_id = :process_id"
+      or ""
+  local stmt = db:prepare [[
+    UPDATE top_n_subscriptions
+    SET token_set = (
+      SELECT json_group_array(token_process)
+      FROM (
+        SELECT token_process
+        FROM market_cap_view
+        LIMIT top_n
+      )
+    )
+    WHERE EXISTS (
+      SELECT 1
+      FROM market_cap_view
+      LIMIT top_n
+    ) ]] .. specificSubscriberClause .. [[;
+  ]]
+
+  if not stmt then
+    error("Failed to prepare SQL statement for updating top N token sets: " .. db:errmsg())
+  end
+
+  local result, err = stmt:step()
+  stmt:finalize()
+  if err then
+    error("Err: " .. db:errmsg())
+  end
+end
+
+--[[
+  Get all subscribers that have a top N subscription for the given AMM process ID.
+  The subscribers must have a balance greater than 0 for the quote token of the AMM.
+  The subscribers must have the AMM process ID in their token set.
+  The query returns both the subscriber ID and the top N market data.
+]]
+function sql.getSubscribersWithMarketDataForAmm(now, ammProcessId)
+  local subscribersStmt = db:prepare([[
+    WITH matched_subscribers AS (
+      SELECT s.process_id, s.quote_token, s.top_n, s.token_set
+      FROM top_n_subscriptions s, json_each(s.token_set)
+      WHERE json_each.value = :ammProcessId
+      JOIN balances b ON s.owner_id = b.owner_id AND b.balance > 0
+    ),
+    token_list AS (
+      SELECT process_id, json_each.value AS token
+      FROM matched_subscribers ms, json_each(ms.token_set)
+    ),
+    aggregated_swap_params AS (
+      SELECT
+          tl.id AS subscriber_id,
+          json_group_array(json_object('amm_process', spv.amm_process, 'token_0', spv.token_0, 'reserves_0', spv.reserves_0, 'token_1', spv.token_1, 'reserves_1', spv.reserves_1, 'fee_percentage', spv.fee_percentage)) AS swap_params
+      FROM token_list tl
+      JOIN swap_params_view spv ON tl.process_id = spv.amm_process
+      GROUP BY tl.process_id
+    )
+
+    SELECT
+        subs.process_id AS subscriber_id,
+        subs.top_n,
+        asp.swap_params
+    FROM aggregated_swap_params asp
+    JOIN subscribers s ON asp.subscriber_id = subs.process_id;
+  ]])
+
+  if not subscribersStmt then
+    error("Err: " .. db:errmsg())
+  end
+  subscribersStmt:bind_names({
+    now = now,
+    ammProcessId = ammProcessId
+  })
+
+  local subscribers = {}
+  for row in subscribersStmt:nrows() do
+    table.insert(subscribers, row.process_id)
+  end
+  subscribersStmt:finalize()
+
+  return subscribers
+end
+
+-- ---------------- EXPORT
+
+--[[
+ For subscribersStmt to top N market data, update the token set
+ ]]
+---@param specificSubscriber string | nil if nil, token set is updated for each subscriber
+function topN.updateTopNTokenSet(specificSubscriber)
+  sql.updateTopNTokenSet(specificSubscriber)
+end
+
+function topN.handleGetTopNMarketData(msg)
+  local quoteToken = msg.Tags['Quote-Token']
+  local n = tonumber(msg.Tags['Top-N']) or 100
+  if not quoteToken then
+    error('Quote-Token is required')
+  end
+
+  if quoteToken ~= QUOTE_TOKEN_PROCESS then
+    error('Quote-Token must be BARK')
+  end
+
+  ao.send({
+    Target = msg.From,
+    ['App-Name'] = 'Dexi',
+    ['Response-For'] = 'Get-Top-N-Market-Data',
+    Data = json.encode(sql.queryTopNMarketData(quoteToken, n))
+  })
+end
+
+function topN.dispatchMarketDataIncludingAMM(now, ammProcessId)
+  if not DISPATCH_ACTIVE then
+    if LOGGING_ACTIVE then
+      ao.send({
+        Target = ao.id,
+        Action = 'Log',
+        Data = 'Skipping Dispatch for Top N'
+      })
+    end
+    return
+  end
+  local subscribersAndMD = sql.getSubscribersWithMarketDataForAmm(now, ammProcessId)
+
+  print('sending market data updates to affected subscribers')
+
+  for _, subscriberWithMD in ipairs(subscribersAndMD) do
+    ao.send({
+      ['Target'] = subscriberWithMD.process_id,
+      ['App-Name'] = 'Dexi',
+      ['Action'] = 'TopNMarketData',
+      ['Data'] = json.encode(subscriberWithMD.swap_params)
+    })
+  end
+
+  print('sent top N market data updates to subscribers')
+end
+
+return topN
+end
+end
+
+do
+local _ENV = _ENV
+package.preload[ "utils.debug" ] = function( ... ) local arg = _G.arg;
+local dbUtils = require('db.utils')
+
+local debug = {}
+
+function debug.dumpToCSV(msg)
+  local stmt = db:prepare [[
+    SELECT *
+    FROM amm_transactions;
+  ]]
+
+  local rows = {}
+  local row = stmt:step()
+  while row do
+    table.insert(rows, row)
+    row = stmt:step()
+  end
+
+  stmt:reset()
+
+  local csvHeader =
+  "id,source,block_height,block_id,from,timestamp,is_buy,price,volume,to_token,from_token,from_quantity,to_quantity,fee,amm_process\n"
+  local csvData = csvHeader
+
+  for _, row in ipairs(rows) do
+    local rowData = string.format("%s,%s,%d,%s,%s,%d,%d,%.8f,%.8f,%s,%s,%.8f,%.8f,%.8f,%s\n",
+      row.id, row.source, row.block_height, row.block_id, row["from"], row["timestamp"],
+      row.is_buy, row.price, row.volume, row.to_token, row.from_token, row.from_quantity,
+      row.to_quantity, row.fee, row.amm_process)
+    csvData = csvData .. rowData
+  end
+
+  ao.send({
+    Target = msg.From,
+    Data = csvData
+  })
+end
+
+function debug.debugTransactions()
+  local stmt = db:prepare [[
+    SELECT * FROM amm_transactions ORDER BY created_at_ts LIMIT 100;
+  ]]
+  if not stmt then
+    error("Failed to prepare SQL statement: " .. db:errmsg())
+  end
+  return dbUtils.queryMany(stmt)
+end
+
+return debug
+end
+end
+
+do
+local _ENV = _ENV
+package.preload[ "validation.validation" ] = function( ... ) local arg = _G.arg;
+-- @file        validation.lua
+-- @author      Théo Brigitte <theo.brigitte@gmail.com>
+-- @contributor Henrique Silva <hensansi@gmail.com>
+-- @date        Thu May 28 16:05:15 2015
+--
+-- FILE CONTAINS ADDITIONS SPECIFIC TO THIS AO PROJECT
+--
+-- @brief       Lua schema validation library.
+--
+-- Validation is achieved by matching data against a schema.
+--
+-- A schema is a representation of the expected structure of the data. It is
+-- a combination of what we call "validators".
+-- Validators are clojures which build accurante validation function for each
+-- element of the schema.
+-- Meta-validators allow to extend the logic of the schema by providing an
+-- additional logic layer around validators.
+--  e.g. optional()
+--
+
+
+-- Import from global environment.
+local type = type
+local pairs = pairs
+local print = print
+local format = string.format
+local floor = math.floor
+local insert = table.insert
+local next = next
+
+local bint = require ".bint" (256)
+
+
+-- Disable global environment.
+if _G.setfenv then
+  setfenv(1, {})
+else -- Lua 5.2.
+  _ENV = {}
+end
+
+local M = { _NAME = 'validation' }
+
+--- Generate error message for validators.
+--
+-- @param data mixed
+--   Value that failed validation.
+-- @param expected_type string
+--   Expected type for data
+--
+-- @return
+--   String describing the error.
+---
+local function error_message(data, expected_type)
+  if data then
+    return format('is not %s.', expected_type)
+  end
+
+  return format('is missing and should be %s.', expected_type)
+end
+
+--- Create a readable string output from the validation errors output.
+--
+-- @param error_list table
+--   Nested table identifying where the error occured.
+--   e.g. { price = { rule_value = 'error message' } }
+-- @param parents string
+--   String of dot separated parents keys
+--
+-- @return string
+--   Message describing where the error occured. e.g. price.rule_value = "error message"
+---
+function M.print_err(error_list, parents)
+  -- Makes prefix not nil, for posterior concatenation.
+  local error_output = ''
+  local parents = parents or ''
+  if not error_list then return false end
+  -- Iterates over the list of messages.
+  for key, err in pairs(error_list) do
+    -- If it is a node, print it.
+    if type(err) == 'string' then
+      error_output = format('%s\n%s%s %s', error_output, parents, key, err)
+    else
+      -- If it is a table, recurse it.
+      error_output = format('%s%s', error_output, M.print_err(err, format('%s%s.', parents, key)))
+    end
+  end
+
+  return error_output
+end
+
+--- Validators.
+--
+-- A validator is a function in charge of verifying data compliance.
+--
+-- Prototype:
+-- @key
+--   Key of data being validated.
+-- @data
+--   Current data tree level. Meta-validator might need to verify other keys. e.g. assert()
+--
+-- @return
+--   true on success, false and message describing the error
+---
+
+
+--- Generates string validator.
+--
+-- @return
+--   String validator function.
+---
+function M.is_string()
+  return function(value)
+    if type(value) ~= 'string' then
+      return false, error_message(value, 'a string')
+    end
+    return true
+  end
+end
+
+--- Generates integer validator.
+--
+-- @return
+--   Integer validator function.
+---
+function M.is_integer()
+  return function(value)
+    if type(value) ~= 'number' or value % 1 ~= 0 then
+      return false, error_message(value, 'an integer')
+    end
+    return true
+  end
+end
+
+--- Generates number validator.
+--
+-- @return
+--   Number validator function.
+---
+function M.is_number()
+  return function(value)
+    if type(value) ~= 'number' then
+      return false, error_message(value, 'a number')
+    end
+    return true
+  end
+end
+
+--- Generates boolean validator.
+--
+-- @return
+--   Boolean validator function.
+---
+function M.is_boolean()
+  return function(value)
+    if type(value) ~= 'boolean' then
+      return false, error_message(value, 'a boolean')
+    end
+    return true
+  end
+end
+
+--- Generates an array validator.
+--
+-- Validate an array by applying same validator to all elements.
+--
+-- @param validator function
+--   Function used to validate the values.
+-- @param is_object boolean (optional)
+--   When evaluted to false (default), it enforce all key to be of type number.
+--
+-- @return
+--   Array validator function.
+--   This validator return value is either true on success or false and
+--   a table holding child_validator errors.
+---
+function M.is_array(child_validator, is_object)
+  return function(value, key, data)
+    local result, err = nil
+    local err_array = {}
+
+    -- Iterate the array and validate them.
+    if type(value) == 'table' then
+      for index in pairs(value) do
+        if not is_object and type(index) ~= 'number' then
+          insert(err_array, error_message(value, 'an array'))
+        else
+          result, err = child_validator(value[index], index, value)
+          if not result then
+            err_array[index] = err
+          end
+        end
+      end
+    else
+      insert(err_array, error_message(value, 'an array'))
+    end
+
+    if next(err_array) == nil then
+      return true
+    else
+      return false, err_array
+    end
+  end
+end
+
+--- Generates optional validator.
+--
+-- When data is present apply the given validator on data.
+--
+-- @param validator function
+--   Function used to validate value.
+--
+-- @return
+--   Optional validator function.
+--   This validator return true or the result from the given validator.
+---
+function M.optional(validator)
+  return function(value, key, data)
+    if not value then
+      return true
+    else
+      return validator(value, key, data)
+    end
+  end
+end
+
+--- Generates or meta validator.
+--
+-- Allow data validation using two different validators and applying
+-- or condition between results.
+--
+-- @param validator_a function
+--   Function used to validate value.
+-- @param validator_b function
+--   Function used to validate value.
+--
+-- @return
+--   Or validator function.
+--   This validator return true or the result from the given validator.
+---
+function M.or_op(validator_a, validator_b)
+  return function(value, key, data)
+    if not value then
+      return true
+    else
+      local valid, err_a = validator_a(value, key, data)
+      if not valid then
+        valid, err_b = validator_b(value, key, data)
+      end
+      if not valid then
+        return valid, err_a .. " OR " .. err_b
+      else
+        return valid, nil
+      end
+    end
+  end
+end
+
+--- Generates assert validator.
+--
+-- This function enforces the existence of key/value with the
+-- verification of the key_check.
+--
+-- @param key_check mixed
+--   Key used to check the optionality of the asserted key.
+-- @param match mixed
+--   Comparation value.
+-- @param validator function
+--   Function that validates the type of the data.
+--
+-- @return
+--   Assert validator function.
+--   This validator return true, the result from the given validator or false
+--   when the assertion fails.
+---
+function M.assert(key_check, match, validator)
+  return function(value, key, data)
+    if data[key_check] == match then
+      return validator(value, key, data)
+    else
+      return true
+    end
+  end
+end
+
+--- Generates list validator.
+--
+-- Ensure the value is contained in the given list.
+--
+-- @param list table
+--   Set of allowed values.
+-- @param value mixed
+--   Comparation value.
+-- @param validator function
+--   Function that validates the type of the data.
+--
+-- @return
+--   In list validator function.
+---
+function M.in_list(list)
+  return function(value)
+    local printed_list = "["
+    for _, word in pairs(list) do
+      if word == value then
+        return true
+      end
+      printed_list = printed_list .. " '" .. word .. "'"
+    end
+
+    printed_list = printed_list .. " ]"
+    return false, { error_message(value, 'in list ' .. printed_list) }
+  end
+end
+
+--- Generates table validator.
+--
+-- Validate table data by using appropriate schema.
+--
+-- @param schema table
+--   Schema used to validate the table.
+--
+-- @return
+--   Table validator function.
+--   This validator return value is either true on success or false and
+--   a nested table holding all errors.
+---
+function M.is_table(schema, tolerant)
+  return function(value)
+    local result, err = nil
+
+    if type(value) ~= 'table' then
+      -- Enforce errors of childs value.
+      _, err = validate_table({}, schema, tolerant)
+      if not err then err = {} end
+      result = false
+      insert(err, error_message(value, 'a table'))
+    else
+      result, err = validate_table(value, schema, tolerant)
+    end
+
+    return result, err
+  end
+end
+
+--- Validate function.
+--
+-- @param data
+--   Table containing the pairs to be validated.
+-- @param schema
+--   Schema against which the data will be validated.
+--
+-- @return
+--   String describing the error or true.
+---
+function validate_table(data, schema, tolerant)
+  -- Array of error messages.
+  local errs = {}
+  -- Check if the data is empty.
+
+  -- Check if all data keys are present in the schema.
+  if not tolerant then
+    for key in pairs(data) do
+      if schema[key] == nil then
+        errs[key] = 'is not allowed.'
+      end
+    end
+  end
+
+  -- Iterates over the keys of the data table.
+  for key in pairs(schema) do
+    -- Calls a function in the table and validates it.
+    local result, err = schema[key](data[key], key, data)
+
+    -- If validation fails, print the result and return it.
+    if not result then
+      errs[key] = err
+    end
+  end
+
+  -- Lua does not give size of table holding only string as keys.
+  -- Despite the use of #table we have to manually loop over it.
+  for _ in pairs(errs) do
+    return false, errs
+  end
+
+  return true
+end
+
+function M.is_bint_string()
+  return function(value)
+    if type(value) ~= 'string' then
+      return false, error_message(value, 'a string')
+    end
+    if not bint.isbint(value) then
+      return false, error_message(value, 'a string representation of a bint')
+    end
+    return true
+  end
+end
+
+function M.is_float_string()
+  return function(value)
+    if type(value) ~= 'string' then
+      return false, error_message(value, 'a string')
+    end
+    if not tonumber(value) then
+      return false, error_message(value, 'a string representation of a float')
+    end
+    return true
+  end
+end
+
+return M
+end
+end
+
+do
+local _ENV = _ENV
+package.preload[ "validation.validation-schemas" ] = function( ... ) local arg = _G.arg;
+local v = require("validation.validation")
+
+local schemas = {}
+
+schemas.inputMessageSchema = v.is_table({
+    Id = v.is_string(),
+    ['Block-Height'] = v.is_number(),
+    ['Block-Id'] = v.optional(v.is_string()),
+    From = v.is_string(),
+    Timestamp = v.optional(v.is_number()),
+    Tags = v.is_table({
+        ['To-Token'] = v.is_string(),
+        ['From-Token'] = v.is_string(),
+        ['From-Quantity'] = v.is_string(),
+        ['To-Quantity'] = v.is_string(),
+        ['Fee'] = v.is_string()
+    }, true)
+}, true)
+
+schemas.swapParamsSchema = function(reserves_0, reserves_1, fee_percentage)
+    local isString0, err0 = v.is_bint_string()(reserves_0)
+    local isString1, err1 = v.is_bint_string()(reserves_1)
+    local isStringFee, errFee = v.is_float_string()(fee_percentage)
+
+    local areAllValid = isString0 and isString1 and isStringFee
+
+    if not areAllValid then
+        return false, err0 or err1 or errFee
+    end
+
+    return true
+end
+
+return schemas;
+end
+end
+
+local sqlite3 = require("lsqlite3")
+
+local dexiCore = require("dexi-core.dexi-core")
+local subscriptions = require("subscriptions.subscriptions")
+local indicators = require("indicators.indicators")
+local seeder = require("db.seed")
+local ingest = require("ingest.ingest")
+local topN = require("top-n.top-n")
+local debug = require("utils.debug")
+local register_amm = require("register-amm.register-amm")
+
+db = db or sqlite3.open_memory()
+
+seeder.createMissingTables()
+seeder.seed() -- TODO eliminate in production
+
+-- eliminate warnings
+Owner = Owner or ao.env.Process.Owner
+Handlers = Handlers or {}
+ao = ao or {}
+
+OFFCHAIN_FEED_PROVIDER = OFFCHAIN_FEED_PROVIDER or ao.env.Process.Tags["Offchain-Feed-Provider"]
+QUOTE_TOKEN_PROCESS = QUOTE_TOKEN_PROCESS or ao.env.Process.Tags["Quote-Token-Process"]
+QUOTE_TOKEN_TICKER = QUOTE_TOKEN_TICKER or ao.env.Process.Tags["Quote-Token-Ticker"]
+SUPPLY_UPDATES_PROVIDER = SUPPLY_UPDATES_PROVIDER or
+    ao.env.Process.Tags["Offchain-Supply-Updates-Provider"]
+PAYMENT_TOKEN_PROCESS = PAYMENT_TOKEN_PROCESS or ao.env.Process.Tags["Payment-Token-Process"]
+PAYMENT_TOKEN_TICKER = PAYMENT_TOKEN_TICKER or ao.env.Process.Tags["Payment-Token-Ticker"]
+
+DISPATCH_ACTIVE = DISPATCH_ACTIVE or true
+LOGGING_ACTIVE = LOGGING_ACTIVE or true
+
+OPERATOR = OPERATOR or ao.env.Process.Tags["Operator"]
+
+-- CORE --
+
+Handlers.add(
+  "GetRegisteredAMMs",
+  Handlers.utils.hasMatchingTag("Action", "Get-Registered-AMMs"),
+  dexiCore.handleGetRegisteredAMMs
+)
+
+Handlers.add(
+  "GetStats",
+  Handlers.utils.hasMatchingTag("Action", "Get-Stats"),
+  dexiCore.handleGetStats
+)
+
+Handlers.add(
+  "GetCandles",
+  Handlers.utils.hasMatchingTag("Action", "Get-Candles"),
+  dexiCore.handleGetCandles
+)
+
+Handlers.add(
+  "GetOverview",
+  Handlers.utils.hasMatchingTag("Action", "Get-Overview"),
+  dexiCore.handleGetOverview
+)
+
+Handlers.add(
+  "BatchRequestPrices",
+  Handlers.utils.hasMatchingTag("Action", "Price-Batch-Request"),
+  dexiCore.handleGetPricesInBatch
+)
+
+Handlers.add(
+  'Update-Total-Supply',
+  Handlers.utils.hasMatchingTag("Action", "Update-Total-Supply"),
+  dexiCore.handleUpdateTokenSupply
+)
+
+-- SWAP & SWAP PARAMS CHANGES INGESTION --
+
+Handlers.add(
+  "UpdateLocalState-Swap",
+  Handlers.utils.hasMatchingTag("Action", "Swap-Monitor"),
+  ingest.handleMonitorIngestSwap
+)
+
+Handlers.add(
+  "UpdateLocalState-Swap-Params-Change",
+  Handlers.utils.hasMatchingTag("Action", "Swap-Params-Change"),
+  ingest.handleMonitorIngestSwapParamsChange
+)
+
+Handlers.add(
+  "ReceiveOffchainFeed-Swaps",
+  Handlers.utils.hasMatchingTag("Action", "Receive-Offchain-Feed-Swaps"),
+  ingest.handleFeedIngestSwaps
+)
+
+Handlers.add(
+  "ReceiveOffchainFeed-Swap-Params-Changes",
+  Handlers.utils.hasMatchingTag("Action", "Receive-Offchain-Feed-Swap-Params-Changes"),
+  ingest.handleFeedIngestSwapParamsChange
+)
+
+Handlers.add(
+  "GetCurrentHeight",
+  Handlers.utils.hasMatchingTag("Action", "Get-Current-Height"),
+  ingest.getCurrentHeight
+)
+
+-- INDICATORS --
+
+Handlers.add(
+  "Get-Indicators",
+  Handlers.utils.hasMatchingTag("Action", "Get-Indicators"),
+  indicators.handleGetIndicators
+)
+
+Handlers.add(
+  "Subscribe-Indicators",
+  Handlers.utils.hasMatchingTag("Action", "Subscribe-Indicators"),
+  subscriptions.handleSubscribeForIndicators
+)
+
+Handlers.add(
+  "Unsubscribe-Indicators",
+  Handlers.utils.hasMatchingTag("Action", "Unsubscribe-Indicators"),
+  subscriptions.handleUnsubscribeForIndicators
+)
+
+-- TOP N --
+
+Handlers.add(
+  "Get-Top-N-Market-Data",
+  Handlers.utils.hasMatchingTag("Action", "Get-Top-N-Market-Data"),
+  topN.handleGetTopNMarketData
+)
+
+Handlers.add(
+  "Subscribe-Top-N",
+  Handlers.utils.hasMatchingTag("Action", "Subscribe-Top-N"),
+  subscriptions.handleSubscribeForTopN
+)
+
+Handlers.add(
+  "Unsubscribe-Top-N",
+  Handlers.utils.hasMatchingTag("Action", "Unsubscribe-Top-N"),
+  subscriptions.handleUnsubscribeForTopN
+)
+
+-- PAYMENTS
+
+Handlers.add(
+  "Receive-Payment",
+  function(msg)
+    return Handlers.utils.hasMatchingTag("Action", "Credit-Notice")(msg)
+        and Handlers.utils.hasMatchingTag("X-Action", "Pay-For-Subscriptions")(msg)
+        and msg.From == PAYMENT_TOKEN_PROCESS
+  end,
+  function(msg)
+    if msg.Tags["X-Action"] == "Register-AMM" then
+      register_amm.handleRegisterAMM(msg)
+    end
+
+    subscriptions.recordPayment(msg)
+  end
+)
+
+-- MAINTENANCE
+
+Handlers.add(
+  "Reset-DB-State",
+  Handlers.utils.hasMatchingTag("Action", "Reset-DB-State"),
+  seeder.handleResetDBState
+)
+
+Handlers.add(
+  "DumpTableToCSV",
+  Handlers.utils.hasMatchingTag("Action", "Dump-Table-To-CSV"),
+  debug.dumpToCSV
+)
+
+Handlers.add(
+  "Debug-Table",
+  Handlers.utils.hasMatchingTag("Action", "Debug-Table"),
+  debug.debugTransactions
+)
+
+Handlers.add(
+  "Toggle-Dispatch-Active",
+  Handlers.utils.hasMatchingTag("Action", "Toggle-Dispatch-Active"),
+  function(msg)
+    assert(msg.From == OPERATOR, "Only the operator can toggle dispatching")
+    DISPATCH_ACTIVE = not DISPATCH_ACTIVE
+    ao.send({
+      Target = msg.From,
+      Data = "Dispatching toggled to " .. tostring(not DISPATCH_ACTIVE)
+    })
+  end
+)
+
+Handlers.add(
+  "Toggle-Logging-Active",
+  Handlers.utils.hasMatchingTag("Action", "Toggle-Logging-Active"),
+  function(msg)
+    assert(msg.From == OPERATOR, "Only the operator can toggle logging")
+    LOGGING_ACTIVE = not LOGGING_ACTIVE
+    ao.send({
+      Target = msg.From,
+      Data = "Logging toggled to " .. tostring(not LOGGING_ACTIVE)
+    })
+  end
+)

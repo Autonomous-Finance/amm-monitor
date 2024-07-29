@@ -10,7 +10,7 @@ $BIN_PATH/luacheck process.lua \
     validation/validation.lua validation/validation-schemas.lua \
     db/sqlschema.lua db/seed.lua db/utils.lua \
     subscriptions/subscriptions.lua \
-    register_amm.register_amm \
+    register-amm.register-amm \
     dexi-core/dexi-core.lua \
     dexi-core/intervals.lua dexi-core/candles.lua dexi-core/stats.lua dexi-core/overview.lua dexi-core/price-around.lua \
     ingest/ingest.lua \
@@ -22,7 +22,7 @@ $BIN_PATH/amalg.lua -s process.lua -o build/output.lua \
     validation.validation validation.validation-schemas \
     db.sqlschema db.seed db.utils \
     subscriptions.subscriptions \
-    register_amm.register_amm \
+    register-amm.register-amm \
     dexi-core.dexi-core \
     dexi-core.intervals dexi-core.candles dexi-core.stats dexi-core.overview dexi-core.price-around\
     ingest.ingest \
@@ -30,5 +30,5 @@ $BIN_PATH/amalg.lua -s process.lua -o build/output.lua \
     top-n.top-n \
     utils.debug
 
-export WALLET_JSON="$(cat ~/.aos.json)"
-npx aoform apply
+#export WALLET_JSON="$(cat ~/.aos.json)"
+#npx aoform apply
