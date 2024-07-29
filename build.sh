@@ -15,7 +15,8 @@ $BIN_PATH/luacheck process.lua \
     ingest/ingest.lua \
     indicators/indicators.lua indicators/calc.lua \
     top-n/top-n.lua \
-    utils/debug.lua
+    utils/debug.lua \
+    ownable/ownable.lua
     
 $BIN_PATH/amalg.lua -s process.lua -o build/output.lua \
     validation.validation validation.validation-schemas \
@@ -26,7 +27,8 @@ $BIN_PATH/amalg.lua -s process.lua -o build/output.lua \
     ingest.ingest \
     indicators.indicators indicators.calc \
     top-n.top-n \
-    utils.debug
+    utils.debug \
+    ownable.ownable
 
 export WALLET_JSON="$(cat ~/.aos.json)"
 npx aoform apply

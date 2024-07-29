@@ -280,6 +280,14 @@ After amalgamation, the `build.sh` script uses [aoform](https://github.com/Auton
 npx aoform apply
 ```
 
+## Ownable
+
+## Ownable
+
+This process implements basic ownable functionality, as provided by this [package](https://github.com/Autonomous-Finance/aos-packages/tree/main/packages/ownable).
+
+Most importantly, this prepares the process for having its ownership renounced at the appropriate moment after release. That moment will be determined based on the operational experience, when the team is confident that functionality is reliable.
+
 ## TODO
 
 
