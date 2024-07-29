@@ -1073,8 +1073,12 @@ do
 
     local function fillMissingDates(dailyStats, startDate, endDate)
       local filledDailyStats = {}
-      local currentTimestamp = os.time({ year = startDate:sub(1, 4), month = startDate:sub(6, 7), day = startDate:sub(9,
-        10) })
+      local currentTimestamp = os.time({
+        year = startDate:sub(1, 4),
+        month = startDate:sub(6, 7),
+        day = startDate:sub(9,
+          10)
+      })
       local endTimestamp = os.time({ year = endDate:sub(1, 4), month = endDate:sub(6, 7), day = endDate:sub(9, 10) })
       local lastClose = 0
 
