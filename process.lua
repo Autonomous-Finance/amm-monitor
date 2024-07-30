@@ -156,18 +156,27 @@ Handlers.add(
 -- PAYMENTS
 
 Handlers.add(
-  "Receive-Payment",
+  "Receive-Payment-For-Subscriber",
   function(msg)
     return Handlers.utils.hasMatchingTag("Action", "Credit-Notice")(msg)
         and Handlers.utils.hasMatchingTag("X-Action", "Pay-For-Subscriptions")(msg)
         and msg.From == PAYMENT_TOKEN_PROCESS
   end,
   function(msg)
-    if msg.Tags["X-Action"] == "Register-AMM" then
-      register_amm.handleRegisterAMM(msg)
-    end
-
     subscriptions.recordPayment(msg)
+  end
+)
+
+Handlers.add(
+  "Receive-Payment-For-AMM-Register",
+  function(msg)
+    return Handlers.utils.hasMatchingTag("Action", "Credit-Notice")(msg)
+        and Handlers.utils.hasMatchingTag("X-Action", "Pay-For-Subscriptions")(msg)
+        and Handlers.utils.hasMatchingTag("X-Action", "Register-AMM")(msg)
+        and msg.From == PAYMENT_TOKEN_PROCESS
+  end,
+  function(msg)
+      register_amm.handleRegisterAMM(msg)
   end
 )
 
