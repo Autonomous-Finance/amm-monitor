@@ -32,5 +32,5 @@ $BIN_PATH/amalg.lua -s process.lua -o build/output.lua \
     utils.debug \
     ownable.ownable
 
-#export WALLET_JSON="$(cat ~/.aos.json)"
-#npx aoform apply
+export WALLET_JSON="$(cat ~/.aos.json)"
+npx aoform apply
