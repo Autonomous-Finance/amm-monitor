@@ -30,5 +30,5 @@ $BIN_PATH/amalg.lua -s process.lua -o build/output.lua \
     top-n.top-n \
     utils.debug
 
-#export WALLET_JSON="$(cat ~/.aos.json)"
-#npx aoform apply
+export WALLET_JSON="$(cat ~/.aos.json)"
+npx aoform apply
