@@ -157,7 +157,7 @@ Handlers.add(
 )
 
 Handlers.add(
-  "Receive-Payment-For-AMM-Register",
+  "Receive-Payment-For-AMM-Subscription",
   function(msg)
     return Handlers.utils.hasMatchingTag("Action", "Credit-Notice")(msg)
         and Handlers.utils.hasMatchingTag("X-Action", "Pay-For-Subscriptions")(msg)
@@ -165,8 +165,16 @@ Handlers.add(
         and msg.From == PAYMENT_TOKEN_PROCESS
   end,
   function(msg)
-      register_amm.handleRegisterAMM(msg)
+      register_amm.handlePayForSubscriptions(msg)
   end
+)
+
+-- REGISTER AMM Subscriber
+
+Handlers.add(
+  "Register-AMM-Subscriber",
+  Handlers.utils.hasMatchingTag("Action", "Register-AMM-Subscriber"),
+  register_amm.handleRegisterSubscriber
 )
 
 -- MAINTENANCE
