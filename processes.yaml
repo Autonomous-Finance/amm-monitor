@@ -76,6 +76,8 @@
       value: eM6NGBSgwyDTqQ0grng1fQvBF-5HcMeshLcz9QPE-0A
     - name: Payment-Token-Ticker
       value: DEXI
+    - name: Operator
+      value: Operator___TESTtestTESTtestTESTtestTEST____
     
 
 # - name: monitor-trunk_aocred5

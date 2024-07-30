@@ -19,6 +19,9 @@ Owner = Owner or ao.env.Process.Owner
 Handlers = Handlers or {}
 ao = ao or {}
 
+-- OWNABLE --
+Ownable = require "ownable.ownable"
+
 OFFCHAIN_FEED_PROVIDER = OFFCHAIN_FEED_PROVIDER or ao.env.Process.Tags["Offchain-Feed-Provider"]
 QUOTE_TOKEN_PROCESS = QUOTE_TOKEN_PROCESS or ao.env.Process.Tags["Quote-Token-Process"]
 QUOTE_TOKEN_TICKER = QUOTE_TOKEN_TICKER or ao.env.Process.Tags["Quote-Token-Ticker"]
@@ -74,13 +77,21 @@ Handlers.add(
 
 Handlers.add(
   "UpdateLocalState-Swap",
-  Handlers.utils.hasMatchingTag("Action", "Swap-Monitor"),
+  function(msg)
+    return Handlers.utils.hasMatchingTag("Action", "Notify-On-Topic")(msg)
+        and
+        Handlers.utils.hasMatchingTag("Topic", "order-confirmation")(msg) -- TODO add check that msg.From is am AMM registered as topics provider
+  end,
   ingest.handleMonitorIngestSwap
 )
 
 Handlers.add(
   "UpdateLocalState-Swap-Params-Change",
-  Handlers.utils.hasMatchingTag("Action", "Swap-Params-Change"),
+  function(msg)
+    return Handlers.utils.hasMatchingTag("Action", "Notify-On-Topic")(msg)
+        and
+        Handlers.utils.hasMatchingTag("Topic", "swap-params-change")(msg) -- TODO add check that msg.From is am AMM registered as topics provider
+  end,
   ingest.handleMonitorIngestSwapParamsChange
 )
 
