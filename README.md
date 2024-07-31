@@ -294,8 +294,8 @@ Most importantly, this prepares the process for having its ownership renounced a
 - unit tests (no deployments required)
   - seed with 5 amms, 5 tokens
     - check correct top N 
-      - mcap ranking given total supplies
-      - correct reserves given amm data initialization
+    - check mcap ranking given total supplies
+    - check correct reserves given amm data initialization
   - simulate amm swaps => ingest TXs (with reserves updates)
     - check reserves have updated correctly
   - simulate a few subscriptions, with some of them for indicators, some for top N 

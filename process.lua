@@ -11,7 +11,7 @@ local debug = require("utils.debug")
 db = db or sqlite3.open_memory()
 
 seeder.createMissingTables()
-seeder.seed() -- TODO eliminate in production
+-- seeder.seed() -- TODO eliminate in production
 
 -- eliminate warnings
 Owner = Owner or ao.env.Process.Owner
