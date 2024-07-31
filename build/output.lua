@@ -2746,7 +2746,6 @@ Handlers.add(
   "Receive-Payment-For-AMM-Subscription",
   function(msg)
     return Handlers.utils.hasMatchingTag("Action", "Credit-Notice")(msg)
-        and Handlers.utils.hasMatchingTag("X-Action", "Pay-For-Subscriptions")(msg)
         and Handlers.utils.hasMatchingTag("X-Action", "Register-AMM")(msg)
         and msg.From == PAYMENT_TOKEN_PROCESS
   end,
