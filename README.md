@@ -32,7 +32,7 @@ As an aggregator, Dexi passively receives data from the AMM processes.
 
 In principle, Dexi can also operate in a **Pull Mode**, meaning that it loads AMM data from the gateway. This helps ensure data consistency, when used to backfill periodically via an external system (not on AO). This feature was successfully used on the testnet in the initial Dexi release but is **disabled in the v1 release**.
 
-### Subscribing to an AMM
+### How Dexi subscribes to AMMs
 
 1. AMMs require the capability to provide such subscriptions. [Bark](https://github.com/Autonomous-Finance/bark-amm) AMMs have it by default. Typically, subscribing to an AMM involves a **payment**.
 2. DEXI needs to subscribe to each registered AMM. This step is typically triggered by an **AMM creator** who is interested in having their AMM integrated with DEXI. The payment tokens would typically be provided by that AMM creator.  
@@ -291,7 +291,15 @@ Most importantly, this prepares the process for having its ownership renounced a
 ## TODO
 
 
-- unit tests (no deployments required)
+- REORGANIZE
+  - use squishy and remap package paths
+  - move .lua files into a src/
+
+- thorough VALIDATIONS
+  
+- graceful error handling
+  
+- TESTS  - - -  unit tests (no deployments required)
   - seed with 5 amms, 5 tokens
     - check correct top N 
     - check mcap ranking given total supplies
@@ -307,15 +315,3 @@ Most importantly, this prepares the process for having its ownership renounced a
     - check if token is at top of the ranking
     - check if top N token sets are correclty updated
     - check if top N updates are dispatched correctly
-
-
-
-
-- use squishy and remap package paths
-- move .lua files into a src/
-
-- thorough validations
-
-- graceful error handling
-  
-- tests

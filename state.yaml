@@ -42,4 +42,7 @@ dexi-monitor-test-v2-9-top-n:
   hash: 5825c0425783200a2a5f73913610ba5f031fc7ae005bb634087ba6f2038dd6b7
 dexi-full-test-v1:
   processId: OyxcV9DqU9Bf9ZG9C6VF9_A-XkwDFUopjbQeduUXS_0
-  hash: 252fa3b778cd5712757e7f5fd597f2f5d791196c49b68a498a98b6b8fc2f143a
+  hash: 14626b58e8b3c5e0802d94ddeeb2d94c25d1d3ab8e644142f16f7cb56efb8306
+dexi-full-test-v2:
+  processId: vvvNC3O7_hoHKnBRBgmmPRDAnRh1r0Kpxfb_-Qf05UY
+  hash: 14626b58e8b3c5e0802d94ddeeb2d94c25d1d3ab8e644142f16f7cb56efb8306
