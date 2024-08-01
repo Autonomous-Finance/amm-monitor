@@ -77,13 +77,13 @@ end
   The subscribers must have the AMM process ID in their token set.
   The query returns both the subscriber ID and the top N market data.
 ]]
-function sql.getSubscribersWithMarketDataForAmm(now, ammProcessId)
+function sql.getActiveSubscribersWithInterestInAmm(now, ammProcessId)
   local subscribersStmt = db:prepare([[
     WITH matched_subscribers AS (
       SELECT s.process_id, s.quote_token, s.top_n, s.token_set
       FROM top_n_subscriptions s, json_each(s.token_set)
       WHERE json_each.value = :ammProcessId
-      JOIN balances b ON s.owner_id = b.owner_id AND b.balance > 0
+      JOIN balances b ON s.process_id = b.process_id AND CAST(b.balance AS REAL) > 0
     ),
     token_list AS (
       SELECT process_id, json_each.value AS token
@@ -123,6 +123,25 @@ function sql.getSubscribersWithMarketDataForAmm(now, ammProcessId)
   return subscribers
 end
 
+function sql.getTopNTokenSet(processId, quoteToken)
+  local stmt = db:prepare [[
+    SELECT *
+    FROM top_n_subscriptions
+    WHERE process_id = :process_id AND quote_token = :quote_token;
+  ]]
+  if not stmt then
+    error("Failed to prepare SQL statement for getting top N token set: " .. db:errmsg())
+  end
+  stmt:bind_names({
+    process_id = processId,
+    quote_token = quoteToken
+  })
+
+  local row = dbUtils.queryOne(stmt)
+
+  return row and row.token_set or nil
+end
+
 -- ---------------- EXPORT
 
 --[[
@@ -131,6 +150,23 @@ end
 ---@param specificSubscriber string | nil if nil, token set is updated for each subscriber
 function topN.updateTopNTokenSet(specificSubscriber)
   sql.updateTopNTokenSet(specificSubscriber)
+end
+
+function topN.handleGetTopNTokenSet(msg)
+  local processId = msg.Tags['Subscriber-Process-Id']
+  local quoteToken = msg.Tags['Quote-Token']
+  local tokenSet = topN.getTopNTokenSet(processId, quoteToken)
+
+  if not tokenSet then
+    error('No top N token set found for this subscriber and quote token')
+  end
+
+  ao.send({
+    Target = msg.From,
+    ['App-Name'] = 'Dexi',
+    ['Response-For'] = 'Get-Top-N-Token-Set',
+    Data = json.encode(tokenSet)
+  })
 end
 
 function topN.handleGetTopNMarketData(msg)
@@ -163,7 +199,7 @@ function topN.dispatchMarketDataIncludingAMM(now, ammProcessId)
     end
     return
   end
-  local subscribersAndMD = sql.getSubscribersWithMarketDataForAmm(now, ammProcessId)
+  local subscribersAndMD = sql.getActiveSubscribersWithInterestInAmm(now, ammProcessId)
 
   print('sending market data updates to affected subscribers')
 

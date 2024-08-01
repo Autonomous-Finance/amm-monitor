@@ -20,8 +20,7 @@ function sql.getDiscoveredAt(ammProcessId)
 
   ammStmt:bind_names({ amm_process_id = ammProcessId })
 
-  local row = ammStmt:step()
-  ammStmt:finalize()
+  local row = dbUtils.queryOne(ammStmt)
 
   return row.amm_discovered_at_ts
 end
@@ -51,11 +50,11 @@ function sql.getDailyStats(ammProcessId, startDate, endDate)
   return dbUtils.queryMany(stmt)
 end
 
-function sql.getSubscribersToProcess(ammProcessId)
+function sql.getActiveSubscribersToAMM(ammProcessId)
   local subscribersStmt = db:prepare([[
       SELECT s.process_id
       FROM indicator_subscriptions s
-      JOIN balances b ON s.owner_id = b.owner_id AND b.balance > 0
+      JOIN balances b ON s.process_id = b.process_id AND CAST(b.balance AS REAL) > 0
       WHERE amm_process_id = :amm_process_id
     ]])
   if not subscribersStmt then
@@ -175,7 +174,7 @@ function indicators.dispatchIndicatorsForAMM(now, ammProcessId)
   local oneWeekAgo = now - (7 * 24 * 60 * 60)
   local startTimestamp = math.max(discoveredAt, oneWeekAgo)
 
-  local processes = sql.getSubscribersToProcess(ammProcessId)
+  local processes = sql.getActiveSubscribersToAMM(ammProcessId)
 
   local indicatorsResults = getIndicators(ammProcessId, startTimestamp)
 

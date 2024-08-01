@@ -142,6 +142,12 @@ Handlers.add(
 )
 
 Handlers.add(
+  "Get-Top-N-Token-Set",
+  Handlers.utils.hasMatchingTag("Action", "Get-Top-N-Token-Set"),
+  topN.handleGetTopNTokenSet
+)
+
+Handlers.add(
   "Subscribe-Top-N",
   Handlers.utils.hasMatchingTag("Action", "Subscribe-Top-N"),
   subscriptions.handleSubscribeForTopN
@@ -175,7 +181,7 @@ Handlers.add(
         and msg.From == PAYMENT_TOKEN_PROCESS
   end,
   function(msg)
-      register_amm.handlePayForSubscriptions(msg)
+    register_amm.handlePayForSubscriptions(msg)
   end
 )
 

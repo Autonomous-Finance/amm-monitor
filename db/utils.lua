@@ -5,7 +5,7 @@ function dbUtils.queryMany(stmt)
   for row in stmt:nrows() do
     table.insert(rows, row)
   end
-  stmt:reset()
+  stmt:finalize()
   return rows
 end
 

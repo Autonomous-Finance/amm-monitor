@@ -106,16 +106,14 @@ CREATE TABLE IF NOT EXISTS token_registry (
 
 sqlschema.create_balances_table = [[
 CREATE TABLE IF NOT EXISTS balances (
-    owner_id TEXT NOT NULL PRIMARY KEY,
-    token_id TEXT NOT NULL,
-    balance INT NOT NULL
+    process_id TEXT NOT NULL PRIMARY KEY,
+    balance TEXT NOT NULL
 );
 ]]
 
 sqlschema.create_indicator_subscriptions_table = [[
 CREATE TABLE IF NOT EXISTS indicator_subscriptions (
     process_id TEXT NOT NULL,
-    owner_id TEXT NOT NULL,
     amm_process_id TEXT NOT NULL,
     PRIMARY KEY (process_id),
     UNIQUE (process_id, amm_process_id)
@@ -125,7 +123,6 @@ CREATE TABLE IF NOT EXISTS indicator_subscriptions (
 sqlschema.create_top_n_subscriptions_table = [[
 CREATE TABLE IF NOT EXISTS top_n_subscriptions (
     process_id TEXT NOT NULL,
-    owner_id TEXT NOT NULL,
     quote_token TEXT NOT NULL,
     top_n INTEGER NOT NULL,
     token_set TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(token_set)),

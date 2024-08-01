@@ -52,25 +52,23 @@ A process can be subscribed to Dexi in order to receive data feeds. Currently th
 
 An active subscription involves 2 parts
 
-1. establishing the subscription ( a process is registered as a subscriber to a given topic )
+1. establishing the subscription ( a process registers as a subscriber to a given topic )
 2. activating it via a payment
 
-- **Anyone can register** a process as a subscriber. (including the process itself)
-- Registration involves the naming of a **subscription owner**. (can be the process itself)
-- The **owner is required to pay** in order for that owners' subscriptions to be active.
-  - Dexi tracks payments per subscription owners, not per individual subscriptions.
-  - Dexi requires **one-time payments**, so it's not related to the duration of the subscription or actual data provided. It is rather a means to prevent abuse of the service.
-  - Once an owner has paid, any **subsequent registrations** involving that owner (regardless of the registered subscriber process) are considered paid for
+#### Payments
+Payments are a means to prevent abuse of the service.
 
-Subscriptions can also be **canceled by the subscription owner**. In v1, Dexi subscriptions run until canceled.
+**Anyone can pay** for a subscriber.
 
-#### No Changes to Subscription Owner 
+In v1, Dexi **tracks payments per subscriber**, as opposed to per subscription. Furthermore, it requires **one-time payments**, so it's not related to the duration of the subscription or actual data provided.
 
-Dexi v1 doesn't support changing a subscription owner. If needed, a subscription can be canceled and reestablished with a different `Owner-Id`.
+#### Canceling a subscription
+
+In v1, Dexi subscriptions run until canceled. Only the subscriber process can cancel.
 
 #### No Duplicate Subscriptions
 
-Dexi v1 supports **no duplicate subscriptions**. It taking into consideration the nature of the parameters so that "duplication" is defined in a way that suits the expected needs of subscribers.
+Dexi v1 supports **no duplicate subscriptions**. It's taking into consideration the nature of the parameters - "duplication" is defined in a way that suits the expected needs of subscribers.
 
 Specifically:
 - for indicators, the combination (subscriber_id, amm_id) must be unique
@@ -82,15 +80,11 @@ A process has a subscription to "indicators" for TRUNK-BARK and a subscription t
 
 However, it cannot have one more "indicators" subscription for TRUNK-BARK. 
 
-The limitation applies even if the subscription owners are different.
-
 **Example Scenario 2**
 
 A process has a subscription to "top n market data" for the **top 5** tokens by market cap, with market cap expressed in **BARK**. Furthermore, it has a subscription to "top n market data" for the **top 5**, with market cap expressed in **wAR**. Having these 2 at the same time works. 
 
 However, the process cannot have one more "top n market data" subscription for the **top 3** tokens, with market cap expressed in **BARK** or **wAR**. In this case, the difference in the `N` parameter doesn't matter. 
-
-And, just like with "indicators", the limitiation applies even if the subscription owners are different.
 
 ## Dexi Data - Core
 
@@ -163,18 +157,35 @@ ao.send({
 
 #### Subscribe-Indicators
 
-This handler can be used to subscribe to indicators data.
+This handler can be used to subscribe to indicators data related to a specific AMM. 
 
-The 'Susbcribe-Indicators' handler is used to register a process to monitor a specific AMM. The handler expects input tags for the AMM identifier (AMM-Process-Id), an Owner-Id and the process identifier (Subscriber-Process-Id).
-Once registered the owner (wallet with Owner-Id) has to send 1 DEXI to the Dexi process to activate the subscription.
+A process sending a 'Susbcribe-Indicators' message registers as a subscriber. 
+
+The handler expects an input tag for the AMM identifier (AMM-Process-Id).
+
+After registration a payment is necessary in order to activate the subscription. 
+Anyone can perform the payment. 1 DEXI must be sent to the Dexi process, while forward-tagging the subscriber process id.
+
+Here is an example of how a process would subscribe and also perform the payment
 
 ```lua
+-- register as a subscriber
+
 ao.send({
     Target = <DEXI_PROCESS>,
     Action = 'Subscribe-Indicators',
-    ['Subscriber-Process-Id'] = ao.id,          -- Process that is being subscribed
-    ['Owner-Id'] = Owner,                       -- Entity that will pay for this particular subscription (can be the subscriber process itself)
     ['AMM'] = <AMM_PROCESS>,                    -- AMM of the token pair of interest
+})
+
+-- ...
+-- after confirmation, activate subscription by making a payment
+
+ao.send({
+  Target = <DEXI_TOKEN_PROCESS>,
+  Action = 'Transfer',
+  Recipient = <DEXI_PROCESS>,
+  Quantity = "1",
+  ['X-Subscriber-Process-Id'] = ao.id,         -- Process that is being subscribed. In this case, the sender of the message
 })
 ```
 
@@ -237,21 +248,42 @@ ao.send({
 })
 ```
 
-#### Subscribe-Top-N
-Here is how a process like a token index fund agent would be subscribed to Dexi in order to receive Top-N-Market-Data.
+#### Get-Top-N-Token-Set
+The handler returns a JSON-encoded response containing the tokens of interest for a specific top n market data subscription. 
+
 ```lua
 ao.send({
-    Target = <DEXI_PROCESS>,                    -- the Dexi process ID
-    Action = 'Subscribe-Top-N',
-    ['Subscriber-Process-Id'] = ao.id,          -- Process that is being subscribed
-    ['Owner-Id'] = Owner,                       -- Entity that will pay for this particular subscription (can be the subscriber process itself)
-    ['Top-N'] = '5',                            -- Will always send for top 5 tokens in market cap ranking
-    ['Quote-Token'] = 'abc_TokenProcessId_xyz'  -- Quote Token by which the market cap is determined (currently only BARK is supported)****
+  Target = <DEXI_PROCESS>,                -- the Dexi process ID
+  Action = 'Get-Top-N-Market-Data',
+  ["Subscriber-Process-Id"] = <id>        -- The subscriber process ID
+  ["Quote-Token"] = <quote_token>         -- Quote Token by which the market cap is determined in this subscription
 })
 ```
-As with subscriptions for regular AMM data, once registered the owner (wallet with `Owner-Id`) has to send 1 DEXI to the Dexi process to activate the subscription.
 
+#### Subscribe-Top-N
+Here is how a process like a token index fund agent would subscribe to Dexi in order to receive Top-N-Market-Data
 
+```lua
+-- register as a subscriber
+
+ao.send({
+    Target = <DEXI_PROCESS>,
+    Action = 'Subscribe-Top-N',
+    ['Top-N'] = '5',                            -- Will always send for top 5 tokens in market cap ranking
+    ['Quote-Token'] = 'abc_TokenProcessId_xyz'  -- Quote Token by which the market cap is determined (currently only BARK is supported)
+})
+
+-- ...
+-- after confirmation, activate subscription by making a payment
+
+ao.send({
+  Target = <DEXI_TOKEN_PROCESS>,
+  Action = 'Transfer',
+  Recipient = <DEXI_PROCESS>,
+  Quantity = "1",
+  ['X-Subscriber-Process-Id'] = ao.id,         -- Process that is being subscribed. In this case, the sender of the message
+})
+```
 
 ## Building & Deploying DEXI
 
