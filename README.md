@@ -35,7 +35,7 @@ In principle, Dexi can also operate in a **Pull Mode**, meaning that it loads AM
 ### How Dexi subscribes to AMMs
 
 1. AMMs require the capability to provide such subscriptions. [Bark](https://github.com/Autonomous-Finance/bark-amm) AMMs have it by default. Typically, subscribing to an AMM involves a **payment**.
-2. DEXI needs to subscribe to each registered AMM. This step is typically triggered by an **AMM creator** who is interested in having their AMM integrated with DEXI. The payment tokens would typically be provided by that AMM creator.  
+2. DEXI needs to subscribe to each registered AMM. This step is typically triggered by an **AMM creator** who is interested in having their AMM integrated with DEXI. The payment tokens would typically be provided by that AMM creator. See details [below](#registering-an-amm-on-dexi)
 
 ## Dexi-Provided Subscriptions
 
@@ -285,7 +285,55 @@ ao.send({
 })
 ```
 
-## Building & Deploying DEXI
+## Registering an AMM on Dexi
+
+In order for an AMM to be registered on Dexi, a payment must be made to Dexi (the aggregator) in DEXI tokens.
+
+Upon receiving the payment, Dexi itself subscribes to the AMM for the relevant data.
+
+Only AMMs that support subscriptions can be effectively registered on Dexi.
+
+Anyone can register an AMM, but typically this would be the creator of the AMM. 
+
+```lua
+-- the Dexi token process (https://github.com/Autonomous-Finance/dexi-token/)
+DEXI_TOKEN_PROCESS = '123-TODO-DEXI-Token-Process-Id'
+-- the Dexi process in this repo
+DEXI_PROCESS = '123-TODO-DEXI-Aggregator-Process-Id' 
+-- the AMM that should be registered on Dexi
+AMM_PROCESS = '123-Amm-Process-Id'
+
+ao.send({
+  Target = DEXI_TOKEN_PROCESS,
+  Action = 'Transfer',
+  Recipient = DEXI_PROCESS,
+  Quantity = '1',
+  ["X-AMM-Process"] = AMM_PROCESS
+})
+```
+
+The registration is a multi-step process. As Dexi performs these steps, it sends updates to the entity which made the initial payment.
+These updates are tagged
+```lua
+{
+  Action = "Dexi-AMM-Registration-Confirmation",
+  AMM = ammProcessId,
+  Status = currentStatus
+}
+```
+
+Typically the process is completed within a few seconds.
+
+The **current status** can have one of the values
+1. `received-request--initializing`
+2. `initialized--subscribing`
+3. `subscribed--paying`
+4. `paid--complete`
+
+Dexi has a message handler `{Action = "Get-AMM-Registration-Status"}` for AMM registration initiators to check the progress of an AMM registration. 
+
+
+## Building & Deploying Dexi
 
 To build & deploy do:
 `npm run build`

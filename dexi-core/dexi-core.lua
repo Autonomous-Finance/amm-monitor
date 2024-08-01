@@ -165,7 +165,7 @@ dexiCore.handleGetRegisteredAMMs = function(msg)
 end
 
 dexiCore.handleGetOverview = function(msg)
-  local now = msg.Timestamp / 1000
+  local now = math.floor(msg.Timestamp / 1000)
   local orderBy = msg.Tags['Order-By']
   ao.send({
     ['App-Name'] = 'Dexi',

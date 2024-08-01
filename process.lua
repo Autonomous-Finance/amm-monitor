@@ -159,7 +159,7 @@ Handlers.add(
   subscriptions.handleUnsubscribeForTopN
 )
 
--- PAYMENTS
+-- PAYMENT for Dexi Subscribers
 
 Handlers.add(
   "Receive-Payment-For-Subscriber",
@@ -173,24 +173,34 @@ Handlers.add(
   end
 )
 
+-- AMM Registration
+
 Handlers.add(
-  "Receive-Payment-For-AMM-Subscription",
+  "Receive-Payment-For-AMM-Registration",
   function(msg)
     return Handlers.utils.hasMatchingTag("Action", "Credit-Notice")(msg)
         and Handlers.utils.hasMatchingTag("X-Action", "Register-AMM")(msg)
         and msg.From == PAYMENT_TOKEN_PROCESS
   end,
-  function(msg)
-    register_amm.handlePayForSubscriptions(msg)
-  end
+  register_amm.handlePayForAmmRegistration
 )
 
--- REGISTER AMM Subscriber
+Handlers.add(
+  "Receive-AMM-Info",
+  Handlers.utils.hasMatchingTag("Response-For", "Get-AMM-Info"),
+  register_amm.handleInfoResponseFromAmm
+)
 
 Handlers.add(
-  "Register-AMM-Subscriber",
-  Handlers.utils.hasMatchingTag("Action", "Register-AMM-Subscriber"),
-  register_amm.handleRegisterSubscriber
+  "Subscription-Confirmation",
+  Handlers.utils.hasMatchingTag("Response-For", "Subscribe-To-Topics"),
+  register_amm.handleSubscriptionConfirmationFromAmm
+)
+
+Handlers.add(
+  "Payment-Confirmation-From-AMM",
+  Handlers.utils.hasMatchingTag("Response-For", "Pay-For-Subscription"),
+  register_amm.handlePaymentConfirmationFromAmm
 )
 
 -- MAINTENANCE
