@@ -1,0 +1,20 @@
+- name: dexi-test-v1
+  file: build/output.lua
+  prerun: reset-modules.lua
+  scheduler: _GQ33BkPtZrqxA84vM8Zk-N2aO0toNNu_C-l-rawrBA
+  module: GYrbbe0VbHim_7Hi6zrOpHQXrSQz07XNtwCnfbFo2I0
+  tags:
+    - name: Process-Type
+      value: Dexi-Aggregator-Test
+    - name: Quote-Token-Process
+      value: <your-dev-quote-token>
+    - name: Quote-Token-Ticker
+      value: HBRK
+    - name: Offchain-Supply-Updates-Provider
+      value: <your-dev-wallet>
+    - name: Payment-Token-Process
+      value: <your-dev-payment-token>
+    - name: Payment-Token-Ticker
+      value: <your-dev-payment-token-ticker>
+    - name: Operator
+      value: <your-dev-wallet>

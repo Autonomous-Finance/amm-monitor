@@ -57,6 +57,9 @@ jobs:
           echo "CONFIG_FILE=processes.dev.yaml" >> $GITHUB_ENV
         fi
 
+    - name: Build
+      run: npm run build
+
     - name: Run aoform
       run: npx aoform apply -f ${{ env.CONFIG_FILE }}
 

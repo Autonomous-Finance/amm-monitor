@@ -1,9 +1,10 @@
 {
   "name": "dexi-amm-monitor",
   "version": "1.0.0",
-  "description": "The DEXI AMM Monitor is designed to aggregate and process data from Automated Market Makers (AMMs). This agent operates in two modes: - **Pull Mode:** Loads data from the gateway. - **Push Mode:** Receives data directly from the AMM processes. These modes work in conjunction to ensure the agent maintains up-to-date AMM statistics, which are accessible and displayable through the frontend via dry runs.",
+  "description": "The DEXI AMM Monitor aggregates and processes data from Automated Market Makers (AMMs), offering subscription-based data feeds.",
   "scripts": {
     "build": "bash ./build.sh",
+    "deploy-dev": "bash ./deploy-dev.sh",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "devDependencies": {

@@ -1,3 +1,8 @@
 node_modules
-state.yml
-processes.yml
+
+state-processes.dev.yaml
+processes.dev.yaml
+
+build
+
+.DS_Store

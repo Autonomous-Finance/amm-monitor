@@ -6,6 +6,11 @@ else
     BIN_PATH="/opt/homebrew/bin"
 fi
 
+# Recreate build directories
+rm -rf ./build
+
+mkdir -p ./build
+
 $BIN_PATH/luacheck process.lua \
     validation/validation.lua validation/validation-schemas.lua \
     db/sqlschema.lua db/seed.lua db/utils.lua \
@@ -31,6 +36,3 @@ $BIN_PATH/amalg.lua -s process.lua -o build/output.lua \
     top-n.top-n \
     utils.debug \
     ownable.ownable
-
-export WALLET_JSON="$(cat ~/.aos.json)"
-npx aoform apply
