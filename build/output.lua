@@ -197,16 +197,14 @@ CREATE TABLE IF NOT EXISTS token_registry (
 
 sqlschema.create_balances_table = [[
 CREATE TABLE IF NOT EXISTS balances (
-    owner_id TEXT NOT NULL PRIMARY KEY,
-    token_id TEXT NOT NULL,
-    balance INT NOT NULL
+    process_id TEXT NOT NULL PRIMARY KEY,
+    balance TEXT NOT NULL
 );
 ]]
 
 sqlschema.create_indicator_subscriptions_table = [[
 CREATE TABLE IF NOT EXISTS indicator_subscriptions (
     process_id TEXT NOT NULL,
-    owner_id TEXT NOT NULL,
     amm_process_id TEXT NOT NULL,
     PRIMARY KEY (process_id),
     UNIQUE (process_id, amm_process_id)
@@ -216,7 +214,6 @@ CREATE TABLE IF NOT EXISTS indicator_subscriptions (
 sqlschema.create_top_n_subscriptions_table = [[
 CREATE TABLE IF NOT EXISTS top_n_subscriptions (
     process_id TEXT NOT NULL,
-    owner_id TEXT NOT NULL,
     quote_token TEXT NOT NULL,
     top_n INTEGER NOT NULL,
     token_set TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(token_set)),
@@ -294,7 +291,7 @@ function dbUtils.queryMany(stmt)
   for row in stmt:nrows() do
     table.insert(rows, row)
   end
-  stmt:reset()
+  stmt:finalize()
   return rows
 end
 
@@ -558,7 +555,7 @@ dexiCore.handleGetRegisteredAMMs = function(msg)
 end
 
 dexiCore.handleGetOverview = function(msg)
-  local now = msg.Timestamp / 1000
+  local now = math.floor(msg.Timestamp / 1000)
   local orderBy = msg.Tags['Order-By']
   ao.send({
     ['App-Name'] = 'Dexi',
@@ -1006,8 +1003,7 @@ function sql.getDiscoveredAt(ammProcessId)
 
   ammStmt:bind_names({ amm_process_id = ammProcessId })
 
-  local row = ammStmt:step()
-  ammStmt:finalize()
+  local row = dbUtils.queryOne(ammStmt)
 
   return row.amm_discovered_at_ts
 end
@@ -1037,11 +1033,11 @@ function sql.getDailyStats(ammProcessId, startDate, endDate)
   return dbUtils.queryMany(stmt)
 end
 
-function sql.getSubscribersToProcess(ammProcessId)
+function sql.getActiveSubscribersToAMM(ammProcessId)
   local subscribersStmt = db:prepare([[
       SELECT s.process_id
       FROM indicator_subscriptions s
-      JOIN balances b ON s.owner_id = b.owner_id AND b.balance > 0
+      JOIN balances b ON s.process_id = b.process_id AND CAST(b.balance AS REAL) > 0
       WHERE amm_process_id = :amm_process_id
     ]])
   if not subscribersStmt then
@@ -1161,7 +1157,7 @@ function indicators.dispatchIndicatorsForAMM(now, ammProcessId)
   local oneWeekAgo = now - (7 * 24 * 60 * 60)
   local startTimestamp = math.max(discoveredAt, oneWeekAgo)
 
-  local processes = sql.getSubscribersToProcess(ammProcessId)
+  local processes = sql.getActiveSubscribersToAMM(ammProcessId)
 
   local indicatorsResults = getIndicators(ammProcessId, startTimestamp)
 
@@ -1231,7 +1227,7 @@ function ingestSql.getGatewayHeight(msg)
 end
 
 function ingestSql.recordSwap(entry)
-  local stmt, err = db:prepare [[
+  local stmt = db:prepare [[
     REPLACE INTO amm_transactions (
       id, source, block_height, block_id, sender, created_at_ts,
       to_token, from_token, from_quantity, to_quantity, fee_percentage, amm_process
@@ -1251,7 +1247,7 @@ function ingestSql.recordSwap(entry)
 end
 
 function ingestSql.recordChangeInSwapParams(entry)
-  local stmt, err = db:prepare [[
+  local stmt = db:prepare [[
     REPLACE INTO amm_swap_params_changes (
       id, source, block_height, block_id, sender, created_at_ts, cause
       reserves_0, reserves_1, fee_percentage, amm_process
@@ -1271,7 +1267,7 @@ function ingestSql.recordChangeInSwapParams(entry)
 end
 
 function ingestSql.updateCurrentSwapParams(entry)
-  local stmt, err = db:prepare [[
+  local stmt = db:prepare [[
     REPLACE INTO amm_swap_params (
       amm_process, reserves_0, reserves_1, fee_percentage
     ) VALUES (
@@ -1508,66 +1504,148 @@ local dexiCore = require("dexi-core.dexi-core")
 
 local register_amm = {}
 
-register_amm.handleRegisterSubscriber = function(msg)
-  -- send Register-Subscriber to amm process
-  ao.send({
-    Target = msg.Tags["AMM-Process"],
-    Action = "Register-Subscriber",
-    Tags = {
-      ["Subscriber-Process-Id"] = ao.id,
-      ["Owner-Id"] = msg.From,
-      ['Topics'] = json.encode({ "order-confirmation", "swap-params-change" })
+--[[
+  {
+    [processId] = {
+      requester = requesterId,         -- whoever paid for subscribing to the AMM
+      status = subscriptionStatus,     -- 'received-request--initializing' | 'initialized--subscribing' | 'subscribed--paying' | 'paid--complete'
+      ammDetails = {
+        name = ammName,
+        tokenA = tokenA,
+        tokenB = tokenB,
     }
-  })
+  }
+]]
+AmmSubscriptions = AmmSubscriptions or {}
 
-  -- send confirmation to sender
+
+-- ----------------------- INTERNAL
+
+local updateStatus = function(ammProcessId, newStatus)
+  local registrationData = AmmSubscriptions[ammProcessId]
+  registrationData.status = newStatus
   ao.send({
-    Target = msg.From,
-    Action = "Dexi-AMM-Subscriber-Registration-Confirmation",
-    Tags = {
-      ["AMM-Process"] = msg.Tags["AMM-Process"]
-    }
+    Target = registrationData.requester,
+    Action = "Dexi-AMM-Registration-Confirmation",
+    AMM = ammProcessId,
+    Status = newStatus
   })
 end
 
-register_amm.handlePayForSubscriptions = function(msg)
+local getAmmInfo = function(ammProcessId)
+  ao.send({
+    Target = ammProcessId,
+    Action = "Get-Amm-Info"
+  })
+end
+
+local subscribeToAmm = function(ammProcessId)
+  ao.send({
+    Target = ammProcessId,
+    Action = "Register-Subscriber",
+    Topics = json.encode({ "order-confirmation", "swap-params-change" })
+  })
+end
+
+local registerAMM = function(ammProcessId, now)
+  local registrationData = AmmSubscriptions[ammProcessId]
+  dexiCore.registerAMM(
+    registrationData.ammDetails.name,
+    ammProcessId,
+    registrationData.ammDetails.tokenA,
+    registrationData.ammDetails.tokenB,
+    now
+  )
+end
+
+local payForSubscription = function(ammProcessId)
+  ao.send({
+    Target = PAYMENT_TOKEN_PROCESS,
+    Action = 'Transfer',
+    Recipient = ammProcessId,
+    Quantity = 1,
+    ["X-Subscriber-Process-Id"] = ao.id
+  })
+end
+
+-- --------------------- EXPORT
+-- Registration Steps in the order of succession
+
+-- 1. Receive a Payment that kicks off the registration process
+register_amm.handlePayForAmmRegistration = function(msg)
   assert(msg.Tags.Quantity, 'Credit notice data must contain a valid quantity')
   assert(msg.Tags.Sender, 'Credit notice data must contain a valid sender')
   assert(msg.Tags["X-AMM-Process"], 'Credit notice data must contain a valid amm-process')
-  assert(msg.Tags["X-Token-A"], 'Credit notice data must contain a valid token-a')
-  assert(msg.Tags["X-Token-B"], 'Credit notice data must contain a valid token-b')
-  assert(msg.Tags["X-Name"], 'Credit notice data must contain a valid fee-percentage')
 
-  -- Pay for the Subscription
-  ao.send({
-    Target = PAYMENT_TOKEN_PROCESS,
-    Action = "Transfer",
-    Tags = {
-      Recipient = msg.Tags["X-AMM-Process"],
-      Quantity = msg.Tags.Quantity,
-      ["X-Action"] = "Pay-For-Subscription"
-    }
-  })
+  local ammProcessId = msg.Tags["X-AMM-Process"]
 
-  dexiCore.registerAMM(
-    msg.Tags["X-Name"],
-    msg.Tags["X-AMM-Process"],
-    msg.Tags["X-Token-A"],
-    msg.Tags["X-Token-B"],
-    msg.Timestamp
-  )
+  AmmSubscriptions[ammProcessId] = {
+    requester = msg.Tags.Sender
+  }
 
-  -- send confirmation to sender
-  ao.send({
-    Target = msg.Tags.Sender,
-    Action = "Dexi-AMM-Registration-Confirmation",
-    Tags = {
-      ["AMM-Process"] = msg.Tags["X-AMM-Process"],
-      ["Token-A"] = msg.Tags["X-Token-A"],
-      ["Token-B"] = msg.Tags["X-Token-B"],
-      ["Name"] = msg.Tags["X-Name"]
-    }
-  })
+  getAmmInfo(msg.Tags["X-AMM-Process"])
+  updateStatus(ammProcessId, 'received-request--initializing')
+end
+
+-- 2. Receive the AMM Info to initialize the registration with correct data
+register_amm.handleInfoResponseFromAmm = function(msg)
+  local ammProcessId = msg.From
+  local registrationData = AmmSubscriptions[ammProcessId]
+  if not registrationData then
+    error('No subscription request found for amm: ' .. ammProcessId)
+  end
+
+  assert(msg.Tags.Name, 'AMM info data must contain a valid Name tag')
+  assert(msg.Tags["Token-A"], 'AMM info data must contain a valid Token-A tag')
+  assert(msg.Tags["Token-B"], 'AMM info data must contain a valid Token-B tag')
+
+  registrationData.ammDetails = {
+    name = msg.Tags.Name,
+    tokenA = msg.Tags["Token-A"],
+    tokenB = msg.Tags["Token-B"]
+  }
+
+  subscribeToAmm(ammProcessId)
+  updateStatus(ammProcessId, 'initilized--subscribing')
+end
+
+-- 3. Receive Subscription Confirmation from AMM
+register_amm.handleSubscriptionConfirmationFromAmm = function(msg)
+  assert(msg.Tags.OK == 'true', 'Subscription failed for amm: ' .. msg.From)
+  assert(msg.Tags["Updated-Topics"], 'Subscription confirmation data must contain a valid updated-topics')
+
+  local topics = json.decode(msg.Tags["Updated-Topics"])
+
+  assert(
+    #topics == 2
+    and (topics[1] == 'order-confirmation' and topics[2] == 'swap-params-change')
+    or (topics[1] == 'swap-params-change' and topics[2] == 'order-confirmation'),
+    'Invalid topics received from amm: ' .. msg.From .. ' - ' .. json.encode(topics))
+
+  local ammProcessId = msg.From
+
+  if not AmmSubscriptions[ammProcessId] then
+    error('No subscription request found for amm: ' .. ammProcessId)
+  end
+
+  payForSubscription(ammProcessId)
+  updateStatus(ammProcessId, 'subscribed--paying')
+end
+
+-- 4. Receive Payment Confirmation from AMM
+register_amm.handlePaymentConfirmationFromAmm = function(msg)
+  if not msg.Tags.OK == 'true' then
+    error('Payment failed for amm: ' .. msg.From)
+  end
+
+  local ammProcessId = msg.From
+  if not AmmSubscriptions[ammProcessId] then
+    error('No subscription request found for amm: ' .. ammProcessId)
+  end
+
+  local now = math.floor(msg.Timestamp / 1000)
+  registerAMM(ammProcessId, now)
+  updateStatus(ammProcessId, 'paid--complete')
 end
 
 return register_amm
@@ -1579,6 +1657,8 @@ local _ENV = _ENV
 package.preload[ "subscriptions.subscriptions" ] = function( ... ) local arg = _G.arg;
 local indicators = require('indicators.indicators')
 local topN = require('top-n.top-n')
+local bint = require('.bint')(256)
+local dbUtils = require('db.utils')
 
 local subscriptions = {}
 
@@ -1588,44 +1668,28 @@ local sql = {}
 
 -- INDICATORS SQL
 
-function sql.registerIndicatorSubscriber(processId, ownerId, ammProcessId)
+function sql.registerIndicatorSubscriber(processId, ammProcessId)
   local stmt = db:prepare [[
-    INSERT INTO indicator_subscriptions (process_id, owner_id, amm_process_id)
-    VALUES (:process_id, :owner_id, :amm_process_id)
+    INSERT INTO indicator_subscriptions (process_id, amm_process_id)
+    VALUES (:process_id, :amm_process_id)
   ]]
   if not stmt then
     error("Failed to prepare SQL statement for registering process: " .. db:errmsg())
   end
   stmt:bind_names({
     process_id = processId,
-    owner_id = ownerId,
     amm_process_id = ammProcessId
   })
-  local result, err = stmt:step()
+  local _, err = stmt:step()
   stmt:finalize()
   if err then
     error("Err: " .. db:errmsg())
   end
 end
 
-function sql.hasIndicatorsSubscription(processId, ammProcessId)
+function sql.getIndicatorsSubscriber(processId, ammProcessId)
   local stmt = db:prepare [[
-    SELECT 1
-    FROM indicator_subscriptions
-    WHERE process_id = :process_id AND amm_process_id = :amm_process_id;
-  ]]
-  if not stmt then
-    error("Failed to prepare SQL statement for checking indicators subscription: " .. db:errmsg())
-  end
-  stmt:bind_names({ process_id = processId, amm_process_id = ammProcessId })
-  local row = stmt:step()
-  stmt:finalize()
-  return row and true or false
-end
-
-function sql.getIndicatorsSubscriptionOwner(processId, ammProcessId)
-  local stmt = db:prepare [[
-    SELECT owner_id
+    SELECT *
     FROM indicator_subscriptions
     WHERE process_id = :process_id AND amm_process_id = :amm_process_id;
   ]]
@@ -1636,9 +1700,7 @@ function sql.getIndicatorsSubscriptionOwner(processId, ammProcessId)
     process_id = processId,
     amm_process_id = ammProcessId
   })
-  local row = stmt:step()
-  stmt:finalize()
-  return row.owner_id
+  return dbUtils.queryOne(stmt)
 end
 
 function sql.unregisterIndicatorsSubscriber(processId, ammProcessId)
@@ -1653,7 +1715,7 @@ function sql.unregisterIndicatorsSubscriber(processId, ammProcessId)
     process_id = processId,
     amm_process_id = ammProcessId
   })
-  local result, err = stmt:step()
+  local _, err = stmt:step()
   stmt:finalize()
   if err then
     error("Err: " .. db:errmsg())
@@ -1662,52 +1724,29 @@ end
 
 -- TOP N SQL
 
-function sql.registerTopNSubscriber(processId, ownerId, quoteToken, nInTopN)
+function sql.registerTopNSubscriber(processId, quoteToken, nInTopN)
   local stmt = db:prepare [[
-    INSERT INTO top_n_subscriptions (process_id, owner_id, quote_token, top_n)
-    VALUES (:process_id, :owner_id, :quote_token, :top_n)
-    ON CONFLICT(process_id) DO UPDATE SET
-    owner_id = excluded.owner_id,
-    quote_token = excluded.quote_token,
-    top_n = excluded.top_n;
+    INSERT INTO top_n_subscriptions (process_id, quote_token, top_n)
+    VALUES (:process_id, :quote_token, :top_n)
   ]]
   if not stmt then
     error("Failed to prepare SQL statement for registering process: " .. db:errmsg())
   end
   stmt:bind_names({
     process_id = processId,
-    owner_id = ownerId,
     quote_token = quoteToken,
     top_n = nInTopN
   })
-  local result, err = stmt:step()
+  local _, err = stmt:step()
   stmt:finalize()
   if err then
     error("Err: " .. db:errmsg())
   end
 end
 
-function sql.hasTopNSubscription(processId, quoteToken)
+function sql.getTopNSubscription(processId, quoteToken)
   local stmt = db:prepare [[
-    SELECT 1
-    FROM top_n_subscriptions
-    WHERE process_id = :process_id AND quote_token = :quote_token;
-  ]]
-  if not stmt then
-    error("Failed to prepare SQL statement for checking top N subscription: " .. db:errmsg())
-  end
-  stmt:bind_names({
-    process_id = processId,
-    quote_token = quoteToken,
-  })
-  local row = stmt:step()
-  stmt:finalize()
-  return row and true or false
-end
-
-function sql.getTopNSubscriptionOwner(processId, quoteToken)
-  local stmt = db:prepare [[
-    SELECT owner_id
+    SELECT *
     FROM top_n_subscriptions
     WHERE process_id = :process_id AND quote_token = :quote_token;
   ]]
@@ -1718,57 +1757,65 @@ function sql.getTopNSubscriptionOwner(processId, quoteToken)
     process_id = processId,
     quote_token = quoteToken
   })
-  local row = stmt:step()
-  stmt:finalize()
-  return row.owner_id
+  return dbUtils.queryOne(stmt)
 end
 
-function sql.unregisterTopNSubscriber(processId, ownerId, quoteToken, nInTopN)
+function sql.unregisterTopNSubscriber(processId, quoteToken)
   local stmt = db:prepare [[
     DELETE FROM top_n_subscriptions
-    WHERE process_id = :process_id AND owner_id = :owner_id AND quote_token = :quote_token AND top_n = :top_n;
+    WHERE process_id = :process_id AND quote_token = :quote_token;
   ]]
   if not stmt then
     error("Failed to prepare SQL statement for unregistering process: " .. db:errmsg())
   end
   stmt:bind_names({
     process_id = processId,
-    owner_id = ownerId,
     quote_token = quoteToken,
-    top_n = nInTopN
   })
-  local result, err = stmt:step()
+  local _, err = stmt:step()
   stmt:finalize()
   if err then
     error("Err: " .. db:errmsg())
   end
 end
 
-function sql.updateBalance(ownerId, tokenId, amount, isCredit)
+function sql.updateBalance(processId, amount, isCredit)
+  local currentBalance = bint(sql.getBalance(processId))
+  local diff = isCredit and bint(amount) or -bint(amount)
+  local newBalance = tostring(currentBalance + diff)
+
   local stmt = db:prepare [[
-    INSERT INTO balances (owner, token_id, balance)
-    VALUES (:owner_id, :token_id, :amount)
-    ON CONFLICT(owner) DO UPDATE SET
-      balance = CASE
-        WHEN :is_credit THEN balances.balance + :amount
-        ELSE balances.balance - :amount
-      END
+    INSERT INTO balances (process_id, balance)
+    VALUES (:process_id, :amount)
+    ON CONFLICT(process_id) DO UPDATE SET balance = :new_balance
     WHERE balances.token_id = :token_id;
   ]]
   if not stmt then
     error("Failed to prepare SQL statement for updating balance: " .. db:errmsg())
   end
   stmt:bind_names({
-    owner_id = ownerId,
-    token_id = tokenId,
+    process_id = processId,
+    new_balance = newBalance,
     amount = math.abs(amount), -- Ensure amount is positive
     is_credit = isCredit
   })
-  local result, err = stmt:step()
+  local _, err = stmt:step()
   stmt:finalize()
   if err then
     error("Error updating balance: " .. db:errmsg())
   end
+end
+
+function sql.getBalance(processId)
+  local stmt = db:prepare [[
+  SELECT * FROM balances WHERE process_id = :process_id
+]]
+  if not stmt then
+    error("Failed to prepare SQL statement for getting balance entry: " .. db:errmsg())
+  end
+  stmt:bind_names({ process_id = processId })
+  local balanceRow = dbUtils.queryOne(stmt)
+  return balanceRow and balanceRow.balance or "0"
 end
 
 -- ------------------- EXPORT
@@ -1790,7 +1837,7 @@ subscriptions.handleSubscribeForIndicators = function(msg)
     error('Owner-Id is required')
   end
 
-  if sql.hasIndicatorsSubscription(processId, ammProcessId) then
+  if sql.getIndicatorsSubscriber(processId, ammProcessId) then
     error('Indicators subscription already exists for process: ' .. processId .. ' and amm: ' .. ammProcessId)
   end
 
@@ -1808,40 +1855,41 @@ subscriptions.handleSubscribeForIndicators = function(msg)
   })
 end
 
-subscriptions.handleUnsubscribeForIndicators = function(msg)
-  local processId = msg.Tags['Subscriber-Process-Id']
-  local ownerId = msg.Tags['Owner-Id']
-  local ammProcessId = msg.Tags['AMM-Process-Id']
-
-  local owner = sql.getIndicatorsSubscriptionOwner(processId)
-
-  if not owner then
+local unsubscribeForInidicators = function(processId, ammProcessId, asResponse)
+  if not sql.getIndicatorsSubscriber(processId, ammProcessId) then
     error('No indicator subscription found for process: ' .. processId .. ' and amm: ' .. ammProcessId)
   end
 
-  if owner ~= ownerId then
-    error('Provided Owner-Id owns no indicator subscription for the process ' ..
-      processId .. ' and amm: ' .. ammProcessId)
-  end
-
-  if owner ~= msg.From and msg.From ~= OPERATOR then
-    error('Only an owner can unsubscribe its owned subscription. Indicator subscription for process ' ..
-      processId .. ' is owned by ' ..
-      owner .. ' not ' .. msg.From .. '(you)')
-  end
-
   print('Unsubscribing subscriber from indicator data: ' ..
-    processId .. ' for amm: ' .. ammProcessId .. ' with owner: ' .. ownerId)
+    processId .. ' for amm: ' .. ammProcessId)
+
   indicators.unregisterIndicatorSubscriber(processId, ammProcessId)
 
+  local tag = asResponse and 'Response-For' or 'Action'
+
   ao.send({
-    Target = ao.id,
-    Assignments = { ownerId, processId },
-    Action = 'Dexi-Indicator-Unsubscription-Confirmation',
+    Target = processId,
+    [tag] = 'Dexi-Indicator-Unsubscription-Confirmation',
     AMM = ammProcessId,
-    Process = processId,
     OK = 'true'
   })
+end
+
+subscriptions.handleUnsubscribeForIndicators = function(msg)
+  local processId = msg.From
+  local ammProcessId = msg.Tags['AMM-Process-Id']
+  local asResponse = true
+  unsubscribeForInidicators(processId, ammProcessId, asResponse)
+end
+
+subscriptions.handleOperatorUnsubscribeForIndicators = function(msg)
+  if msg.From ~= OPERATOR then
+    error('Only the operator is allowed')
+  end
+  local processId = msg.Tags['Subscriber-Process-Id']
+  local ammProcessId = msg.Tags['AMM-Process-Id']
+  local asResponse = false
+  unsubscribeForInidicators(processId, ammProcessId, asResponse)
 end
 
 subscriptions.handleSubscribeForTopN = function(msg)
@@ -1862,7 +1910,7 @@ subscriptions.handleSubscribeForTopN = function(msg)
     error('Top-N is required')
   end
 
-  if sql.hasTopNSubscription(processId, quoteToken) then
+  if sql.getTopNSubscription(processId, quoteToken) then
     error('Top N subscription already exists for process: ' .. processId .. ' and quote token: ' .. quoteToken)
   end
 
@@ -1883,44 +1931,44 @@ subscriptions.handleSubscribeForTopN = function(msg)
   })
 end
 
-function subscriptions.handleUnsubscribeForTopN(msg)
-  local processId = msg.Tags['Subscriber-Process-Id']
-  local ownerId = msg.Tags['Owner-Id']
-  local quoteToken = msg.Tags['Quote-Token']
-
-  local owner = sql.getTopNSubscriptionOwner(processId, quoteToken)
-
-  if not owner then
+local function unsubscribeForTopN(processId, quoteToken, asResponse)
+  if not sql.getTopNSubscription(processId, quoteToken) then
     error('No top N subscription found for process: ' .. processId .. ' and quote token: ' .. quoteToken)
   end
 
-  if owner ~= ownerId then
-    error('Provided Owner-Id owns no top N subscription for the process ' ..
-      processId .. ' and quote token: ' .. quoteToken)
-  end
-
-  if owner ~= msg.From and msg.From ~= OPERATOR then
-    error('Only an owner can unsubscribe its owned subscription. Top N subscription for process ' ..
-      processId .. ' is owned by ' ..
-      owner .. ' not ' .. msg.From .. '(you)')
-  end
-
   print('Unsubscribing subscriber from top N market data: ' ..
-    processId .. ' for quote token: ' .. quoteToken .. ' with owner: ' .. ownerId)
-  sql.unregisterTopNSubscriber(processId, ownerId, quoteToken)
+    processId .. ' for quote token: ' .. quoteToken)
+  sql.unregisterTopNSubscriber(processId, quoteToken)
+
+  local tag = asResponse and 'Response-For' or 'Action'
 
   ao.send({
-    Target = ao.id,
-    Assignments = { ownerId, processId },
-    Action = 'Dexi-Top-N-Unsubscription-Confirmation',
+    Target = processId,
+    [tag] = 'Dexi-Top-N-Unsubscription-Confirmation',
     QuoteToken = quoteToken,
-    Process = processId,
     OK = 'true'
   })
 end
 
+subscriptions.handleUnsubscribeForTopN = function(msg)
+  local processId = msg.From
+  local quoteToken = msg.Tags['Quote-Token']
+  local asResponse = true
+  unsubscribeForTopN(processId, quoteToken, asResponse)
+end
+
+subscriptions.handleOperatorUnsubscribeForTopN = function(msg)
+  if msg.From ~= OPERATOR then
+    error('Only the operator is allowed')
+  end
+  local processId = msg.Tags['Subscriber-Process-Id']
+  local quoteToken = msg.Tags['Quote-Token']
+  local asResponse = false
+  unsubscribeForTopN(processId, quoteToken, asResponse)
+end
+
 subscriptions.recordPayment = function(msg)
-  sql.updateBalance(msg.Tags.Sender, msg.From, tonumber(msg.Tags.Quantity), true)
+  sql.updateBalance(msg.Tags.Sender, tonumber(msg.Tags.Quantity), true)
 end
 
 return subscriptions
@@ -2009,13 +2057,13 @@ end
   The subscribers must have the AMM process ID in their token set.
   The query returns both the subscriber ID and the top N market data.
 ]]
-function sql.getSubscribersWithMarketDataForAmm(now, ammProcessId)
+function sql.getActiveSubscribersWithInterestInAmm(now, ammProcessId)
   local subscribersStmt = db:prepare([[
     WITH matched_subscribers AS (
       SELECT s.process_id, s.quote_token, s.top_n, s.token_set
       FROM top_n_subscriptions s, json_each(s.token_set)
       WHERE json_each.value = :ammProcessId
-      JOIN balances b ON s.owner_id = b.owner_id AND b.balance > 0
+      JOIN balances b ON s.process_id = b.process_id AND CAST(b.balance AS REAL) > 0
     ),
     token_list AS (
       SELECT process_id, json_each.value AS token
@@ -2055,6 +2103,25 @@ function sql.getSubscribersWithMarketDataForAmm(now, ammProcessId)
   return subscribers
 end
 
+function sql.getTopNTokenSet(processId, quoteToken)
+  local stmt = db:prepare [[
+    SELECT *
+    FROM top_n_subscriptions
+    WHERE process_id = :process_id AND quote_token = :quote_token;
+  ]]
+  if not stmt then
+    error("Failed to prepare SQL statement for getting top N token set: " .. db:errmsg())
+  end
+  stmt:bind_names({
+    process_id = processId,
+    quote_token = quoteToken
+  })
+
+  local row = dbUtils.queryOne(stmt)
+
+  return row and row.token_set or nil
+end
+
 -- ---------------- EXPORT
 
 --[[
@@ -2063,6 +2130,23 @@ end
 ---@param specificSubscriber string | nil if nil, token set is updated for each subscriber
 function topN.updateTopNTokenSet(specificSubscriber)
   sql.updateTopNTokenSet(specificSubscriber)
+end
+
+function topN.handleGetTopNTokenSet(msg)
+  local processId = msg.Tags['Subscriber-Process-Id']
+  local quoteToken = msg.Tags['Quote-Token']
+  local tokenSet = topN.getTopNTokenSet(processId, quoteToken)
+
+  if not tokenSet then
+    error('No top N token set found for this subscriber and quote token')
+  end
+
+  ao.send({
+    Target = msg.From,
+    ['App-Name'] = 'Dexi',
+    ['Response-For'] = 'Get-Top-N-Token-Set',
+    Data = json.encode(tokenSet)
+  })
 end
 
 function topN.handleGetTopNMarketData(msg)
@@ -2095,7 +2179,7 @@ function topN.dispatchMarketDataIncludingAMM(now, ammProcessId)
     end
     return
   end
-  local subscribersAndMD = sql.getSubscribersWithMarketDataForAmm(now, ammProcessId)
+  local subscribersAndMD = sql.getActiveSubscribersWithInterestInAmm(now, ammProcessId)
 
   print('sending market data updates to affected subscribers')
 
@@ -2637,6 +2721,8 @@ local ingest = require("ingest.ingest")
 local topN = require("top-n.top-n")
 local debug = require("utils.debug")
 local register_amm = require("register-amm.register-amm")
+local emergency = require("ops.emergency")
+local configOps = require("ops.config-ops")
 
 db = db or sqlite3.open_memory()
 
@@ -2651,13 +2737,15 @@ ao = ao or {}
 -- OWNABLE --
 Ownable = require "ownable.ownable"
 
-OFFCHAIN_FEED_PROVIDER = OFFCHAIN_FEED_PROVIDER or ao.env.Process.Tags["Offchain-Feed-Provider"]
 QUOTE_TOKEN_PROCESS = QUOTE_TOKEN_PROCESS or ao.env.Process.Tags["Quote-Token-Process"]
 QUOTE_TOKEN_TICKER = QUOTE_TOKEN_TICKER or ao.env.Process.Tags["Quote-Token-Ticker"]
-SUPPLY_UPDATES_PROVIDER = SUPPLY_UPDATES_PROVIDER or
-    ao.env.Process.Tags["Offchain-Supply-Updates-Provider"]
+
 PAYMENT_TOKEN_PROCESS = PAYMENT_TOKEN_PROCESS or ao.env.Process.Tags["Payment-Token-Process"]
 PAYMENT_TOKEN_TICKER = PAYMENT_TOKEN_TICKER or ao.env.Process.Tags["Payment-Token-Ticker"]
+
+OFFCHAIN_FEED_PROVIDER = OFFCHAIN_FEED_PROVIDER or ao.env.Process.Tags["Offchain-Feed-Provider"]
+SUPPLY_UPDATES_PROVIDER = SUPPLY_UPDATES_PROVIDER or
+    ao.env.Process.Tags["Offchain-Supply-Updates-Provider"]
 
 DISPATCH_ACTIVE = DISPATCH_ACTIVE or true
 LOGGING_ACTIVE = LOGGING_ACTIVE or true
@@ -2771,6 +2859,12 @@ Handlers.add(
 )
 
 Handlers.add(
+  "Get-Top-N-Token-Set",
+  Handlers.utils.hasMatchingTag("Action", "Get-Top-N-Token-Set"),
+  topN.handleGetTopNTokenSet
+)
+
+Handlers.add(
   "Subscribe-Top-N",
   Handlers.utils.hasMatchingTag("Action", "Subscribe-Top-N"),
   subscriptions.handleSubscribeForTopN
@@ -2782,7 +2876,7 @@ Handlers.add(
   subscriptions.handleUnsubscribeForTopN
 )
 
--- PAYMENTS
+-- PAYMENT for Dexi Subscribers
 
 Handlers.add(
   "Receive-Payment-For-Subscriber",
@@ -2796,24 +2890,72 @@ Handlers.add(
   end
 )
 
+-- AMM Registration
+
 Handlers.add(
-  "Receive-Payment-For-AMM-Subscription",
+  "Receive-Payment-For-AMM-Registration",
   function(msg)
     return Handlers.utils.hasMatchingTag("Action", "Credit-Notice")(msg)
         and Handlers.utils.hasMatchingTag("X-Action", "Register-AMM")(msg)
         and msg.From == PAYMENT_TOKEN_PROCESS
   end,
-  function(msg)
-      register_amm.handlePayForSubscriptions(msg)
-  end
+  register_amm.handlePayForAmmRegistration
 )
 
--- REGISTER AMM Subscriber
+Handlers.add(
+  "Receive-AMM-Info",
+  Handlers.utils.hasMatchingTag("Response-For", "Get-AMM-Info"),
+  register_amm.handleInfoResponseFromAmm
+)
 
 Handlers.add(
-  "Register-AMM-Subscriber",
-  Handlers.utils.hasMatchingTag("Action", "Register-AMM-Subscriber"),
-  register_amm.handleRegisterSubscriber
+  "Subscription-Confirmation",
+  Handlers.utils.hasMatchingTag("Response-For", "Subscribe-To-Topics"),
+  register_amm.handleSubscriptionConfirmationFromAmm
+)
+
+Handlers.add(
+  "Payment-Confirmation-From-AMM",
+  Handlers.utils.hasMatchingTag("Response-For", "Pay-For-Subscription"),
+  register_amm.handlePaymentConfirmationFromAmm
+)
+
+-- OPS
+
+Handlers.add(
+  "Toggle-Dispatch-Active",
+  Handlers.utils.hasMatchingTag("Action", "Toggle-Dispatch-Active"),
+  emergency.toggleDispatchActive
+)
+
+Handlers.add(
+  "Toggle-Logging-Active",
+  Handlers.utils.hasMatchingTag("Action", "Toggle-Logging-Active"),
+  emergency.toggleLoggingActive
+)
+
+Handlers.add(
+  "Set-Quote-Token",
+  Handlers.utils.hasMatchingTag("Action", "Set-Quote-Token"),
+  configOps.handleSetQuoteToken
+)
+
+Handlers.add(
+  "Set-Payment-Token",
+  Handlers.utils.hasMatchingTag("Action", "Set-Payment-Token"),
+  configOps.handleSetPaymentToken
+)
+
+Handlers.add(
+  "Set-Offchain-Feed-Provider",
+  Handlers.utils.hasMatchingTag("Action", "Set-Offchain-Feed-Provider"),
+  configOps.handleSetOffchainFeedProvider
+)
+
+Handlers.add(
+  "Set-Supply-Updates-Provider",
+  Handlers.utils.hasMatchingTag("Action", "Set-Supply-Updates-Provider"),
+  configOps.handleSetSupplyUpdatesProvider
 )
 
 -- MAINTENANCE
@@ -2834,30 +2976,4 @@ Handlers.add(
   "Debug-Table",
   Handlers.utils.hasMatchingTag("Action", "Debug-Table"),
   debug.debugTransactions
-)
-
-Handlers.add(
-  "Toggle-Dispatch-Active",
-  Handlers.utils.hasMatchingTag("Action", "Toggle-Dispatch-Active"),
-  function(msg)
-    assert(msg.From == OPERATOR, "Only the operator can toggle dispatching")
-    DISPATCH_ACTIVE = not DISPATCH_ACTIVE
-    ao.send({
-      Target = msg.From,
-      Data = "Dispatching toggled to " .. tostring(not DISPATCH_ACTIVE)
-    })
-  end
-)
-
-Handlers.add(
-  "Toggle-Logging-Active",
-  Handlers.utils.hasMatchingTag("Action", "Toggle-Logging-Active"),
-  function(msg)
-    assert(msg.From == OPERATOR, "Only the operator can toggle logging")
-    LOGGING_ACTIVE = not LOGGING_ACTIVE
-    ao.send({
-      Target = msg.From,
-      Data = "Logging toggled to " .. tostring(not LOGGING_ACTIVE)
-    })
-  end
 )

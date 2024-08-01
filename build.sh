@@ -22,7 +22,8 @@ $BIN_PATH/luacheck process.lua \
     indicators/indicators.lua indicators/calc.lua \
     top-n/top-n.lua \
     utils/debug.lua \
-    ownable/ownable.lua
+    ownable/ownable.lua \
+    ops/config-ops.lua ops/emergency.lua
     
 $BIN_PATH/amalg.lua -s process.lua -o build/output.lua \
     validation.validation validation.validation-schemas \
@@ -35,4 +36,5 @@ $BIN_PATH/amalg.lua -s process.lua -o build/output.lua \
     indicators.indicators indicators.calc \
     top-n.top-n \
     utils.debug \
-    ownable.ownable
+    ownable.ownable \
+    ops.config-ops ops.emergency

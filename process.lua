@@ -8,6 +8,8 @@ local ingest = require("ingest.ingest")
 local topN = require("top-n.top-n")
 local debug = require("utils.debug")
 local register_amm = require("register-amm.register-amm")
+local emergency = require("ops.emergency")
+local configOps = require("ops.config-ops")
 
 db = db or sqlite3.open_memory()
 
@@ -22,13 +24,15 @@ ao = ao or {}
 -- OWNABLE --
 Ownable = require "ownable.ownable"
 
-OFFCHAIN_FEED_PROVIDER = OFFCHAIN_FEED_PROVIDER or ao.env.Process.Tags["Offchain-Feed-Provider"]
 QUOTE_TOKEN_PROCESS = QUOTE_TOKEN_PROCESS or ao.env.Process.Tags["Quote-Token-Process"]
 QUOTE_TOKEN_TICKER = QUOTE_TOKEN_TICKER or ao.env.Process.Tags["Quote-Token-Ticker"]
-SUPPLY_UPDATES_PROVIDER = SUPPLY_UPDATES_PROVIDER or
-    ao.env.Process.Tags["Offchain-Supply-Updates-Provider"]
+
 PAYMENT_TOKEN_PROCESS = PAYMENT_TOKEN_PROCESS or ao.env.Process.Tags["Payment-Token-Process"]
 PAYMENT_TOKEN_TICKER = PAYMENT_TOKEN_TICKER or ao.env.Process.Tags["Payment-Token-Ticker"]
+
+OFFCHAIN_FEED_PROVIDER = OFFCHAIN_FEED_PROVIDER or ao.env.Process.Tags["Offchain-Feed-Provider"]
+SUPPLY_UPDATES_PROVIDER = SUPPLY_UPDATES_PROVIDER or
+    ao.env.Process.Tags["Offchain-Supply-Updates-Provider"]
 
 DISPATCH_ACTIVE = DISPATCH_ACTIVE or true
 LOGGING_ACTIVE = LOGGING_ACTIVE or true
@@ -203,6 +207,44 @@ Handlers.add(
   register_amm.handlePaymentConfirmationFromAmm
 )
 
+-- OPS
+
+Handlers.add(
+  "Toggle-Dispatch-Active",
+  Handlers.utils.hasMatchingTag("Action", "Toggle-Dispatch-Active"),
+  emergency.toggleDispatchActive
+)
+
+Handlers.add(
+  "Toggle-Logging-Active",
+  Handlers.utils.hasMatchingTag("Action", "Toggle-Logging-Active"),
+  emergency.toggleLoggingActive
+)
+
+Handlers.add(
+  "Set-Quote-Token",
+  Handlers.utils.hasMatchingTag("Action", "Set-Quote-Token"),
+  configOps.handleSetQuoteToken
+)
+
+Handlers.add(
+  "Set-Payment-Token",
+  Handlers.utils.hasMatchingTag("Action", "Set-Payment-Token"),
+  configOps.handleSetPaymentToken
+)
+
+Handlers.add(
+  "Set-Offchain-Feed-Provider",
+  Handlers.utils.hasMatchingTag("Action", "Set-Offchain-Feed-Provider"),
+  configOps.handleSetOffchainFeedProvider
+)
+
+Handlers.add(
+  "Set-Supply-Updates-Provider",
+  Handlers.utils.hasMatchingTag("Action", "Set-Supply-Updates-Provider"),
+  configOps.handleSetSupplyUpdatesProvider
+)
+
 -- MAINTENANCE
 
 Handlers.add(
@@ -221,30 +263,4 @@ Handlers.add(
   "Debug-Table",
   Handlers.utils.hasMatchingTag("Action", "Debug-Table"),
   debug.debugTransactions
-)
-
-Handlers.add(
-  "Toggle-Dispatch-Active",
-  Handlers.utils.hasMatchingTag("Action", "Toggle-Dispatch-Active"),
-  function(msg)
-    assert(msg.From == OPERATOR, "Only the operator can toggle dispatching")
-    DISPATCH_ACTIVE = not DISPATCH_ACTIVE
-    ao.send({
-      Target = msg.From,
-      Data = "Dispatching toggled to " .. tostring(not DISPATCH_ACTIVE)
-    })
-  end
-)
-
-Handlers.add(
-  "Toggle-Logging-Active",
-  Handlers.utils.hasMatchingTag("Action", "Toggle-Logging-Active"),
-  function(msg)
-    assert(msg.From == OPERATOR, "Only the operator can toggle logging")
-    LOGGING_ACTIVE = not LOGGING_ACTIVE
-    ao.send({
-      Target = msg.From,
-      Data = "Logging toggled to " .. tostring(not LOGGING_ACTIVE)
-    })
-  end
 )
