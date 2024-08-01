@@ -9,7 +9,7 @@
     - name: Quote-Token-Process
       value: <your-dev-quote-token>
     - name: Quote-Token-Ticker
-      value: HBRK
+      value: <your-dev-quote-token-ticker>
     - name: Offchain-Supply-Updates-Provider
       value: <your-dev-wallet>
     - name: Payment-Token-Process

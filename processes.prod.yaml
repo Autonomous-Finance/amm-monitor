@@ -1,12 +1,20 @@
-- name: dexi-monitor-test-prod-v3
+- name: dexi-aggregator
   file: build/output.lua
   prerun: reset-modules.lua
   scheduler: _GQ33BkPtZrqxA84vM8Zk-N2aO0toNNu_C-l-rawrBA
   module: GYrbbe0VbHim_7Hi6zrOpHQXrSQz07XNtwCnfbFo2I0
   tags:
     - name: Process-Type
-      value: Dexi-Aggregator-Test
-    - name: Cron-Interval
-      value: 10-minute
-    - name: Cron-Tag-Action
-      value: Cron-Minute-Tick
+      value: Dexi-Aggregator
+    - name: Quote-Token-Process
+      value: <TODO>
+    - name: Quote-Token-Ticker
+      value: <TODO>
+    - name: Offchain-Supply-Updates-Provider
+      value: <TODO>
+    - name: Payment-Token-Process
+      value: <TODO>
+    - name: Payment-Token-Ticker
+      value: <TODO>
+    - name: Operator
+      value: <TODO>
