@@ -4,11 +4,17 @@ function mod.handleSetQuoteToken(msg)
   assert(msg.From == OPERATOR, "Only the operator can set the quote token")
   assert(msg.Tags["Quote-Token-Process"], "Quote-Token-Process is required")
   assert(msg.Tags["Quote-Token-Ticker"], "Quote-Token-Ticker is required")
-  QUOTE_TOKEN_PROCESS = msg.Tags["Quote-Token-Process"]
-  QUOTE_TOKEN_TICKER = msg.Tags["Quote-Token-Ticker"]
+  assert(msg.Tags["Quote-Token-Denominator"], "Quote-Token-Denominator is required")
+  assert(msg.Tags["Quote-Token-Total-Supply"], "Quote-Token-Total-Supply is required")
+
+  QUOTE_TOKEN.ProcessId = msg.Tags["Quote-Token-Process"]
+  QUOTE_TOKEN.Ticker = msg.Tags["Quote-Token-Ticker"]
+  QUOTE_TOKEN.Denominator = msg.Tags["Quote-Token-Denominator"]
+  QUOTE_TOKEN.TotalSupply = msg.Tags["Quote-Token-Total-Supply"]
   ao.send({
     Target = msg.From,
-    Data = "Quote token set to " .. QUOTE_TOKEN_PROCESS .. " (" .. QUOTE_TOKEN_TICKER .. ")"
+    Data = "Quote token set to " .. QUOTE_TOKEN.ProcessId .. " (" .. QUOTE_TOKEN.Ticker .. ")" ..
+        " with a total supply of " .. QUOTE_TOKEN.TotalSupply .. " and a denominator of " .. QUOTE_TOKEN.Denominator
   })
 end
 

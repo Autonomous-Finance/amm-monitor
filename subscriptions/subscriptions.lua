@@ -245,8 +245,8 @@ subscriptions.handleSubscribeForTopN = function(msg)
     error('Quote-Token is required')
   end
 
-  if quoteToken ~= QUOTE_TOKEN_PROCESS then
-    error('Quote token not available (only BRK): ' .. quoteToken)
+  if quoteToken ~= QUOTE_TOKEN.ProcessId then
+    error('Quote token not available (only ' .. QUOTE_TOKEN.Ticker .. '): ' .. quoteToken)
   end
 
   if not nInTopN then
@@ -259,7 +259,7 @@ subscriptions.handleSubscribeForTopN = function(msg)
 
   print('Registering subscriber to top N market data: ' ..
     processId .. ' for quote token: ' .. quoteToken .. ' with owner: ' .. ownerId)
-  sql.registerTopNSubscriber(processId, ownerId, quoteToken, nInTopN)
+  sql.registerTopNSubscriber(processId, quoteToken, nInTopN)
 
   -- determine top N token set for this subscriber
   topN.updateTopNTokenSet(processId)

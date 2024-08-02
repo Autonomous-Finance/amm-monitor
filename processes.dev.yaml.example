@@ -10,8 +10,10 @@
       value: <your-dev-quote-token>
     - name: Quote-Token-Ticker
       value: <your-dev-quote-token-ticker>
-    - name: Offchain-Supply-Updates-Provider
-      value: <your-dev-wallet>
+    - name: Quote-Token-Denominator
+      value: <your-dev-quote-token-denominator>
+    - name: Quote-Token-TotalSupply
+      value: <your-dev-quote-token-total-supply>
     - name: Payment-Token-Process
       value: <your-dev-payment-token>
     - name: Payment-Token-Ticker
