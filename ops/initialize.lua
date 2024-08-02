@@ -15,7 +15,7 @@ mod.triggerInitialize = function()
 end
 
 mod.handleInitialize = function(msg)
-  if msg.From ~= ao.id then
+  if msg.From ~= ao.id and msg.From ~= OPERATOR then
     error('Unauthorized')
   end
 
