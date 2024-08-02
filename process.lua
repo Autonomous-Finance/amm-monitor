@@ -261,6 +261,12 @@ Handlers.add(
 -- MAINTENANCE
 
 Handlers.add(
+  "Is-Initialized",
+  Handlers.utils.hasMatchingTag("Action", "Is-Initialized"),
+  initialize.handleIsInitialized
+)
+
+Handlers.add(
   "Reset-DB-State",
   Handlers.utils.hasMatchingTag("Action", "Reset-DB-State"),
   seeder.handleResetDBState
