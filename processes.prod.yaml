@@ -6,17 +6,5 @@
   tags:
     - name: Process-Type
       value: Dexi-Aggregator
-    - name: Quote-Token-Process
-      value: j7w28CJQHYwamMsotkhE7x0aVUggGwrBtdO5-MQ80uU
-    - name: Quote-Token-Ticker
-      value: MockAO
-    - name: Quote-Token-Denominator
-      value: 18
-    - name: Quote-Token-TotalSupply
-      value: 1000000000000000000000000
-    - name: Payment-Token-Process
-      value: QHuiEyWvTr9--2ctHeYqgjC60APrVB-_1MMvU9EpMcI
-    - name: Payment-Token-Ticker
-      value: DTST
     - name: Operator
       value: MyFANA8GUtIaD1jrhvW4_IxMCa69XwGP5kHlMCBzVfk

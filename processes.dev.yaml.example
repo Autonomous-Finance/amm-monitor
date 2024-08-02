@@ -6,17 +6,5 @@
   tags:
     - name: Process-Type
       value: Dexi-Aggregator-Test
-    - name: Quote-Token-Process
-      value: <your-dev-quote-token>
-    - name: Quote-Token-Ticker
-      value: <your-dev-quote-token-ticker>
-    - name: Quote-Token-Denominator
-      value: <your-dev-quote-token-denominator>
-    - name: Quote-Token-TotalSupply
-      value: <your-dev-quote-token-total-supply>
-    - name: Payment-Token-Process
-      value: <your-dev-payment-token>
-    - name: Payment-Token-Ticker
-      value: <your-dev-payment-token-ticker>
     - name: Operator
       value: <your-dev-wallet>
