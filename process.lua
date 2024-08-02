@@ -25,18 +25,17 @@ ao = ao or {}
 Ownable = require "ownable.ownable"
 
 QUOTE_TOKEN = QUOTE_TOKEN or {
-  ProcessId = ao.env.Process.Tags["Quote-Token-Process"],
-  Ticker = ao.env.Process.Tags["Quote-Token-Ticker"],
-  Denominator = ao.env.Process.Tags["Quote-Token-Denominator"],
-  TotalSupply = ao.env.Process.Tags["Quote-Token-Total-Supply"],
+  ProcessId = nil,
+  Ticker = nil,
+  Denominator = nil,
+  TotalSupply = nil,
 }
 
-PAYMENT_TOKEN_PROCESS = PAYMENT_TOKEN_PROCESS or ao.env.Process.Tags["Payment-Token-Process"]
-PAYMENT_TOKEN_TICKER = PAYMENT_TOKEN_TICKER or ao.env.Process.Tags["Payment-Token-Ticker"]
+PAYMENT_TOKEN_PROCESS = PAYMENT_TOKEN_PROCESS or nil
+PAYMENT_TOKEN_TICKER = PAYMENT_TOKEN_TICKER or nil
 
-OFFCHAIN_FEED_PROVIDER = OFFCHAIN_FEED_PROVIDER or ao.env.Process.Tags["Offchain-Feed-Provider"]
-SUPPLY_UPDATES_PROVIDER = SUPPLY_UPDATES_PROVIDER or
-    ao.env.Process.Tags["Offchain-Supply-Updates-Provider"]
+SUPPLY_UPDATES_PROVIDER = SUPPLY_UPDATES_PROVIDER or nil
+OFFCHAIN_FEED_PROVIDER = OFFCHAIN_FEED_PROVIDER or nil
 
 DISPATCH_ACTIVE = DISPATCH_ACTIVE or true
 LOGGING_ACTIVE = LOGGING_ACTIVE or true
@@ -44,7 +43,6 @@ LOGGING_ACTIVE = LOGGING_ACTIVE or true
 OPERATOR = OPERATOR or ao.env.Process.Tags["Operator"]
 
 Initialized = Initialized or false
-initialize.triggerInitialize()
 
 -- CORE --
 
@@ -218,7 +216,7 @@ Handlers.add(
 
 Handlers.add(
   "Initialize",
-  Handlers.utils.hasMatchingTag("Action", "Dexi-Initialize"),
+  Handlers.utils.hasMatchingTag("Action", "Initialize"),
   initialize.handleInitialize
 )
 
