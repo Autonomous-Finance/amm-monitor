@@ -1,3 +1,5 @@
+local dexiCore = require "dexi-core.dexi-core"
+
 local mod = {}
 
 mod.handleInitialize = function(msg)
@@ -25,7 +27,7 @@ mod.handleInitialize = function(msg)
   PAYMENT_TOKEN_TICKER = msg.Tags.PaymentTokenTicker
   SUPPLY_UPDATES_PROVIDER = msg.Tags.SupplyUpdatesProvider
 
-  mod.registerToken(
+  dexiCore.registerToken(
     QUOTE_TOKEN.ProcessId,
     QUOTE_TOKEN.Name,
     QUOTE_TOKEN.Denominator,
