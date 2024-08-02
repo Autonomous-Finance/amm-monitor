@@ -14,9 +14,27 @@ permissions:
 
 jobs:
   deploy:
+    name: Build & Deploy processes
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
+
+    - uses: leafo/gh-actions-lua@v10
+      with:
+        luaVersion: "5.4.6"
+    - uses: leafo/gh-actions-luarocks@v4
+
+    - name: Install Busted
+      run: luarocks install busted
+
+    - name: Install Teal
+      run: luarocks install tl
+
+    - name: Install Cyan
+      run: luarocks install cyan
+
+    - name: Install amalg
+      run: luarocks install amalg
 
     - name: Set up Node.js
       uses: actions/setup-node@v3
@@ -57,8 +75,8 @@ jobs:
           echo "CONFIG_FILE=processes.dev.yaml" >> $GITHUB_ENV
         fi
 
-    - name: Build
-      run: npm run build
+    - name: Run build script
+      run: bash ./scripts/build-ci.sh
 
     - name: Run aoform
       run: npx aoform apply -f ${{ env.CONFIG_FILE }}
