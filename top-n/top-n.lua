@@ -176,8 +176,8 @@ function topN.handleGetTopNMarketData(msg)
     error('Quote-Token is required')
   end
 
-  if quoteToken ~= QUOTE_TOKEN.ProcessId then
-    error('Quote-Token must be ' .. QUOTE_TOKEN.ProcessId .. ' ( ' .. QUOTE_TOKEN.Ticker .. ' ) ')
+  if quoteToken ~= QUOTE_TOKEN_PROCESS then
+    error('Quote-Token must be BARK')
   end
 
   ao.send({
