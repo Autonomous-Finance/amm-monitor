@@ -348,7 +348,7 @@ Amalgamation can be done by something like:
 
 /opt/homebrew/bin/amalg.lua -s process.lua -o build/output.lua [module1] [module2] ...
 ```
-See `./build.sh` for details
+See `scripts/build.sh` for details
 
 In our experience amalagamations work more reliably than the aos loader (for now) and it also has the nice property of beign able to deploy with just one command.
 

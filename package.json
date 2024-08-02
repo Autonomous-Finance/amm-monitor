@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "The DEXI AMM Monitor aggregates and processes data from Automated Market Makers (AMMs), offering subscription-based data feeds.",
   "scripts": {
-    "build": "bash ./build.sh",
+    "build": "bash ./scripts/build.sh",
     "deploy-dev": "bash ./deploy-dev.sh",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
