@@ -7,14 +7,12 @@
     - name: Process-Type
       value: Dexi-Aggregator
     - name: Quote-Token-Process
-      value: <TODO>
+      value: w8K7dLT9LbZkY8K8j4BWB1JcF0AB4p400Ga-YEU5vdE
     - name: Quote-Token-Ticker
-      value: <TODO>
-    - name: Offchain-Supply-Updates-Provider
-      value: <TODO>
+      value: HTAO
     - name: Payment-Token-Process
-      value: <TODO>
+      value: QHuiEyWvTr9--2ctHeYqgjC60APrVB-_1MMvU9EpMcI
     - name: Payment-Token-Ticker
-      value: <TODO>
+      value: DTST
     - name: Operator
-      value: <TODO>
+      value: MyFANA8GUtIaD1jrhvW4_IxMCa69XwGP5kHlMCBzVfk
