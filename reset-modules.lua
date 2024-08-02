@@ -16,3 +16,6 @@ package.loaded["indicators.calc"] = nil
 package.loaded["top-n.top-n"] = nil
 package.loaded["utils.debug"] = nil
 package.loaded["register-amm.register-amm"] = nil
+package.loaded["ops.emergency"] = nil
+package.loaded["ops.config-ops"] = nil
+package.loaded["ops.initialize"] = nil
