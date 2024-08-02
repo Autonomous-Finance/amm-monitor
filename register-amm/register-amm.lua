@@ -10,8 +10,23 @@ local register_amm = {}
       status = subscriptionStatus,     -- 'received-request--initializing' | 'initialized--subscribing' | 'subscribed--paying' | 'paid--complete'
       ammDetails = {
         name = ammName,
-        tokenA = tokenA,
-        tokenB = tokenB,
+        tokenA = {
+          processId = tokenAProcessId,
+          tokenName = tokenAName,
+          tokenTicker = tokenATicker,
+          denominator = tokenADenominator,
+          totalSupply = tokenATotalSupply,
+          fixedSupply = false,
+        },
+        tokenB = {
+          processId = tokenBProcessId,
+          tokenName = ,
+          tokenTicker = ,
+          denominator = ,
+          totalSupply = ,
+          fixedSupply = false,
+        },
+      },
     }
   }
 ]]
