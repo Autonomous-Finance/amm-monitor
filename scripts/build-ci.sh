@@ -17,4 +17,4 @@ amalg.lua -s process.lua -o build/output.lua \
     top-n.top-n \
     utils.debug \
     ownable.ownable \
-    ops.config-ops ops.emergency ops.initialize
+    ops.config-ops ops.emergency
