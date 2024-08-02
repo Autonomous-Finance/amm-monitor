@@ -36,8 +36,8 @@ function sql.registerAMM(name, processId, token0, token1, discoveredAt)
     amm_name = name,
     token0 = token0,
     token1 = token1,
-    quote_token = token0 == QUOTE_TOKEN_PROCESS and token0 or token1,
-    base_token = token0 == QUOTE_TOKEN_PROCESS and token1 or token0,
+    quote_token = token0 == QUOTE_TOKEN.ProcessId and token0 or token1,
+    base_token = token0 == QUOTE_TOKEN.ProcessId and token1 or token0,
     discovered_at = discoveredAt
   })
   local result, err = stmt:step()

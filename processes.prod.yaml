@@ -7,9 +7,13 @@
     - name: Process-Type
       value: Dexi-Aggregator
     - name: Quote-Token-Process
-      value: w8K7dLT9LbZkY8K8j4BWB1JcF0AB4p400Ga-YEU5vdE
+      value: qDj1l8qFaswhrSPYAbEt7EZ-LUWuzYuYQDoHfmXdmc8
     - name: Quote-Token-Ticker
-      value: HTAO
+      value: mockAO
+    - name: Quote-Token-Denominator
+      value: 12
+    - name: Quote-Token-TotalSupply
+      value: 0000000000000
     - name: Payment-Token-Process
       value: QHuiEyWvTr9--2ctHeYqgjC60APrVB-_1MMvU9EpMcI
     - name: Payment-Token-Ticker

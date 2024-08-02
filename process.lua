@@ -10,11 +10,11 @@ local debug = require("utils.debug")
 local register_amm = require("register-amm.register-amm")
 local emergency = require("ops.emergency")
 local configOps = require("ops.config-ops")
+local initialize = require("ops.initialize")
 
 db = db or sqlite3.open_memory()
 
 seeder.createMissingTables()
--- seeder.seed() -- TODO eliminate in production
 
 -- eliminate warnings
 Owner = Owner or ao.env.Process.Owner
@@ -24,8 +24,12 @@ ao = ao or {}
 -- OWNABLE --
 Ownable = require "ownable.ownable"
 
-QUOTE_TOKEN_PROCESS = QUOTE_TOKEN_PROCESS or ao.env.Process.Tags["Quote-Token-Process"]
-QUOTE_TOKEN_TICKER = QUOTE_TOKEN_TICKER or ao.env.Process.Tags["Quote-Token-Ticker"]
+QUOTE_TOKEN = QUOTE_TOKEN or {
+  ProcessId = ao.env.Process.Tags["Quote-Token-Process"],
+  Ticker = ao.env.Process.Tags["Quote-Token-Ticker"],
+  Denominator = ao.env.Process.Tags["Quote-Token-Denominator"],
+  TotalSupply = ao.env.Process.Tags["Quote-Token-Total-Supply"],
+}
 
 PAYMENT_TOKEN_PROCESS = PAYMENT_TOKEN_PROCESS or ao.env.Process.Tags["Payment-Token-Process"]
 PAYMENT_TOKEN_TICKER = PAYMENT_TOKEN_TICKER or ao.env.Process.Tags["Payment-Token-Ticker"]
@@ -38,6 +42,9 @@ DISPATCH_ACTIVE = DISPATCH_ACTIVE or true
 LOGGING_ACTIVE = LOGGING_ACTIVE or true
 
 OPERATOR = OPERATOR or ao.env.Process.Tags["Operator"]
+
+Initialized = Initialized or false
+initialize.triggerInitialize()
 
 -- CORE --
 
@@ -208,6 +215,12 @@ Handlers.add(
 )
 
 -- OPS
+
+Handlers.add(
+  "Initialize",
+  Handlers.utils.hasMatchingTag("Action", "Dexi-Initialize"),
+  initialize.handleInitialize
+)
 
 Handlers.add(
   "Toggle-Dispatch-Active",
