@@ -7,6 +7,7 @@ local stats = require('dexi-core.stats')
 local candles = require('dexi-core.candles')
 local priceAround = require('dexi-core.price-around')
 local topN = require('top-n.top-n')
+local integrate_amm = require('integrate-amm.integrate-amm')
 
 
 local dexiCore = {}
@@ -190,14 +191,13 @@ dexiCore.getRegisteredAMM = function(processId)
   return sql.getRegisteredAMM(processId)
 end
 
-dexiCore.unregisterAMM = function(processId)
-  sql.unregisterAMM(processId)
+function dexiCore.isKnownAmm(processId)
+  return sql.isKnownAmm(processId)
 end
 
-dexiCore.unregisterToken = function(processId)
-  sql.unregisterToken(processId)
+function dexiCore.isKnownToken(processId)
+  return sql.isKnownToken(processId)
 end
-
 
 dexiCore.handleGetRegisteredAMMs = function(msg)
   ao.send({
@@ -301,12 +301,27 @@ function dexiCore.handleUpdateTokenSupply(msg)
   topN.updateTopNTokenSet()
 end
 
-function dexiCore.isKnownAmm(processId)
-  return sql.isKnownAmm(processId)
+function dexiCore.handleRemoveAmm(msg)
+  assert(msg.From == OPERATOR, 'Only the operator can remove an AMM with its Tokens')
+
+  assert(msg.Tags.ProcessId, 'Message must contain a valid ProcessId tag')
+
+  local ammProcessId = msg.Tags.ProcessId
+  if not dexiCore.isKnownAmm(ammProcessId) then
+    error('AMM not found: ' .. ammProcessId)
+  end
+
+  integrate_amm.unsubscribeAmm(ammProcessId)
+  sql.unregisterAMM(ammProcessId)
 end
 
-function dexiCore.isKnownToken(processId)
-  return sql.isKnownToken(processId)
+function dexiCore.handleRemoveToken(msg)
+  if msg.From ~= OPERATOR then
+    error('Unauthorized')
+  end
+
+  local processId = msg.Tags["Process-Id"]
+  sql.unregisterToken(processId)
 end
 
 return dexiCore

@@ -276,7 +276,13 @@ Handlers.add(
 Handlers.add(
   "Remove-AMM",
   Handlers.utils.hasMatchingTag("Action", "Remove-AMM"),
-  integrate_amm.handleRemoveAmm
+  dexiCore.handleRemoveAmm
+)
+
+Handlers.add(
+  "Remove-Token",
+  Handlers.utils.hasMatchingTag("Action", "Remove-Token"),
+  dexiCore.handleRemoveToken
 )
 
 Handlers.add(

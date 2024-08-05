@@ -1,7 +1,7 @@
 local json = require("json")
 local dexiCore = require("dexi-core.dexi-core")
 
-local mod = {}
+local integrateAmm = {}
 
 --[[
   {
@@ -106,7 +106,7 @@ end
 -- Registration Steps in the order of succession
 
 -- 1. Receive a Payment that kicks off the registration process
-mod.handlePayForAmmRegistration = function(msg)
+integrateAmm.handlePayForAmmRegistration = function(msg)
   assert(msg.Tags.Quantity, 'Credit notice data must contain a valid quantity')
   assert(msg.Tags.Sender, 'Credit notice data must contain a valid sender')
   assert(msg.Tags["X-AMM-Process"], 'Credit notice data must contain a valid amm-process')
@@ -122,7 +122,7 @@ mod.handlePayForAmmRegistration = function(msg)
 end
 
 -- 2A. Receive the AMM Info to initialize the registration with correct data
-mod.handleInfoResponseFromAmm = function(msg)
+integrateAmm.handleInfoResponseFromAmm = function(msg)
   local ammProcessId = msg.From
   local registrationData = AmmSubscriptions[ammProcessId]
   if not registrationData then
@@ -153,12 +153,12 @@ mod.handleInfoResponseFromAmm = function(msg)
   end
 end
 
-mod.hasPendingTokenInfo = function(msg)
+integrateAmm.hasPendingTokenInfo = function(msg)
   return TokenInfoRequests[msg.Tags.ProcessId] ~= nil
 end
 
 -- 2B. Receive the Token Info to include the token registration in the AMM registration
-mod.handleTokenInfoResponse = function(msg)
+integrateAmm.handleTokenInfoResponse = function(msg)
   local tokenProcessId = msg.From
   local ammProcessId = TokenInfoRequests[tokenProcessId]
   local registrationData = AmmSubscriptions[ammProcessId]
@@ -209,7 +209,7 @@ end
 
 
 -- 3. Receive Subscription Confirmation from AMM
-mod.handleSubscriptionConfirmationFromAmm = function(msg)
+integrateAmm.handleSubscriptionConfirmationFromAmm = function(msg)
   assert(msg.Tags.OK == 'true', 'Subscription failed for amm: ' .. msg.From)
   assert(msg.Tags["Updated-Topics"], 'Subscription confirmation data must contain a valid updated-topics')
 
@@ -232,7 +232,7 @@ mod.handleSubscriptionConfirmationFromAmm = function(msg)
 end
 
 -- 4. Receive Payment Confirmation from AMM
-mod.handlePaymentConfirmationFromAmm = function(msg)
+integrateAmm.handlePaymentConfirmationFromAmm = function(msg)
   if not msg.Tags.OK == 'true' then
     error('Payment failed for amm: ' .. msg.From)
   end
@@ -249,26 +249,4 @@ mod.handlePaymentConfirmationFromAmm = function(msg)
   AmmSubscriptions[ammProcessId] = nil
 end
 
--- REMOVE an AMM
-
-mod.handleRemoveAmm = function(msg)
-  assert(msg.From == OPERATOR, 'Only the operator can remove an AMM with its Tokens')
-
-  assert(msg.Tags.ProcessId, 'Message must contain a valid ProcessId tag')
-
-  local ammProcessId = msg.Tags.ProcessId
-  if not dexiCore.isKnownAmm(ammProcessId) then
-    error('AMM not found: ' .. ammProcessId)
-  end
-
-  local amm = dexiCore.getRegisteredAMM(ammProcessId)
-  local tokenA = amm.token0
-  local tokenB = amm.token1
-
-  unsubscribeAmm(ammProcessId)
-  dexiCore.unregisterAMM(ammProcessId)
-  dexiCore.unregisterToken(tokenA)
-  dexiCore.unregisterToken(tokenB)
-end
-
-return mod
+return integrateAmm
