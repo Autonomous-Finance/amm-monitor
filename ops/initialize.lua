@@ -43,13 +43,4 @@ mod.handleInitialize = function(msg)
   })
 end
 
-mod.handleIsInitialized = function(msg)
-  ao.send({
-    Target = msg.From,
-    ['App-Name'] = 'Dexi',
-    ['Response-For'] = 'Is-Initialized',
-    ['Initialized'] = tostring(Initialized)
-  })
-end
-
 return mod

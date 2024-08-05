@@ -268,9 +268,9 @@ Handlers.add(
 -- MAINTENANCE
 
 Handlers.add(
-  "Is-Initialized",
-  Handlers.utils.hasMatchingTag("Action", "Is-Initialized"),
-  initialize.handleIsInitialized
+  "Get-Config",
+  Handlers.utils.hasMatchingTag("Action", "Get-Config"),
+  debug.handleGetConfig
 )
 
 Handlers.add(

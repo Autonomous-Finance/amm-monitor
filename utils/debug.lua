@@ -1,4 +1,5 @@
 local dbUtils = require('db.utils')
+local json = require('json')
 
 local debug = {}
 
@@ -43,6 +44,27 @@ function debug.debugTransactions()
     error("Failed to prepare SQL statement: " .. db:errmsg())
   end
   return dbUtils.queryMany(stmt)
+end
+
+function debug.handleGetConfig(msg)
+  ao.send({
+    Target = msg.From,
+    ['App-Name'] = 'Dexi',
+    ['Response-For'] = 'Get-Config',
+    Data = json.encode({
+      ['Initialized'] = tostring(Initialized),
+      ['Operator'] = OPERATOR,
+      ['Quote-Token'] = QUOTE_TOKEN,
+      ['Payment-Token'] = {
+        ProcessId = PAYMENT_TOKEN_PROCESS,
+        Ticker = PAYMENT_TOKEN_TICKER
+      },
+      ['Supply-Updates-Provider'] = SUPPLY_UPDATES_PROVIDER,
+      ['Offchain-Feed-Provider'] = OFFCHAIN_FEED_PROVIDER,
+      ['Dispatch-Active'] = DISPATCH_ACTIVE,
+      ['Logging-Active'] = LOGGING_ACTIVE
+    })
+  })
 end
 
 return debug
