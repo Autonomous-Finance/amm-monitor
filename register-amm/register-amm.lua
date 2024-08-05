@@ -12,6 +12,7 @@ local register_amm = {}
         name = ammName,
         tokenA = {
           processId = tokenAProcessId,
+          pendingInfo = true,
           tokenName = tokenAName,
           tokenTicker = tokenATicker,
           denominator = tokenADenominator,
@@ -20,6 +21,7 @@ local register_amm = {}
         },
         tokenB = {
           processId = tokenBProcessId,
+          pendingInfo = true,
           tokenName = ,
           tokenTicker = ,
           denominator = ,
@@ -31,6 +33,15 @@ local register_amm = {}
   }
 ]]
 AmmSubscriptions = AmmSubscriptions or {}
+
+
+--[[
+  Associate token Info responses with pending AMM registrations
+  {
+    [tokenProcessId] = ammProcessId
+  }
+]]
+TokenInfoRequests = TokenInfoRequests or {}
 
 
 -- ----------------------- INTERNAL
@@ -50,6 +61,13 @@ local getAmmInfo = function(ammProcessId)
   ao.send({
     Target = ammProcessId,
     Action = "Get-Amm-Info"
+  })
+end
+
+local getTokenInfo = function(tokenProcessId)
+  ao.send({
+    Target = tokenProcessId,
+    Action = "Info"
   })
 end
 
@@ -101,7 +119,7 @@ register_amm.handlePayForAmmRegistration = function(msg)
   updateStatus(ammProcessId, 'received-request--initializing')
 end
 
--- 2. Receive the AMM Info to initialize the registration with correct data
+-- 2A. Receive the AMM Info to initialize the registration with correct data
 register_amm.handleInfoResponseFromAmm = function(msg)
   local ammProcessId = msg.From
   local registrationData = AmmSubscriptions[ammProcessId]
@@ -115,13 +133,78 @@ register_amm.handleInfoResponseFromAmm = function(msg)
 
   registrationData.ammDetails = {
     name = msg.Tags.Name,
-    tokenA = msg.Tags["Token-A"],
-    tokenB = msg.Tags["Token-B"]
+    tokenA = {
+      processId = msg.Tags["Token-A"],
+      pendingInfo = true
+    },
+    tokenB = {
+      processId = msg.Tags["Token-B"],
+      pendingInfo = true
+    },
   }
 
-  subscribeToAmm(ammProcessId)
-  updateStatus(ammProcessId, 'initilized--subscribing')
+  for _, token in ipairs({ msg.Tags["Token-A"], msg.Tags["Token-B"] }) do
+    if not dexiCore.isKnownToken(token) then
+      TokenInfoRequests[token] = ammProcessId
+      getTokenInfo(token)
+    end
+  end
 end
+
+register_amm.hasPendingTokenInfo = function(msg)
+  return TokenInfoRequests[msg.Tags.ProcessId] ~= nil
+end
+
+-- 2B. Receive the Token Info to include the token registration in the AMM registration
+register_amm.handleTokenInfoResponse = function(msg)
+  local tokenProcessId = msg.From
+  local ammProcessId = TokenInfoRequests[tokenProcessId]
+  local registrationData = AmmSubscriptions[ammProcessId]
+
+  assert(msg.Tags.Name, 'Token info data must contain a valid Name tag')
+  assert(msg.Tags.ProcessId, 'Token info data must contain a valid ProcessId tag')
+  assert(msg.Tags.Ticker, 'Token info data must contain a valid Ticker tag')
+  assert(msg.Tags.Denominator, 'Token info data must contain a valid Denominator tag')
+  assert(msg.Tags.TotalSupply, 'Token info data must contain a valid TotalSupply tag')
+
+  local tokenInfo = {
+    processId = msg.Tags.ProcessId,
+    tokenName = msg.Tags.Name,
+    tokenTicker = msg.Tags.Ticker,
+    denominator = msg.Tags.Denominator,
+    totalSupply = msg.Tags.TotalSupply,
+    fixedSupply = false,
+    pendingInfo = false
+  }
+
+  dexiCore.registerToken(
+    tokenInfo.processId,
+    tokenInfo.tokenName,
+    tokenInfo.denominator,
+    tokenInfo.totalSupply,
+    tokenInfo.fixedSupply,
+    math.floor(msg.Timestamp / 1000)
+  )
+
+  local ammDetails = registrationData.ammDetails
+
+  if ammDetails.tokenA.processId == tokenInfo.processId then
+    ammDetails.tokenA = tokenInfo
+    TokenInfoRequests[tokenInfo.processId] = nil
+  elseif ammDetails.tokenB.processId == tokenInfo.processId then
+    ammDetails.tokenB = tokenInfo
+    TokenInfoRequests[tokenInfo.processId] = nil
+  else
+    error('Token info does not match any of the AMM tokens: ' .. json.encode(tokenInfo))
+  end
+
+  -- when both token infor responses have been received, proceeed within AMM registration
+  if not ammDetails.tokenA.pendingInfo and not ammDetails.tokenB.pendingInfo then
+    subscribeToAmm(ammProcessId)
+    updateStatus(ammProcessId, 'initialized--subscribing')
+  end
+end
+
 
 -- 3. Receive Subscription Confirmation from AMM
 register_amm.handleSubscriptionConfirmationFromAmm = function(msg)

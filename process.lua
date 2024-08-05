@@ -201,6 +201,15 @@ Handlers.add(
 )
 
 Handlers.add(
+  "Receive-Token-Info",
+  function(msg)
+    return Handlers.utils.hasMatchingTag("Response-For", "Info")(msg)
+        and register_amm.hasPendingTokenInfo(msg)
+  end,
+  register_amm.handleInfoResponseFromAmm
+)
+
+Handlers.add(
   "Subscription-Confirmation",
   Handlers.utils.hasMatchingTag("Response-For", "Subscribe-To-Topics"),
   register_amm.handleSubscriptionConfirmationFromAmm

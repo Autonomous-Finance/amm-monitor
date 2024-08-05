@@ -145,6 +145,14 @@ function sql.isKnownAmm(processId)
   return row ~= nil
 end
 
+function sql.isKnownToken(processId)
+  local stmt = db:prepare('SELECT TRUE FROM token_registry WHERE token_process = :token_process')
+  stmt:bind_names({ token_process = processId })
+
+  local row = dbUtils.queryOne(stmt)
+  return row ~= nil
+end
+
 -- ---------------- EXPORT
 
 dexiCore.registerToken = function(processId, name, denominator, totalSupply, fixedSupply, updatedAt)
@@ -259,6 +267,10 @@ end
 
 function dexiCore.isKnownAmm(processId)
   return sql.isKnownAmm(processId)
+end
+
+function dexiCore.isKnownToken(processId)
+  return sql.isKnownToken(processId)
 end
 
 return dexiCore
