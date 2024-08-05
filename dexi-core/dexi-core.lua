@@ -47,6 +47,25 @@ function sql.registerAMM(name, processId, token0, token1, discoveredAt)
   stmt:reset()
 end
 
+function sql.getRegisteredAMMs()
+  return dbUtils.rawQuery("SELECT * FROM amm_registry")
+end
+
+function sql.getRegisteredAMM(processId)
+  local stmt = db:prepare('SELECT * FROM amm_registry WHERE amm_process = :process_id')
+  stmt:bind_names({ process_id = processId })
+
+  return dbUtils.queryOne(stmt)
+end
+
+function sql.unregisterAMM(processId)
+  local stmt = db:prepare('DELETE FROM amm_registry WHERE amm_process = :process_id')
+  stmt:bind_names({ process_id = processId })
+
+  stmt:step()
+  stmt:finalize()
+end
+
 function sql.registerToken(processId, name, denominator, totalSupply, fixedSupply, updatedAt)
   print('Registering Token:')
   print({
@@ -85,8 +104,12 @@ function sql.registerToken(processId, name, denominator, totalSupply, fixedSuppl
   end
 end
 
-function sql.getRegisteredAMMs()
-  return dbUtils.rawQuery("SELECT * FROM amm_registry")
+function sql.unregisterToken(processId)
+  local stmt = db:prepare('DELETE FROM token_registry WHERE token_process = :process_id')
+  stmt:bind_names({ process_id = processId })
+
+  stmt:step()
+  stmt:finalize()
 end
 
 ---@param supply_changed_at_ts number @timestamp of when the change occurred in the token contract - typically earlier than the time at which DEXI records this change
@@ -162,6 +185,19 @@ end
 dexiCore.registerAMM = function(name, processId, token0, token1, discoveredAt)
   sql.registerAMM(name, processId, token0, token1, discoveredAt)
 end
+
+dexiCore.getRegisteredAMM = function(processId)
+  return sql.getRegisteredAMM(processId)
+end
+
+dexiCore.unregisterAMM = function(processId)
+  sql.unregisterAMM(processId)
+end
+
+dexiCore.unregisterToken = function(processId)
+  sql.unregisterToken(processId)
+end
+
 
 dexiCore.handleGetRegisteredAMMs = function(msg)
   ao.send({

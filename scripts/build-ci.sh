@@ -9,7 +9,7 @@ amalg.lua -s process.lua -o build/output.lua \
     validation.validation validation.validation-schemas \
     db.sqlschema db.seed db.utils \
     subscriptions.subscriptions \
-    register-amm.register-amm \
+    integrate-amm.integrate-amm \
     dexi-core.dexi-core \
     dexi-core.intervals dexi-core.candles dexi-core.stats dexi-core.overview dexi-core.price-around\
     ingest.ingest \
