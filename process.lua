@@ -7,7 +7,7 @@ local seeder = require("db.seed")
 local ingest = require("ingest.ingest")
 local topN = require("top-n.top-n")
 local debug = require("utils.debug")
-local register_amm = require("register-amm.register-amm")
+local integrate_amm = require("integrate-amm.integrate-amm")
 local emergency = require("ops.emergency")
 local configOps = require("ops.config-ops")
 local initialize = require("ops.initialize")
@@ -191,34 +191,34 @@ Handlers.add(
         and Handlers.utils.hasMatchingTag("X-Action", "Register-AMM")(msg)
         and msg.From == PAYMENT_TOKEN_PROCESS
   end,
-  register_amm.handlePayForAmmRegistration
+  integrate_amm.handlePayForAmmRegistration
 )
 
 Handlers.add(
   "Receive-AMM-Info",
   Handlers.utils.hasMatchingTag("Response-For", "Get-AMM-Info"),
-  register_amm.handleInfoResponseFromAmm
+  integrate_amm.handleInfoResponseFromAmm
 )
 
 Handlers.add(
   "Receive-Token-Info",
   function(msg)
     return Handlers.utils.hasMatchingTag("Response-For", "Info")(msg)
-        and register_amm.hasPendingTokenInfo(msg)
+        and integrate_amm.hasPendingTokenInfo(msg)
   end,
-  register_amm.handleInfoResponseFromAmm
+  integrate_amm.handleInfoResponseFromAmm
 )
 
 Handlers.add(
   "Subscription-Confirmation",
   Handlers.utils.hasMatchingTag("Response-For", "Subscribe-To-Topics"),
-  register_amm.handleSubscriptionConfirmationFromAmm
+  integrate_amm.handleSubscriptionConfirmationFromAmm
 )
 
 Handlers.add(
   "Payment-Confirmation-From-AMM",
   Handlers.utils.hasMatchingTag("Response-For", "Pay-For-Subscription"),
-  register_amm.handlePaymentConfirmationFromAmm
+  integrate_amm.handlePaymentConfirmationFromAmm
 )
 
 -- OPS
@@ -271,6 +271,12 @@ Handlers.add(
   "Is-Initialized",
   Handlers.utils.hasMatchingTag("Action", "Is-Initialized"),
   initialize.handleIsInitialized
+)
+
+Handlers.add(
+  "Remove-AMM",
+  Handlers.utils.hasMatchingTag("Action", "Remove-AMM"),
+  integrate_amm.handleRemoveAmm
 )
 
 Handlers.add(
