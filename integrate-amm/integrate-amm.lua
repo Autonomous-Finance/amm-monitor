@@ -249,4 +249,10 @@ integrateAmm.handlePaymentConfirmationFromAmm = function(msg)
   AmmSubscriptions[ammProcessId] = nil
 end
 
+integrateAmm.handleRemoveAmm = function(msg)
+  local ammProcessId = msg.Tags["Process-Id"]
+  dexiCore.handleRemoveAmm(ammProcessId)
+  unsubscribeAmm(ammProcessId)
+end
+
 return integrateAmm

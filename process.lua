@@ -7,7 +7,7 @@ local seeder = require("db.seed")
 local ingest = require("ingest.ingest")
 local topN = require("top-n.top-n")
 local debug = require("utils.debug")
-local integrate_amm = require("integrate-amm.integrate-amm")
+local integrateAmm = require("integrate-amm.integrate-amm")
 local emergency = require("ops.emergency")
 local configOps = require("ops.config-ops")
 local initialize = require("ops.initialize")
@@ -191,34 +191,34 @@ Handlers.add(
         and Handlers.utils.hasMatchingTag("X-Action", "Register-AMM")(msg)
         and msg.From == PAYMENT_TOKEN_PROCESS
   end,
-  integrate_amm.handlePayForAmmRegistration
+  integrateAmm.handlePayForAmmRegistration
 )
 
 Handlers.add(
   "Receive-AMM-Info",
   Handlers.utils.hasMatchingTag("Response-For", "Get-AMM-Info"),
-  integrate_amm.handleInfoResponseFromAmm
+  integrateAmm.handleInfoResponseFromAmm
 )
 
 Handlers.add(
   "Receive-Token-Info",
   function(msg)
     return Handlers.utils.hasMatchingTag("Response-For", "Info")(msg)
-        and integrate_amm.hasPendingTokenInfo(msg)
+        and integrateAmm.hasPendingTokenInfo(msg)
   end,
-  integrate_amm.handleInfoResponseFromAmm
+  integrateAmm.handleTokenInfoResponse
 )
 
 Handlers.add(
   "Subscription-Confirmation",
   Handlers.utils.hasMatchingTag("Response-For", "Subscribe-To-Topics"),
-  integrate_amm.handleSubscriptionConfirmationFromAmm
+  integrateAmm.handleSubscriptionConfirmationFromAmm
 )
 
 Handlers.add(
   "Payment-Confirmation-From-AMM",
   Handlers.utils.hasMatchingTag("Response-For", "Pay-For-Subscription"),
-  integrate_amm.handlePaymentConfirmationFromAmm
+  integrateAmm.handlePaymentConfirmationFromAmm
 )
 
 -- OPS
@@ -276,7 +276,7 @@ Handlers.add(
 Handlers.add(
   "Remove-AMM",
   Handlers.utils.hasMatchingTag("Action", "Remove-AMM"),
-  dexiCore.handleRemoveAmm
+  integrateAmm.handleRemoveAmm
 )
 
 Handlers.add(

@@ -7,7 +7,6 @@ local stats = require('dexi-core.stats')
 local candles = require('dexi-core.candles')
 local priceAround = require('dexi-core.price-around')
 local topN = require('top-n.top-n')
-local integrate_amm = require('integrate-amm.integrate-amm')
 
 
 local dexiCore = {}
@@ -311,7 +310,6 @@ function dexiCore.handleRemoveAmm(msg)
     error('AMM not found: ' .. ammProcessId)
   end
 
-  integrate_amm.unsubscribeAmm(ammProcessId)
   sql.unregisterAMM(ammProcessId)
 end
 
