@@ -221,6 +221,12 @@ Handlers.add(
   integrateAmm.handlePaymentConfirmationFromAmm
 )
 
+Handlers.add(
+  "Get-AMM-Registration-Status",
+  Handlers.utils.hasMatchingTag("Action", "Get-AMM-Registration-Status"),
+  integrateAmm.handleGetRegistrationStatus
+)
+
 -- OPS
 
 Handlers.add(

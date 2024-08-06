@@ -255,4 +255,18 @@ integrateAmm.handleRemoveAmm = function(msg)
   unsubscribeAmm(ammProcessId)
 end
 
+integrateAmm.handleGetRegistrationStatus = function(msg)
+  local ammProcessId = msg.Tags["Process-Id"]
+  local registrationData = AmmSubscriptions[ammProcessId]
+  if not registrationData then
+    error('No subscription request found for amm: ' .. ammProcessId)
+  end
+  ao.send({
+    Target = msg.From,
+    Action = "Get-AMM-Registration-Status",
+    AMM = ammProcessId,
+    Status = registrationData.status
+  })
+end
+
 return integrateAmm
