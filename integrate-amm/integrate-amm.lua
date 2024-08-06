@@ -113,6 +113,21 @@ integrateAmm.handlePayForAmmRegistration = function(msg)
 
   local ammProcessId = msg.Tags["X-AMM-Process"]
 
+  -- if a successful AMM registration is already in place, refund the requester;
+  -- incomplete AMM registration will be overwritten by a initiating a new one (Dexi payment that was made with the previous one remains unused)
+  -- TODO eventually we will delete AmmSubscriptions entries upon successful registration, and the check here will be made with dexiCore (is AMM registered)
+  local existing = AmmSubscriptions[ammProcessId]
+  if existing.status == 'paid--complete' then
+    local errorMsg = 'AMM registration already exists for process: ' .. ammProcessId
+    ao.send({
+      Target = msg.From,
+      Recipient = msg.Tags.Sender,
+      Action = 'Transfer',
+      Quantity = msg.Tags.Quantity,
+      ["X-Refund-Reason"] = errorMsg
+    })
+  end
+
   AmmSubscriptions[ammProcessId] = {
     requester = msg.Tags.Sender
   }
