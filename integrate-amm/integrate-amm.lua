@@ -179,16 +179,15 @@ integrateAmm.handleTokenInfoResponse = function(msg)
   local registrationData = AmmSubscriptions[ammProcessId]
 
   assert(msg.Tags.Name, 'Token info data must contain a valid Name tag')
-  assert(msg.Tags.ProcessId, 'Token info data must contain a valid ProcessId tag')
   assert(msg.Tags.Ticker, 'Token info data must contain a valid Ticker tag')
-  assert(msg.Tags.Denominator, 'Token info data must contain a valid Denominator tag')
+  assert(msg.Tags.Denomination, 'Token info data must contain a valid Denominator tag')
   assert(msg.Tags.TotalSupply, 'Token info data must contain a valid TotalSupply tag')
 
   local tokenInfo = {
-    processId = msg.Tags.ProcessId,
+    processId = tokenProcessId,
     tokenName = msg.Tags.Name,
     tokenTicker = msg.Tags.Ticker,
-    denominator = msg.Tags.Denominator,
+    denominator = msg.Tags.Denomination,
     totalSupply = msg.Tags.TotalSupply,
     fixedSupply = false,
     pendingInfo = false
