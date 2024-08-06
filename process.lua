@@ -196,7 +196,7 @@ Handlers.add(
 
 Handlers.add(
   "Receive-AMM-Info",
-  Handlers.utils.hasMatchingTag("Response-For", "Get-AMM-Info"),
+  Handlers.utils.hasMatchingTag("Response-For", "Get-Amm-Info"),
   integrateAmm.handleInfoResponseFromAmm
 )
 
