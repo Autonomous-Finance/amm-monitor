@@ -154,7 +154,7 @@ integrateAmm.handleInfoResponseFromAmm = function(msg)
 end
 
 integrateAmm.hasPendingTokenInfo = function(msg)
-  return TokenInfoRequests[msg.Tags.ProcessId] ~= nil
+  return TokenInfoRequests[msg.From] ~= nil
 end
 
 -- 2B. Receive the Token Info to include the token registration in the AMM registration
