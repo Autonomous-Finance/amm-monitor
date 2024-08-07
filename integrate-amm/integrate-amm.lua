@@ -97,7 +97,7 @@ local payForSubscription = function(ammProcessId)
     Target = PAYMENT_TOKEN_PROCESS,
     Action = 'Transfer',
     Recipient = ammProcessId,
-    Quantity = 1,
+    Quantity = "1",
     ["X-Subscriber-Process-Id"] = ao.id
   })
 end
