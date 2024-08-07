@@ -165,7 +165,8 @@ integrateAmm.handleInfoResponseFromAmm = function(msg)
   for _, token in ipairs({ msg.Tags["Token-A"], msg.Tags["Token-B"] }) do
     if not dexiCore.isKnownToken(token) then
       TokenInfoRequests[token] = ammProcessId
-      ammDetails[token].pendingInfo = true
+      local index = token == ammDetails.tokenA.processId and 'tokenA' or 'tokenB'
+      ammDetails[index].pendingInfo = true
       getTokenInfo(token)
     end
   end
