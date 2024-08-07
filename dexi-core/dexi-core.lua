@@ -16,13 +16,6 @@ local dexiCore = {}
 local sql = {}
 
 function sql.registerAMM(name, processId, token0, token1, discoveredAt)
-  print('Registering AMM:')
-  print({
-    "process", processId,
-    "name", name,
-    "token0", token0,
-    "token1", token1,
-  })
   local stmt = db:prepare [[
   INSERT OR REPLACE INTO amm_registry (amm_process, amm_name, amm_token0, amm_token1, amm_quote_token, amm_base_token, amm_discovered_at_ts)
   VALUES
@@ -31,6 +24,16 @@ function sql.registerAMM(name, processId, token0, token1, discoveredAt)
   if not stmt then
     error("Err: " .. db:errmsg())
   end
+  print('Registering AMM:')
+  print({
+    "process", processId,
+    "name", name,
+    "token0", token0,
+    "token1", token1,
+    "quote_token", token0 == QUOTE_TOKEN.ProcessId and token0 or token1,
+    "base_token", token0 == QUOTE_TOKEN.ProcessId and token1 or token0,
+    "discovered_at", discoveredAt
+  })
   stmt:bind_names({
     process = processId,
     amm_name = name,
@@ -38,9 +41,9 @@ function sql.registerAMM(name, processId, token0, token1, discoveredAt)
     token1 = token1,
     quote_token = token0 == QUOTE_TOKEN.ProcessId and token0 or token1,
     base_token = token0 == QUOTE_TOKEN.ProcessId and token1 or token0,
-    discovered_at = discoveredAt
+    discovered_at = tostring(discoveredAt)
   })
-  local result, err = stmt:step()
+  local _, err = stmt:step()
   if err then
     print("Err: " .. db:errmsg())
   end

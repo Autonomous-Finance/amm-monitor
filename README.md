@@ -281,6 +281,7 @@ ao.send({
   Action = 'Transfer',
   Recipient = <DEXI_PROCESS>,
   Quantity = "1",
+  ['X-Action'] = "Pay-For-Subscription",
   ['X-Subscriber-Process-Id'] = ao.id,         -- Process that is being subscribed. In this case, the sender of the message
 })
 ```

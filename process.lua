@@ -174,7 +174,7 @@ Handlers.add(
   "Receive-Payment-For-Subscriber",
   function(msg)
     return Handlers.utils.hasMatchingTag("Action", "Credit-Notice")(msg)
-        and Handlers.utils.hasMatchingTag("X-Action", "Pay-For-Subscriptions")(msg)
+        and Handlers.utils.hasMatchingTag("X-Action", "Pay-For-Subscription")(msg)
         and msg.From == PAYMENT_TOKEN_PROCESS
   end,
   function(msg)
