@@ -98,6 +98,7 @@ local payForSubscription = function(ammProcessId)
     Action = 'Transfer',
     Recipient = ammProcessId,
     Quantity = "1",
+    ["X-Action"] = "Pay-For-Subscription",
     ["X-Subscriber-Process-Id"] = ao.id
   })
 end
