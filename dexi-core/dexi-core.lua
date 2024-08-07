@@ -44,10 +44,13 @@ function sql.registerAMM(name, processId, token0, token1, discoveredAt)
     discovered_at = tostring(discoveredAt)
   })
   local _, err = stmt:step()
+  print('Registered AMM  -  1')
   if err then
     print("Err: " .. db:errmsg())
   end
+  print('Registered AMM  -  2')
   stmt:reset()
+  print('Registered AMM  -  3')
 end
 
 function sql.getRegisteredAMMs()
