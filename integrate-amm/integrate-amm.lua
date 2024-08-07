@@ -270,8 +270,6 @@ integrateAmm.handlePaymentConfirmationFromAmm = function(msg)
   local now = math.floor(msg.Timestamp / 1000)
   registerAMM(ammProcessId, now)
   updateStatus(ammProcessId, 'paid--complete')
-
-  AmmSubscriptions[ammProcessId] = nil
 end
 
 integrateAmm.handleRemoveAmm = function(msg)
