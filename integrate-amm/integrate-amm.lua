@@ -86,8 +86,8 @@ local registerAMM = function(ammProcessId, now)
   dexiCore.registerAMM(
     registrationData.ammDetails.name,
     ammProcessId,
-    registrationData.ammDetails.tokenA,
-    registrationData.ammDetails.tokenB,
+    registrationData.ammDetails.tokenA.processId,
+    registrationData.ammDetails.tokenB.processId,
     now
   )
 end
