@@ -152,19 +152,28 @@ integrateAmm.handleInfoResponseFromAmm = function(msg)
     name = msg.Tags.Name,
     tokenA = {
       processId = msg.Tags["Token-A"],
-      pendingInfo = true
+      pendingInfo = false
     },
     tokenB = {
       processId = msg.Tags["Token-B"],
-      pendingInfo = true
+      pendingInfo = false
     },
   }
+
+  local ammDetails = registrationData.ammDetails
 
   for _, token in ipairs({ msg.Tags["Token-A"], msg.Tags["Token-B"] }) do
     if not dexiCore.isKnownToken(token) then
       TokenInfoRequests[token] = ammProcessId
+      ammDetails[token].pendingInfo = true
       getTokenInfo(token)
     end
+  end
+
+  -- if no info requests are pending, proceed with AMM subscription
+  if not ammDetails.tokenA.pendingInfo and not ammDetails.tokenB.pendingInfo then
+    subscribeToAmm(ammProcessId)
+    updateStatus(ammProcessId, 'initialized--subscribing')
   end
 end
 
@@ -214,7 +223,7 @@ integrateAmm.handleTokenInfoResponse = function(msg)
     error('Token info does not match any of the AMM tokens: ' .. json.encode(tokenInfo))
   end
 
-  -- when both token infor responses have been received, proceeed within AMM registration
+  -- when both token info responses have been received, proceeed within AMM registration
   if not ammDetails.tokenA.pendingInfo and not ammDetails.tokenB.pendingInfo then
     subscribeToAmm(ammProcessId)
     updateStatus(ammProcessId, 'initialized--subscribing')
