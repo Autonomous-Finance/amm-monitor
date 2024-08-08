@@ -41,35 +41,54 @@ end
 
 function sql.updateTopNTokenSet(specificSubscriber)
   local specificSubscriberClause = specificSubscriber
-      and " AND s.process_id = :process_id"
+      and " AND top_n_subscriptions.process_id = :process_id"
       or ""
-  print('subscriberClause ' .. specificSubscriberClause)
   local stmtStr = [[
-    WITH json_tokens AS (
-      SELECT
-        tns.process_id AS process_id,
-        tns.quote_token AS quote_token,
-        (SELECT json_group_array(token_process)
-        FROM (
-          SELECT token_process
-          FROM amm_market_cap_view
-          LIMIT tns.top_n
-        )
-        ) AS token_set
-      FROM top_n_subscriptions tns
-    )
+    BEGIN;
+
+    CREATE TEMP TABLE ranked_tokens AS
+    SELECT
+        tns.process_id,
+        tns.quote_token,
+        tns.top_n,
+        amv.token_process,
+        ROW_NUMBER() OVER (PARTITION BY tns.process_id, tns.quote_token ORDER BY amv.token_process) as row_num
+    FROM
+        top_n_subscriptions tns
+    JOIN
+        amm_market_cap_view amv;
+
+    CREATE TEMP TABLE json_tokens AS
+    SELECT
+        process_id,
+        quote_token,
+        json_group_array(token_process) AS token_set
+    FROM
+        ranked_tokens
+    WHERE
+        row_num <= top_n
+    GROUP BY
+        process_id,
+        quote_token;
+
     UPDATE top_n_subscriptions
     SET token_set = (
-      SELECT token_set
-      FROM json_tokens
-      WHERE top_n_subscriptions.process_id = json_tokens.process_id
+        SELECT token_set
+        FROM json_tokens
+        WHERE top_n_subscriptions.process_id = json_tokens.process_id
         AND top_n_subscriptions.quote_token = json_tokens.quote_token
     )
     WHERE EXISTS (
-      SELECT 1
-      FROM amm_market_cap_view
-      LIMIT top_n_subscriptions.top_n
+        SELECT 1
+        FROM json_tokens
+        WHERE top_n_subscriptions.process_id = json_tokens.process_id
+        AND top_n_subscriptions.quote_token = json_tokens.quote_token
     ) ]] .. specificSubscriberClause .. [[;
+
+    DROP TABLE ranked_tokens;
+    DROP TABLE json_tokens;
+
+    END;
   ]]
   local stmt = db:prepare(stmtStr);
 
