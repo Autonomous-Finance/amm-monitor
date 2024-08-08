@@ -102,9 +102,11 @@ local function recordChangeInSwapParams(msg, payload, source, sourceAmm, cause)
   local reserves_1 = payload["Reserves-Token-B"]
   local fee_percentage = payload["TotalFee"]
 
-  print('message ', json.encode(msg))
-  print('payload ', json.encode(payload))
-  print('Recording swap params change', json.encode({
+  assert(reserves_0, 'Missing Reserves-Token-A')
+  assert(reserves_1, 'Missing Reserves-Token-B')
+  assert(fee_percentage, 'Missing TotalFee')
+
+  local entry = {
     id = msg.Id,
     source = source,
     block_height = msg['Block-Height'],
@@ -116,28 +118,10 @@ local function recordChangeInSwapParams(msg, payload, source, sourceAmm, cause)
     reserves_0 = reserves_0,
     reserves_1 = reserves_1,
     amm_process = sourceAmm
-  }))
+  }
 
-  -- assert(reserves_0, 'Missing Reserves-Token-A')
-  -- assert(reserves_1, 'Missing Reserves-Token-B')
-  -- assert(fee_percentage, 'Missing TotalFee')
-
-  -- local entry = {
-  --   id = msg.Id,
-  --   source = source,
-  --   block_height = msg['Block-Height'],
-  --   block_id = msg['Block-Id'] or '',
-  --   sender = msg.recipient or '',
-  --   created_at_ts = math.floor(msg.Timestamp / 1000),
-  --   cause = cause,
-  --   fee_percentage = fee_percentage,
-  --   reserves_0 = reserves_0,
-  --   reserves_1 = reserves_1,
-  --   amm_process = sourceAmm
-  -- }
-
-  -- ingestSql.recordChangeInSwapParams(entry)
-  -- ingestSql.updateCurrentSwapParams(entry)
+  ingestSql.recordChangeInSwapParams(entry)
+  ingestSql.updateCurrentSwapParams(entry)
 end
 
 local function recordSwap(msg, swapData, source, sourceAmm)
@@ -193,7 +177,7 @@ function ingest.handleMonitorIngestSwapParamsChange(msg)
       or (msg.From == Owner and msg.Tags["AMM"] or nil)
   if ammProcessId then
     local now = math.floor(msg.Timestamp / 1000)
-    recordChangeInSwapParams(msg, msg.Data, 'message', ammProcessId, 'swap-params-change')
+    recordChangeInSwapParams(msg, json.decode(msg.Data), 'message', ammProcessId, 'swap-params-change')
     topN.dispatchMarketDataIncludingAMM(now, ammProcessId)
   end
 end
@@ -229,7 +213,7 @@ function ingest.handleMonitorIngestSwap(msg)
     -- the new swap affects indicators for this amm
     indicators.dispatchIndicatorsForAMM(ammProcessId, now)
 
-    recordChangeInSwapParams(msg, msg.Data, 'message', ammProcessId, 'swap')
+    recordChangeInSwapParams(msg, json.decode(msg.Data), 'message', ammProcessId, 'swap')
 
     topN.dispatchMarketDataIncludingAMM(now, ammProcessId)
   end
