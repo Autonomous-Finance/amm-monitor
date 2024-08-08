@@ -41,29 +41,34 @@ end
 
 function sql.updateTopNTokenSet(specificSubscriber)
   local specificSubscriberClause = specificSubscriber
-      and " AND process_id = :process_id"
+      and " AND s.process_id = :process_id"
       or ""
   print('subscriberClause ' .. specificSubscriberClause)
   local stmtStr = [[
-    UPDATE top_n_subscriptions
+    UPDATE top_n_subscriptions s
     SET token_set = (
       SELECT json_group_array(token_process)
       FROM (
         SELECT token_process
         FROM amm_market_cap_view
-        LIMIT top_n_subscriptions.top_n
+        ORDER BY market_cap_rank
+        LIMIT (SELECT s.top_n FROM top_n_subscriptions s2 WHERE s2.process_id = s.process_id)
       )
     )
     WHERE EXISTS (
       SELECT 1
       FROM amm_market_cap_view
-      LIMIT top_n_subscriptions.top_n
+      LIMIT (SELECT s.top_n FROM top_n_subscriptions s2 WHERE s2.process_id = s.process_id)
     ) ]] .. specificSubscriberClause .. [[;
   ]]
   local stmt = db:prepare(stmtStr);
 
   if not stmt then
     error("Failed to prepare SQL statement for updating top N token sets: " .. db:errmsg())
+  end
+
+  if specificSubscriber then
+    stmt:bind_names({ process_id = specificSubscriber })
   end
 
   local _, err = stmt:step()
