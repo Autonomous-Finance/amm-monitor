@@ -63,11 +63,10 @@ function sql.getActiveSubscribersToAMM(ammProcessId)
   subscribersStmt:bind_names({ amm_process_id = ammProcessId })
 
   local processes = {}
-  for row in subscribersStmt:nrows() do
-    print('row in nrows ' .. tostring(row))
-    -- table.insert(processes, row.process_id)
-  end
-  subscribersStmt:finalize()
+  -- for row in subscribersStmt:nrows() do
+  --   table.insert(processes, row.process_id)
+  -- end
+  -- subscribersStmt:finalize()
 
   return processes
 end
