@@ -213,7 +213,7 @@ function ingest.handleMonitorIngestSwap(msg)
     -- the new swap affects indicators for this amm
     indicators.dispatchIndicatorsForAMM(ammProcessId, now)
 
-    recordChangeInSwapParams(msg, 'message', ammProcessId, 'swap')
+    recordChangeInSwapParams(msg, msg.Data, 'message', ammProcessId, 'swap')
 
     topN.dispatchMarketDataIncludingAMM(now, ammProcessId)
   end
