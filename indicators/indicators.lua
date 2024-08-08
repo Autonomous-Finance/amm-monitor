@@ -22,10 +22,7 @@ function sql.getDiscoveredAt(ammProcessId)
 
   local row = dbUtils.queryOne(ammStmt)
 
-  print('row = ', tostring(row))
-
-  -- return row.amm_discovered_at_ts
-  return 123
+  return row.amm_discovered_at_ts
 end
 
 function sql.getDailyStats(ammProcessId, startDate, endDate)
@@ -172,39 +169,39 @@ function indicators.handleGetIndicators(msg)
   })
 end
 
-function indicators.dispatchIndicatorsForAMM(now, ammProcessId)
+function indicators.dispatchIndicatorsForAMM(ammProcessId, now)
   local discoveredAt = sql.getDiscoveredAt(ammProcessId)
-  -- local oneWeekAgo = now - (7 * 24 * 60 * 60)
-  -- local startTimestamp = math.max(discoveredAt, oneWeekAgo)
+  local oneWeekAgo = now - (7 * 24 * 60 * 60)
+  local startTimestamp = math.max(discoveredAt, oneWeekAgo)
 
-  -- local processes = sql.getActiveSubscribersToAMM(ammProcessId)
+  local processes = sql.getActiveSubscribersToAMM(ammProcessId)
 
-  -- local indicatorsResults = getIndicators(ammProcessId, startTimestamp)
+  local indicatorsResults = getIndicators(ammProcessId, startTimestamp)
 
-  -- if not DISPATCH_ACTIVE then
-  --   if LOGGING_ACTIVE then
-  --     ao.send({
-  --       Target = ao.id,
-  --       Action = 'Log',
-  --       Data = 'Skipping Dispatch for Indicators (AMM: ' .. ammProcessId .. ')'
-  --     })
-  --   end
-  --   return
-  -- end
+  if not DISPATCH_ACTIVE then
+    if LOGGING_ACTIVE then
+      ao.send({
+        Target = ao.id,
+        Action = 'Log',
+        Data = 'Skipping Dispatch for Indicators (AMM: ' .. ammProcessId .. ')'
+      })
+    end
+    return
+  end
 
-  -- print('sending indicators to ' .. #processes .. ' processes')
+  print('sending indicators to ' .. #processes .. ' processes')
 
-  -- local message = {
-  --   ['Target'] = ao.id,
-  --   ['App-Name'] = 'Dexi',
-  --   ['Assignments'] = processes,
-  --   ['Action'] = 'IndicatorsUpdate',
-  --   ['AMM'] = ammProcessId,
-  --   ['Data'] = json.encode(indicatorsResults)
-  -- }
-  -- ao.send(message)
+  local message = {
+    ['Target'] = ao.id,
+    ['App-Name'] = 'Dexi',
+    ['Assignments'] = processes,
+    ['Action'] = 'IndicatorsUpdate',
+    ['AMM'] = ammProcessId,
+    ['Data'] = json.encode(indicatorsResults)
+  }
+  ao.send(message)
 
-  -- print('Dispatched indicators for all AMMs')
+  print('Dispatched indicators for all AMMs')
 end
 
 return indicators
