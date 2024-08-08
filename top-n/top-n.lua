@@ -45,15 +45,23 @@ function sql.updateTopNTokenSet(specificSubscriber)
       or ""
   print('subscriberClause ' .. specificSubscriberClause)
   local stmtStr = [[
-    UPDATE top_n_subscriptions s
+    WITH json_tokens AS (
+      SELECT
+        tns.id AS id,
+        (SELECT json_group_array(token_process)
+        FROM (
+          SELECT token_process
+          FROM amm_market_cap_view
+          LIMIT tns.top_n
+        )
+        ) AS token_set
+      FROM top_n_subscriptions tns
+    )
+    UPDATE top_n_subscriptions
     SET token_set = (
-      SELECT json_group_array(token_process)
-      FROM (
-        SELECT token_process
-        FROM amm_market_cap_view
-        ORDER BY market_cap_rank
-        LIMIT (SELECT s.top_n FROM top_n_subscriptions s2 WHERE s2.process_id = s.process_id)
-      )
+      SELECT token_set
+      FROM json_tokens
+      WHERE top_n_subscriptions.id = json_tokens.id
     )
     WHERE EXISTS (
       SELECT 1

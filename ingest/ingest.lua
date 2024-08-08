@@ -157,7 +157,7 @@ local function recordSwap(msg, swapData, source, sourceAmm)
             the overall ranking by market cap =>
               the top N token sets
     ]]
-  -- topN.updateTopNTokenSet() -- TODO put back in once fixed
+  topN.updateTopNTokenSet() -- TODO put back in once fixed
 end
 
 -- ==================== EXPORT ===================== --
