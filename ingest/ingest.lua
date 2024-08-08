@@ -98,12 +98,12 @@ local function recordChangeInSwapParams(msg, payload, source, sourceAmm, cause)
   assert(msg.From, 'Missing From')
   assert(msg.Timestamp, 'Missing Timestamp')
 
-  local reserves_0 = payload["Reseves-Token-A"]
-  local reserves_1 = payload["Reseves-Token-B"]
+  local reserves_0 = payload["Reserves-Token-A"]
+  local reserves_1 = payload["Reserves-Token-B"]
   local fee_percentage = payload["TotalFee"]
 
-  assert(reserves_0, 'Missing Reseves-Token-A')
-  assert(reserves_1, 'Missing Reseves-Token-B')
+  assert(reserves_0, 'Missing Reserves-Token-A')
+  assert(reserves_1, 'Missing Reserves-Token-B')
   assert(fee_percentage, 'Missing TotalFee')
 
   local entry = {
