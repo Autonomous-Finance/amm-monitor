@@ -119,27 +119,36 @@ function sql.getActiveSubscribersWithInterestInAmm(now, ammProcessId)
       SELECT s.process_id, s.quote_token, s.top_n, s.token_set
       FROM top_n_subscriptions s, json_each(s.token_set)
       WHERE json_each.value = :ammProcessId
-      JOIN balances b ON s.process_id = b.process_id AND CAST(b.balance AS REAL) > 0
+      AND EXISTS (SELECT 1 FROM balances b WHERE s.process_id = b.process_id AND CAST(b.balance AS REAL) > 0)
     ),
     token_list AS (
-      SELECT process_id, json_each.value AS token
+      SELECT ms.process_id as process_id, json_each.value AS token
       FROM matched_subscribers ms, json_each(ms.token_set)
     ),
     aggregated_swap_params AS (
       SELECT
-          tl.id AS subscriber_id,
-          json_group_array(json_object('amm_process', spv.amm_process, 'token_0', spv.token_0, 'reserves_0', spv.reserves_0, 'token_1', spv.token_1, 'reserves_1', spv.reserves_1, 'fee_percentage', spv.fee_percentage)) AS swap_params
+          tl.process_id AS subscriber_id,
+          json_group_array(
+            json_object(
+              'amm_process', spv.amm_process,
+              'token_0', spv.token_0,
+              'reserves_0', spv.reserves_0,
+              'token_1', spv.token_1,
+              'reserves_1', spv.reserves_1,
+              'fee_percentage', spv.fee_percentage
+            )
+          ) AS swap_params
       FROM token_list tl
       JOIN swap_params_view spv ON tl.process_id = spv.amm_process
       GROUP BY tl.process_id
     )
 
     SELECT
-        subs.process_id AS subscriber_id,
-        subs.top_n,
+        ms.process_id AS subscriber_id,
+        ms.top_n,
         asp.swap_params
     FROM aggregated_swap_params asp
-    JOIN subscribers s ON asp.subscriber_id = subs.process_id;
+    JOIN matched_subscribers ms ON asp.subscriber_id = ms.process_id;
   ]])
 
   if not subscribersStmt then
