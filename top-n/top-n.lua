@@ -17,13 +17,13 @@ function sql.queryTopNMarketData(quoteToken, limit)
     r.amm_process as amm_process,
     r.amm_token0 AS token0,
     r.amm_token1 AS token1,
-    scv.reserves_0 AS reserves_0,
-    scv.reserves_1 AS reserves_1,
-    scv.fee_percentage AS fee_percentage
+    sp.reserves_0 AS reserves_0,
+    sp.reserves_1 AS reserves_1,
+    sp.fee_percentage AS fee_percentage
   FROM amm_market_cap_view mcv
   LEFT JOIN amm_registry r ON mcv.token_process = r.amm_base_token
   LEFT JOIN token_registry t ON t.token_process = r.amm_base_token
-  LEFT JOIN amm_swap_params_view scv ON scv.amm_process = r.amm_process
+  LEFT JOIN amm_swap_params sp ON sp.amm_process = r.amm_process
   WHERE r.amm_quote_token = :quoteToken
   LIMIT :limit
   ]], orderByClause)
@@ -130,16 +130,16 @@ function sql.getActiveSubscribersWithInterestInAmm(now, ammProcessId)
           tl.process_id AS subscriber_id,
           json_group_array(
             json_object(
-              'amm_process', spv.amm_process,
-              'token_0', spv.token_0,
-              'reserves_0', spv.reserves_0,
-              'token_1', spv.token_1,
-              'reserves_1', spv.reserves_1,
-              'fee_percentage', spv.fee_percentage
+              'amm_process', sp.amm_process,
+              'token_0', sp.token_0,
+              'reserves_0', sp.reserves_0,
+              'token_1', sp.token_1,
+              'reserves_1', sp.reserves_1,
+              'fee_percentage', sp.fee_percentage
             )
           ) AS swap_params
       FROM token_list tl
-      JOIN amm_swap_params_view spv ON tl.process_id = spv.amm_process
+      JOIN amm_swap_params sp ON tl.process_id = sp.amm_process
       GROUP BY tl.process_id
     )
 
