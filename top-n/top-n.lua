@@ -20,7 +20,7 @@ function sql.queryTopNMarketData(quoteToken, limit)
     scv.reserves_0 AS reserves_0,
     scv.reserves_1 AS reserves_1,
     scv.fee_percentage AS fee_percentage
-  FROM market_cap_view mcv
+  FROM amm_market_cap_view mcv
   LEFT JOIN amm_registry r ON mcv.token_process = r.amm_base_token
   LEFT JOIN token_registry t ON t.token_process = r.amm_base_token
   LEFT JOIN amm_swap_params_view scv ON scv.amm_process = r.amm_process
@@ -50,13 +50,13 @@ function sql.updateTopNTokenSet(specificSubscriber)
       SELECT json_group_array(token_process)
       FROM (
         SELECT token_process
-        FROM market_cap_view
+        FROM amm_market_cap_view
         LIMIT top_n
       )
     )
     WHERE EXISTS (
       SELECT 1
-      FROM market_cap_view
+      FROM amm_market_cap_view
       LIMIT top_n
     ) ]] .. specificSubscriberClause .. [[;
   ]]
@@ -66,11 +66,11 @@ function sql.updateTopNTokenSet(specificSubscriber)
     error("Failed to prepare SQL statement for updating top N token sets: " .. db:errmsg())
   end
 
-  -- local _, err = stmt:step()
-  -- stmt:finalize()
-  -- if err then
-  --   error("Err: " .. db:errmsg())
-  -- end
+  local _, err = stmt:step()
+  stmt:finalize()
+  if err then
+    error("Err: " .. db:errmsg())
+  end
 end
 
 --[[
