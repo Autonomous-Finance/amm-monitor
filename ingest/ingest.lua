@@ -187,6 +187,7 @@ end
 -- INGEST SWAPS
 
 function ingest.handleMonitorIngestSwap(msg)
+  print('Receiving swap notification ' .. json.encode(msg))
   local ammProcessId = dexiCore.isKnownAmm(msg.From)
       and msg.From
       or (msg.From == Owner and msg.Tags["AMM"] or nil)
