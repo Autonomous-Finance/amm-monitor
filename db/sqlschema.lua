@@ -177,7 +177,7 @@ CREATE VIEW amm_market_cap_view AS
 WITH current_prices AS (
   SELECT
     amm_process,
-    (SELECT price FROM amm_transactions_view WHERE amm_process = r.amm_process ORDER BY created_at_ts DESC LIMIT 1) AS current_price
+    (SELECT price FROM amm_transactions_view WHERE amm_process = r.amm_process ORDER BY created_at_ts DESC LIMIT 1) AS price
   FROM amm_registry r
 )
 SELECT
