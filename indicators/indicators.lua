@@ -176,32 +176,32 @@ function indicators.dispatchIndicatorsForAMM(now, ammProcessId)
 
   local processes = sql.getActiveSubscribersToAMM(ammProcessId)
 
-  local indicatorsResults = getIndicators(ammProcessId, startTimestamp)
+  -- local indicatorsResults = getIndicators(ammProcessId, startTimestamp)
 
-  if not DISPATCH_ACTIVE then
-    if LOGGING_ACTIVE then
-      ao.send({
-        Target = ao.id,
-        Action = 'Log',
-        Data = 'Skipping Dispatch for Indicators (AMM: ' .. ammProcessId .. ')'
-      })
-    end
-    return
-  end
+  -- if not DISPATCH_ACTIVE then
+  --   if LOGGING_ACTIVE then
+  --     ao.send({
+  --       Target = ao.id,
+  --       Action = 'Log',
+  --       Data = 'Skipping Dispatch for Indicators (AMM: ' .. ammProcessId .. ')'
+  --     })
+  --   end
+  --   return
+  -- end
 
-  print('sending indicators to ' .. #processes .. ' processes')
+  -- print('sending indicators to ' .. #processes .. ' processes')
 
-  local message = {
-    ['Target'] = ao.id,
-    ['App-Name'] = 'Dexi',
-    ['Assignments'] = processes,
-    ['Action'] = 'IndicatorsUpdate',
-    ['AMM'] = ammProcessId,
-    ['Data'] = json.encode(indicatorsResults)
-  }
-  ao.send(message)
+  -- local message = {
+  --   ['Target'] = ao.id,
+  --   ['App-Name'] = 'Dexi',
+  --   ['Assignments'] = processes,
+  --   ['Action'] = 'IndicatorsUpdate',
+  --   ['AMM'] = ammProcessId,
+  --   ['Data'] = json.encode(indicatorsResults)
+  -- }
+  -- ao.send(message)
 
-  print('Dispatched indicators for all AMMs')
+  -- print('Dispatched indicators for all AMMs')
 end
 
 return indicators
