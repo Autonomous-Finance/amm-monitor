@@ -102,11 +102,9 @@ local function recordChangeInSwapParams(msg, payload, source, sourceAmm, cause)
   local reserves_1 = payload["Reserves-Token-B"]
   local fee_percentage = payload["TotalFee"]
 
-  assert(reserves_0, 'Missing Reserves-Token-A')
-  assert(reserves_1, 'Missing Reserves-Token-B')
-  assert(fee_percentage, 'Missing TotalFee')
-
-  local entry = {
+  print('message ', json.encode(msg))
+  print('payload ', json.encode(payload))
+  print('Recording swap params change', json.encode({
     id = msg.Id,
     source = source,
     block_height = msg['Block-Height'],
@@ -118,10 +116,28 @@ local function recordChangeInSwapParams(msg, payload, source, sourceAmm, cause)
     reserves_0 = reserves_0,
     reserves_1 = reserves_1,
     amm_process = sourceAmm
-  }
+  }))
 
-  ingestSql.recordChangeInSwapParams(entry)
-  ingestSql.updateCurrentSwapParams(entry)
+  -- assert(reserves_0, 'Missing Reserves-Token-A')
+  -- assert(reserves_1, 'Missing Reserves-Token-B')
+  -- assert(fee_percentage, 'Missing TotalFee')
+
+  -- local entry = {
+  --   id = msg.Id,
+  --   source = source,
+  --   block_height = msg['Block-Height'],
+  --   block_id = msg['Block-Id'] or '',
+  --   sender = msg.recipient or '',
+  --   created_at_ts = math.floor(msg.Timestamp / 1000),
+  --   cause = cause,
+  --   fee_percentage = fee_percentage,
+  --   reserves_0 = reserves_0,
+  --   reserves_1 = reserves_1,
+  --   amm_process = sourceAmm
+  -- }
+
+  -- ingestSql.recordChangeInSwapParams(entry)
+  -- ingestSql.updateCurrentSwapParams(entry)
 end
 
 local function recordSwap(msg, swapData, source, sourceAmm)
