@@ -54,7 +54,7 @@ end
 local getAmmInfo = function(ammProcessId)
   ao.send({
     Target = ammProcessId,
-    Action = "Get-Amm-Info"
+    Action = "Info"
   })
 end
 
@@ -177,6 +177,10 @@ integrateAmm.handleInfoResponseFromAmm = function(msg)
     subscribeToAmm(ammProcessId)
     updateStatus(ammProcessId, 'initialized--subscribing')
   end
+end
+
+integrateAmm.hasPendingAmmInfo = function(msg)
+  return AmmSubscriptions[msg.From] ~= nil and AmmSubscriptions[msg.From].status == 'received-request--initializing'
 end
 
 integrateAmm.hasPendingTokenInfo = function(msg)

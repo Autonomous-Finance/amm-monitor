@@ -196,7 +196,10 @@ Handlers.add(
 
 Handlers.add(
   "Receive-AMM-Info",
-  Handlers.utils.hasMatchingTag("Response-For", "Get-Amm-Info"),
+  function(msg)
+    return Handlers.utils.hasMatchingTag("Response-For", "Info")(msg)
+        and integrateAmm.hasPendingAmmInfo(msg)
+  end,
   integrateAmm.handleInfoResponseFromAmm
 )
 
