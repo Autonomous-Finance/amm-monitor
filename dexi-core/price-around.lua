@@ -1,4 +1,4 @@
-local sqlschema = require('db.sqlschema')
+local dbUtils = require('db.utils')
 
 local priceAround = {}
 
@@ -22,7 +22,7 @@ function priceAround.findPriceAroundTimestamp(targetTimestampBefore, ammProcessI
   })
 
 
-  local row = sqlschema.queryOne(stmt)
+  local row = dbUtils.queryOne(stmt)
   local price = row and row.price or nil
 
   return price
