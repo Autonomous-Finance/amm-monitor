@@ -141,15 +141,15 @@ local function recordSwap(msg, swapData, source, sourceAmm)
     fee_percentage = tonumber(validPayload['Fee-Percentage']),
     amm_process = sourceAmm
   }
-  ingestSql.recordSwap(entry)
-  --[[
-      the new swap affects
-        the latest price =>
-          the market cap of this amm's base token =>
-            the overall ranking by market cap =>
-              the top N token sets
-    ]]
-  topN.updateTopNTokenSet()
+  -- ingestSql.recordSwap(entry)
+  -- --[[
+  --     the new swap affects
+  --       the latest price =>
+  --         the market cap of this amm's base token =>
+  --           the overall ranking by market cap =>
+  --             the top N token sets
+  --   ]]
+  -- topN.updateTopNTokenSet()
 end
 
 -- ==================== EXPORT ===================== --
