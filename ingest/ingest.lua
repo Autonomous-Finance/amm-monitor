@@ -53,7 +53,7 @@ end
 function ingestSql.recordChangeInSwapParams(entry)
   local stmt = db:prepare [[
     REPLACE INTO amm_swap_params_changes (
-      id, source, block_height, block_id, sender, created_at_ts, cause
+      id, source, block_height, block_id, sender, created_at_ts, cause,
       reserves_0, reserves_1, fee_percentage, amm_process
     ) VALUES (:id, :source, :block_height, :block_id, :sender, :created_at_ts, :cause,
               :reserves_0, :reserves_1, :fee_percentage, :amm_process);
