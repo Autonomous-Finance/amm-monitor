@@ -51,7 +51,7 @@ function sql.updateTopNTokenSet(specificSubscriber)
       FROM (
         SELECT token_process
         FROM amm_market_cap_view
-        LIMIT top_n
+        LIMIT top_n_subscriptions.top_n
       )
     )
     WHERE EXISTS (
