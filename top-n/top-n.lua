@@ -47,7 +47,8 @@ function sql.updateTopNTokenSet(specificSubscriber)
   local stmtStr = [[
     WITH json_tokens AS (
       SELECT
-        tns.id AS id,
+        tns.process_id AS process_id,
+        tns.quote_token AS quote_token,
         (SELECT json_group_array(token_process)
         FROM (
           SELECT token_process
@@ -61,12 +62,13 @@ function sql.updateTopNTokenSet(specificSubscriber)
     SET token_set = (
       SELECT token_set
       FROM json_tokens
-      WHERE top_n_subscriptions.id = json_tokens.id
+      WHERE top_n_subscriptions.process_id = json_tokens.process_id
+        AND top_n_subscriptions.quote_token = json_tokens.quote_token
     )
     WHERE EXISTS (
       SELECT 1
       FROM amm_market_cap_view
-      LIMIT (SELECT s.top_n FROM top_n_subscriptions s2 WHERE s2.process_id = s.process_id)
+      LIMIT top_n_subscriptions.top_n
     ) ]] .. specificSubscriberClause .. [[;
   ]]
   local stmt = db:prepare(stmtStr);
