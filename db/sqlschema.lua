@@ -171,16 +171,23 @@ LEFT JOIN token_registry tq ON tq.token_process = amm_token1
 ]]
 
 
---! only includes token pairs with BRK
+--! only includes token pairs with QUOTE_TOKEN
 sqlschema.create_market_cap_view = [[
 CREATE VIEW amm_market_cap_view AS
+WITH current_prices AS (
+  SELECT
+    amm_process,
+    (SELECT price FROM amm_transactions_view WHERE amm_process = r.amm_process ORDER BY created_at_ts DESC LIMIT 1) AS current_price
+  FROM amm_registry r
+)
 SELECT
   r.amm_base_token AS token_process,
-  t.total_supply * current_price AS market_cap,
+  t.total_supply * cp.price AS market_cap,
   r.amm_quote_token AS quote_token_process,
-  rank() OVER (ORDER BY t.total_supply * current_price DESC) AS market_cap_rank
+  rank() OVER (ORDER BY t.total_supply * cp.price DESC) AS market_cap_rank
 FROM amm_registry r
 LEFT JOIN token_registry t ON t.token_process = r.amm_base_token
+LEFT JOIN current_prices cp ON cp.amm_process = r.amm_process
 WHERE r.amm_quote_token IS NOT NULL
 ORDER BY market_cap DESC
 LIMIT 100
