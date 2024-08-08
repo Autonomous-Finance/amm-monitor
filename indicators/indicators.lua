@@ -22,7 +22,10 @@ function sql.getDiscoveredAt(ammProcessId)
 
   local row = dbUtils.queryOne(ammStmt)
 
-  return row.amm_discovered_at_ts
+  print('row = ', tostring(row))
+
+  -- return row.amm_discovered_at_ts
+  return 123
 end
 
 function sql.getDailyStats(ammProcessId, startDate, endDate)
@@ -171,10 +174,10 @@ end
 
 function indicators.dispatchIndicatorsForAMM(now, ammProcessId)
   local discoveredAt = sql.getDiscoveredAt(ammProcessId)
-  local oneWeekAgo = now - (7 * 24 * 60 * 60)
-  local startTimestamp = math.max(discoveredAt, oneWeekAgo)
+  -- local oneWeekAgo = now - (7 * 24 * 60 * 60)
+  -- local startTimestamp = math.max(discoveredAt, oneWeekAgo)
 
-  local processes = sql.getActiveSubscribersToAMM(ammProcessId)
+  -- local processes = sql.getActiveSubscribersToAMM(ammProcessId)
 
   -- local indicatorsResults = getIndicators(ammProcessId, startTimestamp)
 
