@@ -57,7 +57,7 @@ function sql.updateTopNTokenSet(specificSubscriber)
     WHERE EXISTS (
       SELECT 1
       FROM amm_market_cap_view
-      LIMIT top_n
+      LIMIT top_n_subscriptions.top_n
     ) ]] .. specificSubscriberClause .. [[;
   ]]
   local stmt = db:prepare(stmtStr);
