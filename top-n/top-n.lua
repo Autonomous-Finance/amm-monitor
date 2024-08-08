@@ -60,7 +60,7 @@ function sql.updateTopNTokenSet(specificSubscriber)
       LIMIT top_n
     ) ]] .. specificSubscriberClause .. [[;
   ]]
-  -- local stmt = db:prepare(stmtStr);
+  local stmt = db:prepare(stmtStr);
 
   -- if not stmt then
   --   error("Failed to prepare SQL statement for updating top N token sets: " .. db:errmsg())
