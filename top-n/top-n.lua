@@ -43,6 +43,7 @@ function sql.updateTopNTokenSet(specificSubscriber)
   local specificSubscriberClause = specificSubscriber
       and " AND process_id = :process_id"
       or ""
+  print('subscriberClause ' .. specificSubscriberClause)
   local stmt = db:prepare [[
     UPDATE top_n_subscriptions
     SET token_set = (
@@ -60,15 +61,15 @@ function sql.updateTopNTokenSet(specificSubscriber)
     ) ]] .. specificSubscriberClause .. [[;
   ]]
 
-  if not stmt then
-    error("Failed to prepare SQL statement for updating top N token sets: " .. db:errmsg())
-  end
+  -- if not stmt then
+  --   error("Failed to prepare SQL statement for updating top N token sets: " .. db:errmsg())
+  -- end
 
-  local _, err = stmt:step()
-  stmt:finalize()
-  if err then
-    error("Err: " .. db:errmsg())
-  end
+  -- local _, err = stmt:step()
+  -- stmt:finalize()
+  -- if err then
+  --   error("Err: " .. db:errmsg())
+  -- end
 end
 
 --[[
