@@ -62,9 +62,9 @@ function sql.updateTopNTokenSet(specificSubscriber)
   ]]
   local stmt = db:prepare(stmtStr);
 
-  -- if not stmt then
-  --   error("Failed to prepare SQL statement for updating top N token sets: " .. db:errmsg())
-  -- end
+  if not stmt then
+    error("Failed to prepare SQL statement for updating top N token sets: " .. db:errmsg())
+  end
 
   -- local _, err = stmt:step()
   -- stmt:finalize()
