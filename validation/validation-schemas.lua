@@ -15,7 +15,7 @@ schemas.swapIngestPayloadSchema = v.is_table({
     ['From-Token'] = v.is_string(),
     ['From-Quantity'] = v.is_string(),
     ['To-Quantity'] = v.is_string(),
-    ['Fee'] = v.is_string()
+    ['Fee-Percentage'] = v.is_string()
 }, true)
 
 schemas.swapParamsSchema = function(reserves_0, reserves_1, fee_percentage)

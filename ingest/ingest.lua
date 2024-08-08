@@ -92,13 +92,19 @@ end
 
 -- ==================== INTERNAL ===================== --
 
-local function recordChangeInSwapParams(msg, source, sourceAmm, cause)
-  local reserves_0 = msg.Tags["Reseves-Token-A"]
-  local reserves_1 = msg.Tags["Reseves-Token-B"]
-  local fee_percentage = msg.Tags["Fee-Percentage"]
+local function recordChangeInSwapParams(msg, payload, source, sourceAmm, cause)
+  assert(msg.Id, 'Missing Id')
+  assert(msg['Block-Height'], 'Missing Block-Height')
+  assert(msg.From, 'Missing From')
+  assert(msg.Timestamp, 'Missing Timestamp')
 
-  local valid, err = validationSchemas.swapParamsSchema(reserves_0, reserves_1, fee_percentage)
-  assert(valid, 'Invalid input amm swap params data' .. json.encode(err))
+  local reserves_0 = payload["Reseves-Token-A"]
+  local reserves_1 = payload["Reseves-Token-B"]
+  local fee_percentage = payload["TotalFee"]
+
+  assert(reserves_0, 'Missing Reseves-Token-A')
+  assert(reserves_1, 'Missing Reseves-Token-B')
+  assert(fee_percentage, 'Missing TotalFee')
 
   local entry = {
     id = msg.Id,
@@ -119,13 +125,15 @@ local function recordChangeInSwapParams(msg, source, sourceAmm, cause)
 end
 
 local function recordSwap(msg, swapData, source, sourceAmm)
-  local validMsg, errMsg = validationSchemas.swapIngestMessageSchema(msg)
-
-  assert(validMsg, 'Invalid message' .. json.encode(errMsg))
-
-  local validPayload, errPayload = validationSchemas.swapIngestPayloadSchema(swapData)
-
-  assert(validPayload, 'Invalid payload' .. json.encode(errPayload))
+  assert(msg.Id, 'Missing Id')
+  assert(msg['Block-Height'], 'Missing Block-Height')
+  assert(msg.From, 'Missing From')
+  assert(msg.Timestamp, 'Missing Timestamp')
+  assert(swapData['To-Token'], 'Missing To-Token')
+  assert(swapData['From-Token'], 'Missing From-Token')
+  assert(swapData['From-Quantity'], 'Missing From-Quantity')
+  assert(swapData['To-Quantity'], 'Missing To-Quantity')
+  assert(swapData['Fee-Percentage'], 'Missing Fee-Percentage')
 
   local entry = {
     id = msg.Id,
@@ -134,22 +142,22 @@ local function recordSwap(msg, swapData, source, sourceAmm)
     block_id = msg['Block-Id'] or '',
     sender = msg.recipient or '',
     created_at_ts = msg.Timestamp / 1000,
-    to_token = validPayload['To-Token'],
-    from_token = validPayload['From-Token'],
-    from_quantity = tonumber(validPayload['From-Quantity']),
-    to_quantity = tonumber(validPayload['To-Quantity']),
-    fee_percentage = tonumber(validPayload['Fee-Percentage']),
+    to_token = swapData['To-Token'],
+    from_token = swapData['From-Token'],
+    from_quantity = tonumber(swapData['From-Quantity']),
+    to_quantity = tonumber(swapData['To-Quantity']),
+    fee_percentage = tonumber(swapData['Fee-Percentage']),
     amm_process = sourceAmm
   }
-  -- ingestSql.recordSwap(entry)
-  -- --[[
-  --     the new swap affects
-  --       the latest price =>
-  --         the market cap of this amm's base token =>
-  --           the overall ranking by market cap =>
-  --             the top N token sets
-  --   ]]
-  -- topN.updateTopNTokenSet()
+  ingestSql.recordSwap(entry)
+  --[[
+      the new swap affects
+        the latest price =>
+          the market cap of this amm's base token =>
+            the overall ranking by market cap =>
+              the top N token sets
+    ]]
+  topN.updateTopNTokenSet()
 end
 
 -- ==================== EXPORT ===================== --
@@ -169,7 +177,7 @@ function ingest.handleMonitorIngestSwapParamsChange(msg)
       or (msg.From == Owner and msg.Tags["AMM"] or nil)
   if ammProcessId then
     local now = math.floor(msg.Timestamp / 1000)
-    recordChangeInSwapParams(msg, 'message', ammProcessId, 'swap-params-change')
+    recordChangeInSwapParams(msg, msg.Data, 'message', ammProcessId, 'swap-params-change')
     topN.dispatchMarketDataIncludingAMM(now, ammProcessId)
   end
 end
@@ -178,6 +186,7 @@ function ingest.handleFeedIngestSwapParamsChange(msg)
   if msg.From == OFFCHAIN_FEED_PROVIDER then
     local data = json.decode(msg.Data)
     for _, liquidityUpdate in ipairs(data) do
+      -- TODO rework considering the msg / payload separation
       recordChangeInSwapParams(liquidityUpdate, 'gateway', liquidityUpdate.Tags['AMM'], 'swap-params-change')
     end
 
@@ -199,7 +208,7 @@ function ingest.handleMonitorIngestSwap(msg)
   if ammProcessId then
     local now = math.floor(msg.Timestamp / 1000)
 
-    recordSwap(msg.Data, 'message', ammProcessId)
+    recordSwap(msg, json.decode(msg.Data), 'message', ammProcessId)
 
     -- the new swap affects indicators for this amm
     indicators.dispatchIndicatorsForAMM(ammProcessId, now)
@@ -211,6 +220,7 @@ function ingest.handleMonitorIngestSwap(msg)
 end
 
 function ingest.handleFeedIngestSwaps(msg)
+  -- TODO rework considering the msg / payload separation
   if msg.From == OFFCHAIN_FEED_PROVIDER then
     local data = json.decode(msg.Data)
     for _, swap in ipairs(data) do
