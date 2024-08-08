@@ -64,7 +64,7 @@ function sql.updateTopNTokenSet(specificSubscriber)
     error("Failed to prepare SQL statement for updating top N token sets: " .. db:errmsg())
   end
 
-  local result, err = stmt:step()
+  local _, err = stmt:step()
   stmt:finalize()
   if err then
     error("Err: " .. db:errmsg())
