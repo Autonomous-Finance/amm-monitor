@@ -139,7 +139,7 @@ function sql.getActiveSubscribersWithInterestInAmm(now, ammProcessId)
             )
           ) AS swap_params
       FROM token_list tl
-      JOIN swap_params_view spv ON tl.process_id = spv.amm_process
+      JOIN amm_swap_params_view spv ON tl.process_id = spv.amm_process
       GROUP BY tl.process_id
     )
 
