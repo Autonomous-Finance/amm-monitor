@@ -118,9 +118,14 @@ local function recordChangeInSwapParams(msg, source, sourceAmm, cause)
   ingestSql.updateCurrentSwapParams(entry)
 end
 
-local function recordSwap(msg, source, sourceAmm)
-  local valid, err = validationSchemas.inputMessageSchema(msg)
-  assert(valid, 'Invalid input transaction data' .. json.encode(err))
+local function recordSwap(msg, swapData, source, sourceAmm)
+  local validMsg, errMsg = validationSchemas.swapIngestMessageSchema(msg)
+
+  assert(validMsg, 'Invalid message' .. json.encode(errMsg))
+
+  local validPayload, errPayload = validationSchemas.swapIngestPayloadSchema(swapData)
+
+  assert(validPayload, 'Invalid payload' .. json.encode(errPayload))
 
   local entry = {
     id = msg.Id,
@@ -129,11 +134,11 @@ local function recordSwap(msg, source, sourceAmm)
     block_id = msg['Block-Id'] or '',
     sender = msg.recipient or '',
     created_at_ts = msg.Timestamp / 1000,
-    to_token = msg.Tags['To-Token'],
-    from_token = msg.Tags['From-Token'],
-    from_quantity = tonumber(msg.Tags['From-Quantity']),
-    to_quantity = tonumber(msg.Tags['To-Quantity']),
-    fee_percentage = tonumber(msg.Tags['Fee-Percentage']),
+    to_token = validPayload['To-Token'],
+    from_token = validPayload['From-Token'],
+    from_quantity = tonumber(validPayload['From-Quantity']),
+    to_quantity = tonumber(validPayload['To-Quantity']),
+    fee_percentage = tonumber(validPayload['Fee-Percentage']),
     amm_process = sourceAmm
   }
   ingestSql.recordSwap(entry)
@@ -194,7 +199,7 @@ function ingest.handleMonitorIngestSwap(msg)
   if ammProcessId then
     local now = math.floor(msg.Timestamp / 1000)
 
-    recordSwap(msg, 'message', ammProcessId)
+    recordSwap(msg.Data, 'message', ammProcessId)
 
     -- the new swap affects indicators for this amm
     indicators.dispatchIndicatorsForAMM(ammProcessId, now)
