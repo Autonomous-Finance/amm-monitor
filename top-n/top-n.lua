@@ -159,13 +159,7 @@ function sql.getActiveSubscribersWithInterestInAmm(now, ammProcessId)
     ammProcessId = ammProcessId
   })
 
-  local subscribers = {}
-  for row in subscribersStmt:nrows() do
-    table.insert(subscribers, row.process_id)
-  end
-  subscribersStmt:finalize()
-
-  return subscribers
+  return dbUtils.queryMany(subscribersStmt)
 end
 
 function sql.getTopNTokenSet(processId, quoteToken)
@@ -250,7 +244,7 @@ function topN.dispatchMarketDataIncludingAMM(now, ammProcessId)
 
   for _, subscriberWithMD in ipairs(subscribersAndMD) do
     ao.send({
-      ['Target'] = subscriberWithMD.process_id,
+      ['Target'] = subscriberWithMD.subscriber_id,
       ['App-Name'] = 'Dexi',
       ['Action'] = 'TopNMarketData',
       ['Data'] = json.encode(subscriberWithMD.swap_params)
