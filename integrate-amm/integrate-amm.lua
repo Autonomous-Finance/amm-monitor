@@ -146,24 +146,24 @@ integrateAmm.handleInfoResponseFromAmm = function(msg)
   end
 
   assert(msg.Tags.Name, 'AMM info data must contain a valid Name tag')
-  assert(msg.Tags["Token-A"], 'AMM info data must contain a valid Token-A tag')
-  assert(msg.Tags["Token-B"], 'AMM info data must contain a valid Token-B tag')
+  assert(msg.Tags["TokenA"], 'AMM info data must contain a valid TokenA tag')
+  assert(msg.Tags["TokenB"], 'AMM info data must contain a valid TokenB tag')
 
   registrationData.ammDetails = {
     name = msg.Tags.Name,
     tokenA = {
-      processId = msg.Tags["Token-A"],
+      processId = msg.Tags["TokenA"],
       pendingInfo = false
     },
     tokenB = {
-      processId = msg.Tags["Token-B"],
+      processId = msg.Tags["TokenB"],
       pendingInfo = false
     },
   }
 
   local ammDetails = registrationData.ammDetails
 
-  for _, token in ipairs({ msg.Tags["Token-A"], msg.Tags["Token-B"] }) do
+  for _, token in ipairs({ msg.Tags["TokenA"], msg.Tags["TokenB"] }) do
     if not dexiCore.isKnownToken(token) then
       TokenInfoRequests[token] = ammProcessId
       local index = token == ammDetails.tokenA.processId and 'tokenA' or 'tokenB'
