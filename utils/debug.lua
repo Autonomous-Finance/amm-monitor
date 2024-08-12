@@ -19,7 +19,7 @@ function debug.dumpToCSV(msg)
   ]], tableName, orderBy, limit, offset))
 
   local rows = dbUtils.queryMany(stmt)
-  if not rows then
+  if #rows == 0 then
     ao.send({
       Target = msg.From,
       ['Empty-Response'] = 'true',

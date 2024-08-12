@@ -2,10 +2,15 @@ local dbUtils = {}
 
 function dbUtils.queryMany(stmt)
   local rows = {}
-  for row in stmt:nrows() do
-    table.insert(rows, row)
+  -- Check if the statement was prepared successfully
+  if stmt then
+    for row in stmt:nrows() do
+      table.insert(rows, row)
+    end
+    stmt:finalize()
+  else
+    error("Err: " .. db:errmsg())
   end
-  stmt:finalize()
   return rows
 end
 
