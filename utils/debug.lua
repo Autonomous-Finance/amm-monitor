@@ -20,8 +20,8 @@ function debug.dumpToCSV(msg)
 
   -- Get column names from the database schema
   local columnNames = {}
-  for _, column in ipairs(db:columns(tableName)) do
-    table.insert(columnNames, column.name)
+  for i = 1, stmt:columns() do
+    table.insert(columnNames, stmt:get_name(i))
   end
 
   -- Build CSV header
