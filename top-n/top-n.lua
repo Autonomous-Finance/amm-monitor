@@ -84,8 +84,8 @@ function sql.getActiveSubscribersWithInterestInAmm(now, ammProcessId)
     WITH matched_subscribers AS (
       SELECT s.process_id, s.quote_token, s.top_n, s.token_set
       FROM top_n_subscriptions s, json_each(s.token_set)
-      WHERE json_each.value = :ammProcessId
       JOIN balances b ON s.process_id = b.process_id AND CAST(b.balance AS REAL) > 0
+      WHERE json_each.value = :ammProcessId
     ),
     token_list AS (
       SELECT process_id, json_each.value AS token
