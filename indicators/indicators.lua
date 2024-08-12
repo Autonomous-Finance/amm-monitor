@@ -63,10 +63,10 @@ function sql.getActiveSubscribersToAMM(ammProcessId)
   subscribersStmt:bind_names({ amm_process_id = ammProcessId })
 
   local processes = {}
-  for row in subscribersStmt:nrows() do
-    table.insert(processes, row.process_id)
-  end
-  subscribersStmt:finalize()
+  -- for row in subscribersStmt:nrows() do
+  --   table.insert(processes, row.process_id)
+  -- end
+  -- subscribersStmt:finalize()
 
   return processes
 end
@@ -169,7 +169,7 @@ function indicators.handleGetIndicators(msg)
   })
 end
 
-function indicators.dispatchIndicatorsForAMM(now, ammProcessId)
+function indicators.dispatchIndicatorsForAMM(ammProcessId, now)
   local discoveredAt = sql.getDiscoveredAt(ammProcessId)
   local oneWeekAgo = now - (7 * 24 * 60 * 60)
   local startTimestamp = math.max(discoveredAt, oneWeekAgo)

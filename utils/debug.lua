@@ -3,11 +3,20 @@ local json = require('json')
 
 local debug = {}
 
+
 function debug.dumpToCSV(msg)
-  local stmt = db:prepare [[
+  local tableName = msg.TableName
+  local orderBy = msg.OrderBy or true
+  local limit = msg.Limit or 100
+  local offset = msg.Offset or 0
+
+  local stmt = db:prepare(string.format([[
     SELECT *
-    FROM amm_transactions;
-  ]]
+    FROM %s
+    ORDER BY %s
+    LIMIT %d
+    OFFSET %d;
+  ]], tableName, orderBy, limit, offset))
 
   local rows = {}
   local row = stmt:step()
@@ -18,16 +27,29 @@ function debug.dumpToCSV(msg)
 
   stmt:reset()
 
-  local csvHeader =
-  "id,source,block_height,block_id,from,timestamp,is_buy,price,volume,to_token,from_token,from_quantity,to_quantity,fee,amm_process\n"
+  local columnNames = {}
+  for columnName in pairs(rows[1] or {}) do
+    table.insert(columnNames, columnName)
+  end
+
+  local csvHeader = table.concat(columnNames, ",") .. "\n"
   local csvData = csvHeader
 
   for _, row in ipairs(rows) do
-    local rowData = string.format("%s,%s,%d,%s,%s,%d,%d,%.8f,%.8f,%s,%s,%.8f,%.8f,%.8f,%s\n",
-      row.id, row.source, row.block_height, row.block_id, row["from"], row["timestamp"],
-      row.is_buy, row.price, row.volume, row.to_token, row.from_token, row.from_quantity,
-      row.to_quantity, row.fee, row.amm_process)
-    csvData = csvData .. rowData
+    local rowData = {}
+    for _, columnName in ipairs(columnNames) do
+      local value = row[columnName]
+
+      if type(value) == "string" then
+        value = '"' .. value:gsub('"', '""') .. '"'
+      elseif value == nil then
+        value = ""
+      end
+
+      table.insert(rowData, tostring(value))
+    end
+
+    csvData = csvData .. table.concat(rowData, ",") .. "\n"
   end
 
   ao.send({

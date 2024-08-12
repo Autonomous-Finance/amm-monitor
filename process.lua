@@ -311,3 +311,10 @@ Handlers.add(
   Handlers.utils.hasMatchingTag("Action", "Debug-Table"),
   debug.debugTransactions
 )
+
+
+Handlers.add(
+  "Dump-Table",
+  Handlers.utils.hasMatchingTag("Action", "Dump-Table"),
+  debug.debugTransactions
+)

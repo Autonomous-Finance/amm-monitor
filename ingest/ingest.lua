@@ -53,7 +53,7 @@ end
 function ingestSql.recordChangeInSwapParams(entry)
   local stmt = db:prepare [[
     REPLACE INTO amm_swap_params_changes (
-      id, source, block_height, block_id, sender, created_at_ts, cause
+      id, source, block_height, block_id, sender, created_at_ts, cause,
       reserves_0, reserves_1, fee_percentage, amm_process
     ) VALUES (:id, :source, :block_height, :block_id, :sender, :created_at_ts, :cause,
               :reserves_0, :reserves_1, :fee_percentage, :amm_process);
@@ -98,12 +98,12 @@ local function recordChangeInSwapParams(msg, payload, source, sourceAmm, cause)
   assert(msg.From, 'Missing From')
   assert(msg.Timestamp, 'Missing Timestamp')
 
-  local reserves_0 = payload["Reseves-Token-A"]
-  local reserves_1 = payload["Reseves-Token-B"]
+  local reserves_0 = payload["Reserves-Token-A"]
+  local reserves_1 = payload["Reserves-Token-B"]
   local fee_percentage = payload["TotalFee"]
 
-  assert(reserves_0, 'Missing Reseves-Token-A')
-  assert(reserves_1, 'Missing Reseves-Token-B')
+  assert(reserves_0, 'Missing Reserves-Token-A')
+  assert(reserves_1, 'Missing Reserves-Token-B')
   assert(fee_percentage, 'Missing TotalFee')
 
   local entry = {
@@ -157,7 +157,7 @@ local function recordSwap(msg, swapData, source, sourceAmm)
             the overall ranking by market cap =>
               the top N token sets
     ]]
-  -- topN.updateTopNTokenSet() -- TODO put back in once fixed
+  topN.updateTopNTokenSet() -- TODO put back in once fixed
 end
 
 -- ==================== EXPORT ===================== --
@@ -177,7 +177,7 @@ function ingest.handleMonitorIngestSwapParamsChange(msg)
       or (msg.From == Owner and msg.Tags["AMM"] or nil)
   if ammProcessId then
     local now = math.floor(msg.Timestamp / 1000)
-    recordChangeInSwapParams(msg, msg.Data, 'message', ammProcessId, 'swap-params-change')
+    recordChangeInSwapParams(msg, json.decode(msg.Data), 'message', ammProcessId, 'swap-params-change')
     topN.dispatchMarketDataIncludingAMM(now, ammProcessId)
   end
 end
@@ -211,11 +211,11 @@ function ingest.handleMonitorIngestSwap(msg)
     recordSwap(msg, json.decode(msg.Data), 'message', ammProcessId)
 
     -- the new swap affects indicators for this amm
-    -- indicators.dispatchIndicatorsForAMM(ammProcessId, now)
+    indicators.dispatchIndicatorsForAMM(ammProcessId, now)
 
-    -- recordChangeInSwapParams(msg, 'message', ammProcessId, 'swap')
+    recordChangeInSwapParams(msg, json.decode(msg.Data), 'message', ammProcessId, 'swap')
 
-    -- topN.dispatchMarketDataIncludingAMM(now, ammProcessId)
+    topN.dispatchMarketDataIncludingAMM(now, ammProcessId)
   end
 end
 
