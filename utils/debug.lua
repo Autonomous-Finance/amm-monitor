@@ -18,24 +18,18 @@ function debug.dumpToCSV(msg)
     OFFSET %d;
   ]], tableName, orderBy, limit, offset))
 
-  local rows = {}
+  -- Get column names from the first row
   local row = stmt:step()
-  while row do
-    table.insert(rows, row)
-    row = stmt:step()
-  end
-
-  stmt:reset()
-
   local columnNames = {}
-  for columnName in pairs(rows[1] or {}) do
+  for columnName in pairs(row or {}) do
     table.insert(columnNames, columnName)
   end
 
-  local csvHeader = table.concat(columnNames, ",") .. "\n"
-  local csvData = csvHeader
+  -- Build CSV header
+  local csvData = { table.concat(columnNames, ",") .. "\n" }
 
-  for _, row in ipairs(rows) do
+  -- Write each row to the CSV data
+  repeat
     local rowData = {}
     for _, columnName in ipairs(columnNames) do
       local value = row[columnName]
@@ -49,12 +43,15 @@ function debug.dumpToCSV(msg)
       table.insert(rowData, tostring(value))
     end
 
-    csvData = csvData .. table.concat(rowData, ",") .. "\n"
-  end
+    table.insert(csvData, table.concat(rowData, ",") .. "\n")
+    row = stmt:step()
+  until not row
+
+  stmt:reset()
 
   ao.send({
     Target = msg.From,
-    Data = csvData
+    Data = table.concat(csvData)
   })
 end
 
