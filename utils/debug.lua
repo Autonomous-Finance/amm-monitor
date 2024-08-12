@@ -18,38 +18,29 @@ function debug.dumpToCSV(msg)
     OFFSET %d;
   ]], tableName, orderBy, limit, offset))
 
-  -- Get column names from the database schema
-  local columnNames = {}
-  for i = 1, stmt:columns() do
-    table.insert(columnNames, stmt:get_name(i))
+  local rows = dbUtils.queryMany(stmt)
+
+  stmt:finalize()
+
+  -- Convert rows to CSV format
+  local csvData = {}
+  local headers = {}
+  for k, _ in pairs(rows[1]) do
+    table.insert(headers, k)
   end
+  table.insert(csvData, table.concat(headers, ","))
 
-  -- Build CSV header
-  local csvData = { table.concat(columnNames, ",") .. "\n" }
-
-  -- Write each row to the CSV data
-  for row in stmt:rows() do
-    local rowData = {}
-    for _, columnName in ipairs(columnNames) do
-      local value = row[columnName]
-
-      if type(value) == "string" then
-        value = '"' .. value:gsub('"', '""') .. '"'
-      elseif value == nil then
-        value = ""
-      end
-
-      table.insert(rowData, tostring(value))
+  for _, row in ipairs(rows) do
+    local values = {}
+    for _, header in ipairs(headers) do
+      table.insert(values, row[header])
     end
-
-    table.insert(csvData, table.concat(rowData, ",") .. "\n")
+    table.insert(csvData, table.concat(values, ","))
   end
-
-  stmt:reset()
 
   ao.send({
     Target = msg.From,
-    Data = table.concat(csvData)
+    Data = table.concat(csvData, "\n")
   })
 end
 
