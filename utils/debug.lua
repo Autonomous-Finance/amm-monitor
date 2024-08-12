@@ -20,7 +20,7 @@ function debug.dumpToCSV(msg)
 
   local rows = dbUtils.queryMany(stmt)
 
-  stmt:finalize()
+  stmt:reset()
 
   -- Convert rows to CSV format
   local csvData = {}
