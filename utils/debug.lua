@@ -18,18 +18,17 @@ function debug.dumpToCSV(msg)
     OFFSET %d;
   ]], tableName, orderBy, limit, offset))
 
-  -- Get column names from the first row
-  local row = stmt:step()
+  -- Get column names from the database schema
   local columnNames = {}
-  for columnName in pairs(row or {}) do
-    table.insert(columnNames, columnName)
+  for _, column in ipairs(db:columns(tableName)) do
+    table.insert(columnNames, column.name)
   end
 
   -- Build CSV header
   local csvData = { table.concat(columnNames, ",") .. "\n" }
 
   -- Write each row to the CSV data
-  repeat
+  for row in stmt:rows() do
     local rowData = {}
     for _, columnName in ipairs(columnNames) do
       local value = row[columnName]
@@ -44,8 +43,7 @@ function debug.dumpToCSV(msg)
     end
 
     table.insert(csvData, table.concat(rowData, ",") .. "\n")
-    row = stmt:step()
-  until not row
+  end
 
   stmt:reset()
 
