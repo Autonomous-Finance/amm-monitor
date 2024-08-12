@@ -8,7 +8,10 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "devDependencies": {
-    "aoform": "github:Autonomous-Finance/aoform"
+    "@permaweb/aoconnect": "^0.0.58",
+    "aoform": "github:Autonomous-Finance/aoform",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7"
   },
   "type": "module",
   "keywords": [],
