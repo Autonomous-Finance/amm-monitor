@@ -120,6 +120,7 @@ local function recordChangeInSwapParams(msg, payload, source, sourceAmm, cause)
     amm_process = sourceAmm
   }
 
+  print('Recording change in swap params ' .. json.encode(entry))
   ingestSql.recordChangeInSwapParams(entry)
   ingestSql.updateCurrentSwapParams(entry)
 end
@@ -172,6 +173,7 @@ end
 -- INGEST SWAP PARAMS CHANGES
 
 function ingest.handleMonitorIngestSwapParamsChange(msg)
+  print('Receiving swap params change notification ' .. json.encode(msg))
   local ammProcessId = dexiCore.isKnownAmm(msg.From)
       and msg.From
       or (msg.From == Owner and msg.Tags["AMM"] or nil)
