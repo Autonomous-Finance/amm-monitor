@@ -32,7 +32,7 @@ end
 
 function ingestSql.recordSwap(entry)
   local stmt = db:prepare [[
-    REPLACE INTO amm_transactions (
+    INSERT OR REPLACE INTO amm_transactions (
       id, source, block_height, block_id, sender, created_at_ts,
       to_token, from_token, from_quantity, to_quantity, fee_percentage, amm_process
     ) VALUES (:id, :source, :block_height, :block_id, :sender, :created_at_ts,
@@ -52,7 +52,7 @@ end
 
 function ingestSql.recordChangeInSwapParams(entry)
   local stmt = db:prepare [[
-    REPLACE INTO amm_swap_params_changes (
+    INSERT OR REPLACE INTO amm_swap_params_changes (
       id, source, block_height, block_id, sender, created_at_ts, cause,
       reserves_0, reserves_1, fee_percentage, amm_process
     ) VALUES (:id, :source, :block_height, :block_id, :sender, :created_at_ts, :cause,
@@ -72,7 +72,7 @@ end
 
 function ingestSql.updateCurrentSwapParams(entry)
   local stmt = db:prepare [[
-    REPLACE INTO amm_swap_params (
+    INSERT OR REPLACE INTO amm_swap_params (
       amm_process, reserves_0, reserves_1, fee_percentage
     ) VALUES (
      :amm_process, :reserves_0, :reserves_1, :fee_percentage
