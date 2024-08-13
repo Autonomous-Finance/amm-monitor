@@ -47,14 +47,13 @@ function ingestSql.recordSwap(entry)
   stmt:bind_names(entry)
 
   local result, err = stmt:step()
+  stmt:finalize()
   if err then
     error("Failed to insert swap: " .. err)
   end
-  stmt:finalize()
 end
 
 function ingestSql.recordChangeInSwapParams(entry)
-  print('Recording change in swap params ' .. json.encode(entry))
   local stmt = db:prepare [[
     INSERT OR REPLACE INTO amm_swap_params_changes (
       id, source, block_height, block_id, sender, created_at_ts, cause,
@@ -70,12 +69,9 @@ function ingestSql.recordChangeInSwapParams(entry)
   -- going for brevity - this will be more robust with teal
   stmt:bind_names(entry)
 
-  local result, err = stmt:step()
-  if err then
-    error("Failed to insert swap params change: " .. err)
-  end
-  print('success')
-  stmt:finalize()
+  local result = stmt:finalize()
+  print(db:errmsg())
+  print('result: ' .. result)
 end
 
 function ingestSql.updateCurrentSwapParams(entry)
