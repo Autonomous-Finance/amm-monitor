@@ -54,6 +54,7 @@ function ingestSql.recordSwap(entry)
 end
 
 function ingestSql.recordChangeInSwapParams(entry)
+  print('Recording change in swap params ' .. json.encode(entry))
   local stmt = db:prepare [[
     INSERT OR REPLACE INTO amm_swap_params_changes (
       id, source, block_height, block_id, sender, created_at_ts, cause,
@@ -73,6 +74,7 @@ function ingestSql.recordChangeInSwapParams(entry)
   if err then
     error("Failed to insert swap params change: " .. err)
   end
+  print('success')
   stmt:finalize()
 end
 
