@@ -1,4 +1,5 @@
 local json = require('json')
+local sqlite3 = require('sqlite3')
 
 local validationSchemas = require('validation.validation-schemas')
 local dbUtils = require('db.utils')
@@ -67,11 +68,15 @@ function ingestSql.recordChangeInSwapParams(entry)
   end
 
   -- going for brevity - this will be more robust with teal
-  stmt:bind_names(entry)
-
-  local result = stmt:finalize()
-  print(db:errmsg())
-  print('result: ' .. result)
+  local bindResult = stmt:bind_names(entry)
+  if bindResult ~= sqlite3.OK then
+    error("Failed to bind names: " .. db:errmsg())
+  end
+  local execResult = stmt:finalize()
+  if execResult ~= sqlite3.OK then
+    error("Failed to execute statement: " .. db:errmsg())
+  end
+  print('success')
 end
 
 function ingestSql.updateCurrentSwapParams(entry)
