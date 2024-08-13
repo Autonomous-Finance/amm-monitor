@@ -46,8 +46,11 @@ function ingestSql.recordSwap(entry)
   -- going for brevity - this will be more robust with teal
   stmt:bind_names(entry)
 
-  stmt:step()
-  stmt:reset()
+  local result, err = stmt:step()
+  if err then
+    error("Failed to insert swap: " .. err)
+  end
+  stmt:finalize()
 end
 
 function ingestSql.recordChangeInSwapParams(entry)
@@ -66,8 +69,11 @@ function ingestSql.recordChangeInSwapParams(entry)
   -- going for brevity - this will be more robust with teal
   stmt:bind_names(entry)
 
-  stmt:step()
-  stmt:reset()
+  local result, err = stmt:step()
+  if err then
+    error("Failed to insert swap params change: " .. err)
+  end
+  stmt:finalize()
 end
 
 function ingestSql.updateCurrentSwapParams(entry)
@@ -86,8 +92,11 @@ function ingestSql.updateCurrentSwapParams(entry)
   -- going for brevity - this will be more robust with teal
   stmt:bind_names(entry)
 
-  stmt:step()
-  stmt:reset()
+  local result, err = stmt:step()
+  if err then
+    error("Failed to insert swap params: " .. err)
+  end
+  stmt:finalize()
 end
 
 -- ==================== INTERNAL ===================== --
