@@ -36,7 +36,6 @@ function dbUtils.insert(stmt)
   else
     error("Failed to prepare SQL statement: " .. db:errmsg())
   end
-  stmt:finalize()
 end
 
 return dbUtils
