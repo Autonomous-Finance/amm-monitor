@@ -55,12 +55,14 @@ function ingestSql.recordSwap(entry)
 end
 
 function ingestSql.recordChangeInSwapParams(entry)
+  -- source, block_height, block_id, sender, created_at_ts, cause, reserves_0, reserves_1, fee_percentage, amm_process
+  -- :source, :block_height, :block_id, :sender, :created_at_ts, :cause, :reserves_0, :reserves_1, :fee_percentage, :amm_process
+
+  print('entry.id: ' .. entry.id)
   local stmt = db:prepare [[
     INSERT OR REPLACE INTO amm_swap_params_changes (
-      id, source, block_height, block_id, sender, created_at_ts, cause,
-      reserves_0, reserves_1, fee_percentage, amm_process
-    ) VALUES (:id, :source, :block_height, :block_id, :sender, :created_at_ts, :cause,
-              :reserves_0, :reserves_1, :fee_percentage, :amm_process);
+      id
+    ) VALUES (:id);
   ]]
 
   if not stmt then
