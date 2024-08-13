@@ -66,17 +66,15 @@ function ingestSql.recordChangeInSwapParams(entry)
   ]]
 
   -- going for brevity - this will be more robust with teal
-  local bindResult = stmt:bind_names(entry)
+  stmt:bind_names(entry)
 
-  if not stmt then
+  if stmt then
+    stmt:step()
+    if stmt:finalize() ~= sqlite3.OK then
+      error("Failed to finalize SQL statement: " .. db:errmsg())
+    end
+  else
     error("Failed to prepare SQL statement: " .. db:errmsg())
-  end
-  if bindResult ~= sqlite3.OK then
-    error("Failed to bind names: " .. db:errmsg())
-  end
-  local execResult = stmt:finalize()
-  if execResult ~= sqlite3.OK then
-    error("Failed to execute statement: " .. db:errmsg())
   end
   print('success')
 end
