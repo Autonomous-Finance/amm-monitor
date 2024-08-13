@@ -23,7 +23,7 @@ function sql.queryTopNMarketData(quoteToken, limit)
   FROM amm_market_cap_view mcv
   LEFT JOIN amm_registry r ON mcv.token_process = r.amm_base_token
   LEFT JOIN token_registry t ON t.token_process = r.amm_base_token
-  LEFT JOIN amm_swap_params_view scv ON scv.amm_process = r.amm_process
+  LEFT JOIN amm_swap_params scv ON scv.amm_process = r.amm_process
   WHERE r.amm_quote_token = :quoteToken
   LIMIT :limit
   ]], orderByClause)
@@ -96,7 +96,7 @@ function sql.getActiveSubscribersWithInterestInAmm(now, ammProcessId)
           tl.id AS subscriber_id,
           json_group_array(json_object('amm_process', spv.amm_process, 'token_0', spv.token_0, 'reserves_0', spv.reserves_0, 'token_1', spv.token_1, 'reserves_1', spv.reserves_1, 'fee_percentage', spv.fee_percentage)) AS swap_params
       FROM token_list tl
-      JOIN swap_params_view spv ON tl.process_id = spv.amm_process
+      JOIN amm_swap_params spv ON tl.process_id = spv.amm_process
       GROUP BY tl.process_id
     )
 
