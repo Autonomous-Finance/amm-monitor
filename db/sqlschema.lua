@@ -160,7 +160,11 @@ SELECT
   END AS volume,
   POWER(10, ABS(t0.denominator - tq.denominator)) AS denominator_conversion,
   t0.denominator AS quote_denominator,
-  tq.denominator AS base_denominator
+  tq.denominator AS base_denominator,
+  amm_token0 as quote_token_process,
+  amm_token1 as base_token_process,
+  t0.token_name as quote_token_name,
+  tq.token_name as base_token_name
 FROM amm_transactions
 LEFT JOIN amm_registry USING (amm_process)
 LEFT JOIN token_registry t0 ON t0.token_process = amm_token0
