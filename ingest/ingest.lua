@@ -65,12 +65,12 @@ function ingestSql.recordChangeInSwapParams(entry)
     ) VALUES (:id);
   ]]
 
+  -- going for brevity - this will be more robust with teal
+  local bindResult = stmt:bind_names(entry)
+
   if not stmt then
     error("Failed to prepare SQL statement: " .. db:errmsg())
   end
-
-  -- going for brevity - this will be more robust with teal
-  local bindResult = stmt:bind_names(entry)
   if bindResult ~= sqlite3.OK then
     error("Failed to bind names: " .. db:errmsg())
   end
