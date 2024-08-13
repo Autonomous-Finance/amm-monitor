@@ -34,7 +34,6 @@ CREATE TABLE IF NOT EXISTS amm_swap_params_changes (
     sender TEXT NOT NULL,
     created_at_ts INTEGER,
     cause TEXT NOT NULL CHECK (cause IN ('swap', 'swap-params-change')),
-    token TEXT NOT NULL,
     reserves_0 TEXT NOT NULL,
     reserves_1 TEXT NOT NULL,
     fee_percentage TEXT NOT NULL,
@@ -84,8 +83,6 @@ CREATE TABLE IF NOT EXISTS amm_registry (
 sqlschema.create_amm_swap_params_table = [[
 CREATE TABLE IF NOT EXISTS amm_swap_params (
     amm_process TEXT NOT NULL PRIMARY KEY,
-    token_0 TEXT NOT NULL,
-    token_1 TEXT NOT NULL,
     reserves_0 TEXT NOT NULL,
     reserves_1 TEXT NOT NULL,
     fee_percentage TEXT NOT NULL
