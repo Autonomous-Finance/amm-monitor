@@ -178,7 +178,8 @@ function ingest.handleMonitorIngestSwapParamsChange(msg)
   if ammProcessId then
     local now = math.floor(msg.Timestamp / 1000)
     recordChangeInSwapParams(msg, json.decode(msg.Data), 'message', ammProcessId, 'swap-params-change')
-    topN.dispatchMarketDataIncludingAMM(now, ammProcessId)
+    -- disable for now TODO!!!
+    -- topN.dispatchMarketDataIncludingAMM(now, ammProcessId)
   end
 end
 

@@ -79,6 +79,7 @@ end
   The subscribers must have the AMM process ID in their token set.
   The query returns both the subscriber ID and the top N market data.
 ]]
+--- !!!!TODO refactor!!!!!
 function sql.getActiveSubscribersWithInterestInAmm(now, ammProcessId)
   local subscribersStmt = db:prepare([[
     WITH matched_subscribers AS (
@@ -105,7 +106,7 @@ function sql.getActiveSubscribersWithInterestInAmm(now, ammProcessId)
         subs.top_n,
         asp.swap_params
     FROM aggregated_swap_params asp
-    JOIN subscribers s ON asp.subscriber_id = subs.process_id;
+    JOIN matched_subscribers s ON asp.subscriber_id = subs.process_id;
   ]])
 
   if not subscribersStmt then
