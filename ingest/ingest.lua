@@ -1,5 +1,5 @@
 local json = require('json')
-local sqlite3 = require('lsqlite3')
+local dbUtils = require('db.utils')
 
 local validationSchemas = require('validation.validation-schemas')
 local dbUtils = require('db.utils')
@@ -46,37 +46,24 @@ function ingestSql.recordSwap(entry)
 
   -- going for brevity - this will be more robust with teal
   stmt:bind_names(entry)
-
-  local result, err = stmt:step()
-  stmt:finalize()
-  if err then
-    error("Failed to insert swap: " .. err)
-  end
+  dbUtils.insert(stmt)
 end
 
 function ingestSql.recordChangeInSwapParams(entry)
-  -- source, block_height, block_id, sender, created_at_ts, cause, reserves_0, reserves_1, fee_percentage, amm_process
+  --
   -- :source, :block_height, :block_id, :sender, :created_at_ts, :cause, :reserves_0, :reserves_1, :fee_percentage, :amm_process
 
-  print('entry.id: ' .. entry.id)
   local stmt = db:prepare [[
     INSERT OR REPLACE INTO amm_swap_params_changes (
-      id
-    ) VALUES (:id);
+      id, source, block_height, block_id, sender, created_at_ts,
+      cause, reserves_0, reserves_1, fee_percentage, amm_process
+    ) VALUES (:id, :source, :block_height, :block_id, :sender, :created_at_ts,
+              :cause, :reserves_0, :reserves_1, :fee_percentage, :amm_process);
   ]]
 
   -- going for brevity - this will be more robust with teal
   stmt:bind_names(entry)
-
-  if stmt then
-    stmt:step()
-    if stmt:finalize() ~= sqlite3.OK then
-      error("Failed to finalize SQL statement: " .. db:errmsg())
-    end
-  else
-    error("Failed to prepare SQL statement: " .. db:errmsg())
-  end
-  print('success')
+  dbUtils.insert(stmt)
 end
 
 function ingestSql.updateCurrentSwapParams(entry)
@@ -87,19 +74,9 @@ function ingestSql.updateCurrentSwapParams(entry)
      :amm_process, :reserves_0, :reserves_1, :fee_percentage
     );
   ]]
-
-  if not stmt then
-    error("Failed to prepare SQL statement: " .. db:errmsg())
-  end
-
   -- going for brevity - this will be more robust with teal
   stmt:bind_names(entry)
-
-  local result, err = stmt:step()
-  if err then
-    error("Failed to insert swap params: " .. err)
-  end
-  stmt:finalize()
+  dbUtils.insert(stmt)
 end
 
 -- ==================== INTERNAL ===================== --

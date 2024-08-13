@@ -1,3 +1,4 @@
+local sqlite3 = require('lsqlite3')
 local dbUtils = {}
 
 function dbUtils.queryMany(stmt)
@@ -24,6 +25,18 @@ function dbUtils.rawQuery(query)
     error("Err: " .. db:errmsg())
   end
   return dbUtils.queryMany(stmt)
+end
+
+function dbUtils.insert(stmt)
+  if stmt then
+    stmt:step()
+    if stmt:finalize() ~= sqlite3.OK then
+      error("Failed to finalize SQL statement: " .. db:errmsg())
+    end
+  else
+    error("Failed to prepare SQL statement: " .. db:errmsg())
+  end
+  stmt:finalize()
 end
 
 return dbUtils
