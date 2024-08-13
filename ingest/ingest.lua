@@ -1,5 +1,5 @@
 local json = require('json')
-local sqlite3 = require('sqlite3')
+local sqlite3 = require('lsqlite3')
 
 local validationSchemas = require('validation.validation-schemas')
 local dbUtils = require('db.utils')
