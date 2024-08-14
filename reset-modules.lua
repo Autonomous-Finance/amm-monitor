@@ -20,3 +20,5 @@ package.loaded["integrate-amm.integrate-amm"] = nil
 package.loaded["ops.emergency"] = nil
 package.loaded["ops.config-ops"] = nil
 package.loaded["ops.initialize"] = nil
+package.loaded["amm-analytics.main"] = nil
+package.loaded["amm-analytics.volume"] = nil
