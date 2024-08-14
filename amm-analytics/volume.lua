@@ -32,7 +32,7 @@ function analytics.getDailyVolume(msg)
     JOIN process_id ON TRUE
     WHERE
         date_range.date >= DATE(:start_date, 'unixepoch') AND (quote_token_process = :quote_token_process OR quote_token_process IS NULL)
-        CASE WHEN amm_process_id IS NOT NULL THEN amm_process_id = amm_process_id ELSE TRUE END
+        AND CASE WHEN amm_process_id IS NOT NULL THEN amm_process_id = amm_process_id ELSE TRUE END
     GROUP BY 1, 2
     ORDER BY 1 DESC;
     ]])
