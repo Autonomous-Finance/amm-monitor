@@ -16,23 +16,23 @@ function analytics.getDailyVolume(msg)
 
     local stmt = db:prepare([[
     WITH RECURSIVE date_range(date) AS (
-        SELECT DATE(:start_date, 'unixepoch')
+        SELECT :start_timestamp
         UNION ALL
-        SELECT date(date, '+1 day')
+        SELECT date + 86400 -- add one day in seconds
         FROM date_range
-        WHERE date < :end_date
+        WHERE date < :end_timestamp
     ), process_id AS (
         SELECT :amm_process_id AS amm_process_id
     )
     SELECT
-        date_range.date as date,
+        DATE(date_range.date, 'unixepoch') as date,
         quote_token_process,
         COALESCE(SUM(volume), 0) AS daily_volume
     FROM date_range
-    LEFT JOIN amm_transactions_view ON DATE(created_at_ts, 'unixepoch') = date_range.date
+    LEFT JOIN amm_transactions_view ON DATE(created_at_ts, 'unixepoch') = DATE(date_range.date, 'unixepoch')
     JOIN process_id ON TRUE
     WHERE
-        date_range.date >= DATE(:start_date, 'unixepoch') AND (quote_token_process = :quote_token_process OR quote_token_process IS NULL)
+        date_range.date >= :start_timestamp AND (quote_token_process = :quote_token_process OR quote_token_process IS NULL)
         AND CASE WHEN amm_process_id IS NOT NULL THEN amm_process_id = amm_process_id ELSE TRUE END
     GROUP BY 1, 2
     ORDER BY 1 DESC;
@@ -43,16 +43,18 @@ function analytics.getDailyVolume(msg)
     end
 
     stmt:bind_names({
-        start_date = tostring(startDate),
-        end_date = tostring(endDate),
+        start_timestamp = startTimestamp,
+        end_timestamp = endTimestamp,
         quote_token_process = QUOTE_TOKEN.ProcessId,
         amm_process_id = ammProcessId
     })
 
+    local result = dbUtils.queryMany(stmt)
+
     ao.send({
         ['Response-For'] = 'Get-Daily-Volume',
         ['Target'] = msg.From,
-        ['Data'] = json.encode(dbUtils.queryMany(stmt))
+        ['Data'] = json.encode(result)
     })
 end
 
