@@ -11,6 +11,7 @@ local integrateAmm = require("integrate-amm.integrate-amm")
 local emergency = require("ops.emergency")
 local configOps = require("ops.config-ops")
 local initialize = require("ops.initialize")
+local analytics = require("amm-analytics.main")
 
 db = db or sqlite3.open_memory()
 
@@ -310,4 +311,12 @@ Handlers.add(
   "Debug-Table",
   Handlers.utils.hasMatchingTag("Action", "Debug-Table"),
   debug.debugTransactions
+)
+
+-- ANALYTICS
+
+Handlers.add(
+  "Get-Daily-Volume",
+  Handlers.utils.hasMatchingTag("Action", "Get-Daily-Volume"),
+  analytics.getDailyVolume
 )
