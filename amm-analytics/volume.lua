@@ -13,7 +13,7 @@ function analytics.getDailyVolume(msg)
     local endDate = os.date("!*t", endTimestamp)
     assert(startDate and endDate, "Start and end dates are required")
 
-    local stmt = [[
+    local stmt = db:prepare([[
     WITH RECURSIVE date_range(date) AS (
         SELECT DATE(:start_date, 'unixepoch')
         UNION ALL
@@ -32,9 +32,9 @@ function analytics.getDailyVolume(msg)
         CASE WHEN :amm_process_id IS NOT NULL THEN amm_process_id = :amm_process_id ELSE TRUE END
     GROUP BY 1, 2
     ORDER BY 1 DESC;
-    ]]
+    ]])
 
-    stmt = dbUtils.bind_names(stmt, {
+    stmt:bind_names({
         start_date = startDate,
         end_date = endDate,
         quote_token_process = QUOTE_TOKEN.ProcessId,
