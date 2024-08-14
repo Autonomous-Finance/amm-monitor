@@ -46,7 +46,7 @@ function ingestSql.recordSwap(entry)
 
   -- going for brevity - this will be more robust with teal
   stmt:bind_names(entry)
-  dbUtils.insert(stmt)
+  dbUtils.execute(stmt, "ingestSql.recordSwap")
 end
 
 function ingestSql.recordChangeInSwapParams(entry)
@@ -63,7 +63,7 @@ function ingestSql.recordChangeInSwapParams(entry)
 
   -- going for brevity - this will be more robust with teal
   stmt:bind_names(entry)
-  dbUtils.insert(stmt)
+  dbUtils.execute(stmt, "ingestSql.recordChangeInSwapParams")
 end
 
 function ingestSql.updateCurrentSwapParams(entry)
@@ -76,7 +76,7 @@ function ingestSql.updateCurrentSwapParams(entry)
   ]]
   -- going for brevity - this will be more robust with teal
   stmt:bind_names(entry)
-  dbUtils.insert(stmt)
+  dbUtils.execute(stmt, "ingestSql.updateCurrentSwapParams")
 end
 
 -- ==================== INTERNAL ===================== --

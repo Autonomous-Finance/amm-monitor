@@ -27,14 +27,14 @@ function dbUtils.rawQuery(query)
   return dbUtils.queryMany(stmt)
 end
 
-function dbUtils.insert(stmt)
+function dbUtils.execute(stmt, statmentHint)
   if stmt then
     stmt:step()
     if stmt:finalize() ~= sqlite3.OK then
-      error("Failed to finalize SQL statement: " .. db:errmsg())
+      error("Failed to finalize SQL statement" .. statmentHint .. ": " .. db:errmsg())
     end
   else
-    error("Failed to prepare SQL statement: " .. db:errmsg())
+    error("Failed to prepare SQL statement" .. statmentHint .. ": " .. db:errmsg())
   end
 end
 
