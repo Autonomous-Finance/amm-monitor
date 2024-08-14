@@ -23,7 +23,8 @@ $BIN_PATH/luacheck process.lua \
     top-n/top-n.lua \
     utils/debug.lua \
     ownable/ownable.lua \
-    ops/config-ops.lua ops/emergency.lua ops/initialize.lua
+    ops/config-ops.lua ops/emergency.lua ops/initialize.lua \
+    amm-analytics/main.lua amm-analytics/volume.lua
     
 $BIN_PATH/amalg.lua -s process.lua -o build/output.lua \
     validation.validation validation.validation-schemas \
@@ -37,4 +38,5 @@ $BIN_PATH/amalg.lua -s process.lua -o build/output.lua \
     top-n.top-n \
     utils.debug \
     ownable.ownable \
-    ops.config-ops ops.emergency ops.initialize
+    ops.config-ops ops.emergency ops.initialize \
+    amm-analytics.main amm-analytics.volume
