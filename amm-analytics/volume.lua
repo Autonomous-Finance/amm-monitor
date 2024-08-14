@@ -9,8 +9,8 @@ function analytics.getDailyVolume(msg)
 
     assert(startTimestamp and endTimestamp, "Start and end timestamps are required")
     -- assert start date and end date are valid dates
-    local startDate = os.date("!*t", startTimestamp)
-    local endDate = os.date("!*t", endTimestamp)
+    local startDate = os.date("!%Y-%m-%d", startTimestamp)
+    local endDate = os.date("!%Y-%m-%d", endTimestamp)
     assert(startDate and endDate, "Start and end dates are required")
 
     local stmt = db:prepare([[
@@ -42,8 +42,8 @@ function analytics.getDailyVolume(msg)
     end
 
     stmt:bind_names({
-        start_date = startDate,
-        end_date = endDate,
+        start_date = tostring(startDate),
+        end_date = tostring(endDate),
         quote_token_process = QUOTE_TOKEN.ProcessId,
         amm_process_id = ammProcessId
     })
