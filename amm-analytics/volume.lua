@@ -20,6 +20,8 @@ function analytics.getDailyVolume(msg)
         SELECT date(date, '+1 day')
         FROM date_range
         WHERE date < :end_date
+    ), process_id AS (
+        SELECT :amm_process_id AS amm_process_id
     )
     SELECT
         date_range.date as date,
@@ -27,9 +29,10 @@ function analytics.getDailyVolume(msg)
         COALESCE(SUM(volume), 0) AS daily_volume
     FROM date_range
     LEFT JOIN amm_transactions_view ON DATE(created_at_ts, 'unixepoch') = date_range.date
+    JOIN process_id ON TRUE
     WHERE
         date_range.date >= DATE(:start_date, 'unixepoch') AND (quote_token_process = :quote_token_process OR quote_token_process IS NULL)
-        CASE WHEN :amm_process_id IS NOT NULL THEN amm_process_id = :amm_process_id ELSE TRUE END
+        CASE WHEN amm_process_id IS NOT NULL THEN amm_process_id = amm_process_id ELSE TRUE END
     GROUP BY 1, 2
     ORDER BY 1 DESC;
     ]])
