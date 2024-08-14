@@ -1,4 +1,5 @@
 local dbUtils = require("db.utils")
+local json = require("json")
 
 local analytics = {}
 
@@ -48,7 +49,11 @@ function analytics.getDailyVolume(msg)
         amm_process_id = ammProcessId
     })
 
-    return dbUtils.queryMany(stmt)
+    ao.send({
+        ['Response-For'] = 'Get-Daily-Volume',
+        ['Target'] = msg.From,
+        ['Data'] = json.encode(dbUtils.queryMany(stmt))
+    })
 end
 
 return analytics
