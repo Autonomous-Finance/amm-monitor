@@ -3,13 +3,15 @@ local dbUtils = require("db.utils")
 local analytics = {}
 
 function analytics.getDailyVolume(msg)
-    local startDate = msg['Start-Date']
-    local endDate = msg['End-Date']
-    local ammProcessId = msg['Amm-Process-Id'] or nil
+    local startDate = tonumber(msg.Tags['Start-Timestamp'])
+    local endDate = tonumber(msg.Tags['End-Timestamp'])
+    local ammProcessId = msg.Tags['Amm-Process-Id'] or nil
 
     assert(startDate and endDate, "Start and end dates are required")
     -- assert start date and end date are valid dates
-    assert(os.date("%Y-%m-%d", startDate) and os.date("%Y-%m-%d", endDate), "Start and end dates are required")
+    local startDate = os.date("!*t", startDate)
+    local endDate = os.date("!*t", endDate)
+    assert(startDate and endDate, "Start and end dates are required")
 
     local stmt = [[
     WITH RECURSIVE date_range(date) AS (
