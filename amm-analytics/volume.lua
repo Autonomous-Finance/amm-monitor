@@ -34,7 +34,7 @@ function analytics.getDailyVolume(msg)
     ORDER BY 1 DESC;
     ]]
 
-    stmt = dbUtils.bindParams(stmt, {
+    stmt = dbUtils.bind_names(stmt, {
         start_date = startDate,
         end_date = endDate,
         quote_token_process = QUOTE_TOKEN.ProcessId,
