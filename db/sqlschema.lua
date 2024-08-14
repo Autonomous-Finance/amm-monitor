@@ -154,10 +154,10 @@ SELECT
       END
     ELSE NULL
   END, 12) AS price,
-  CASE
+  (CASE
     WHEN to_token = amm_token1 THEN from_quantity
     ELSE to_quantity
-  END AS volume,
+  END) * 1.0 / POWER(10, t0.denominator) AS volume,
   POWER(10, ABS(t0.denominator - tq.denominator)) AS denominator_conversion,
   t0.denominator AS quote_denominator,
   tq.denominator AS base_denominator,
