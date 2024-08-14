@@ -34,6 +34,10 @@ function analytics.getDailyVolume(msg)
     ORDER BY 1 DESC;
     ]])
 
+    if not stmt then
+        error("Err: " .. db:errmsg())
+    end
+
     stmt:bind_names({
         start_date = startDate,
         end_date = endDate,
