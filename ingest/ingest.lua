@@ -206,8 +206,8 @@ function ingest.handleMonitorIngestSwap(msg)
     indicators.dispatchIndicatorsForAMM(ammProcessId, now)
 
     recordChangeInSwapParams(msg, json.decode(msg.Data), 'message', ammProcessId, 'swap')
-
-    topN.dispatchMarketDataIncludingAMM(now, ammProcessId)
+    -- TODO: re-enable once fixed
+    -- topN.dispatchMarketDataIncludingAMM(now, ammProcessId)
   end
 end
 
