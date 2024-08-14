@@ -3,14 +3,14 @@ local dbUtils = require("db.utils")
 local analytics = {}
 
 function analytics.getDailyVolume(msg)
-    local startDate = tonumber(msg.Tags['Start-Timestamp'])
-    local endDate = tonumber(msg.Tags['End-Timestamp'])
+    local startTimestamp = tonumber(msg.Tags['Start-Timestamp'])
+    local endTimestamp = tonumber(msg.Tags['End-Timestamp'])
     local ammProcessId = msg.Tags['Amm-Process-Id'] or nil
 
-    assert(startDate and endDate, "Start and end dates are required")
+    assert(startTimestamp and endTimestamp, "Start and end timestamps are required")
     -- assert start date and end date are valid dates
-    local startDate = os.date("!*t", startDate)
-    local endDate = os.date("!*t", endDate)
+    local startDate = os.date("!*t", startTimestamp)
+    local endDate = os.date("!*t", endTimestamp)
     assert(startDate and endDate, "Start and end dates are required")
 
     local stmt = [[
