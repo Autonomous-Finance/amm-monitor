@@ -3,18 +3,7 @@ local json = require("json")
 
 local analytics = {}
 
-function analytics.getDailyVolume(msg)
-    local startTimestamp = tonumber(msg.Tags['Start-Timestamp'])
-    local endTimestamp = tonumber(msg.Tags['End-Timestamp'])
-    local ammProcessId = msg.Tags['Amm-Process-Id'] or nil
-
-    assert(startTimestamp and endTimestamp, "Start and end timestamps are required")
-    -- assert start date and end date are valid dates
-    local startDate = os.date("!%Y-%m-%d", startTimestamp)
-    local endDate = os.date("!%Y-%m-%d", endTimestamp)
-    assert(startDate and endDate, "Start and end dates are required")
-
-    local stmt = db:prepare([[
+local volumeQuery = [[
     WITH RECURSIVE date_range(date) AS (
         SELECT :start_timestamp
         UNION ALL
@@ -36,7 +25,20 @@ function analytics.getDailyVolume(msg)
         AND CASE WHEN amm_process_id IS NOT NULL THEN amm_process_id = amm_process_id ELSE TRUE END
     GROUP BY 1, 2
     ORDER BY 1 DESC;
-    ]])
+]]
+
+function analytics.getDailyVolume(msg)
+    local startTimestamp = tonumber(msg.Tags['Start-Timestamp'])
+    local endTimestamp = tonumber(msg.Tags['End-Timestamp'])
+    local ammProcessId = msg.Tags['Amm-Process-Id'] or nil
+
+    assert(startTimestamp and endTimestamp, "Start and end timestamps are required")
+    -- assert start date and end date are valid dates
+    local startDate = os.date("!%Y-%m-%d", startTimestamp)
+    local endDate = os.date("!%Y-%m-%d", endTimestamp)
+    assert(startDate and endDate, "Start and end dates are required")
+
+    local stmt = db:prepare(volumeQuery)
 
     if not stmt then
         error("Err: " .. db:errmsg())

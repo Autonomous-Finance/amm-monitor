@@ -320,3 +320,9 @@ Handlers.add(
   Handlers.utils.hasMatchingTag("Action", "Get-Daily-Volume"),
   analytics.getDailyVolume
 )
+
+Handlers.add(
+  "Get-Pool-Overview",
+  Handlers.utils.hasMatchingTag("Action", "Get-Pool-Overview"),
+  analytics.getPoolOverview
+)

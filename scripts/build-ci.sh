@@ -18,4 +18,4 @@ amalg.lua -s process.lua -o build/output.lua \
     utils.debug \
     ownable.ownable \
     ops.config-ops ops.emergency ops.initialize \
-    amm-analytics.main amm-analytics.volume
+    amm-analytics.main amm-analytics.volume amm-analytics.pool-overview

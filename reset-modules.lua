@@ -22,3 +22,4 @@ package.loaded["ops.config-ops"] = nil
 package.loaded["ops.initialize"] = nil
 package.loaded["amm-analytics.main"] = nil
 package.loaded["amm-analytics.volume"] = nil
+package.loaded["amm-analytics.pool-overview"] = nil
