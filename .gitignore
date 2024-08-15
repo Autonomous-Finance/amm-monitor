@@ -6,3 +6,4 @@ processes.dev.yaml
 build
 
 .DS_Store
+.idea
