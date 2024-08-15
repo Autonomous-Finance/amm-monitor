@@ -211,6 +211,7 @@ integrateAmm.handleTokenInfoResponse = function(msg)
   dexiCore.registerToken(
     tokenInfo.processId,
     tokenInfo.tokenName,
+    tokenInfo.tokenTicker,
     tokenInfo.denominator,
     tokenInfo.totalSupply,
     tokenInfo.fixedSupply,

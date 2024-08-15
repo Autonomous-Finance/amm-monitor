@@ -93,6 +93,7 @@ sqlschema.create_token_registry_table = [[
 CREATE TABLE IF NOT EXISTS token_registry (
     token_process TEXT NOT NULL PRIMARY KEY,
     token_name TEXT NOT NULL,
+    token_ticker TEXT NOT NULL,
     denominator INT NOT NULL,
     total_supply INT NOT NULL,
     fixed_supply BOOL NOT NULL,

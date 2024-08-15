@@ -69,19 +69,20 @@ function sql.unregisterAMM(processId)
   stmt:finalize()
 end
 
-function sql.registerToken(processId, name, denominator, totalSupply, fixedSupply, updatedAt)
+function sql.registerToken(processId, name, ticker, denominator, totalSupply, fixedSupply, updatedAt)
   print('Registering Token:')
   print({
     "process", processId,
     "name", name,
+    "ticker", ticker,
     "denominator", denominator,
     "totalSupply", totalSupply,
     "fixedSupply", fixedSupply,
     "updatedAt", updatedAt
   })
   local stmt = db:prepare [[
-    INSERT INTO token_registry (token_process, token_name, denominator, total_supply, fixed_supply, token_updated_at_ts)
-    VALUES (:process_id, :token_name, :denominator, :total_supply, :fixed_supply, :token_updated_at_ts)
+    INSERT INTO token_registry (token_process, token_name, token_ticker, denominator, total_supply, fixed_supply, token_updated_at_ts)
+    VALUES (:process_id, :token_name, :token_ticker, :denominator, :total_supply, :fixed_supply, :token_updated_at_ts)
     ON CONFLICT(token_process) DO UPDATE SET
     token_name = excluded.token_name,
     denominator = excluded.denominator,
@@ -95,16 +96,13 @@ function sql.registerToken(processId, name, denominator, totalSupply, fixedSuppl
   stmt:bind_names({
     process_id = processId,
     token_name = name,
+    token_ticker = ticker,
     denominator = denominator,
     total_supply = totalSupply,
     fixed_supply = fixedSupply,
     token_updated_at_ts = updatedAt
   })
-  local result, err = stmt:step()
-  stmt:finalize()
-  if err then
-    error("Err: " .. db:errmsg())
-  end
+  dbUtils.execute(stmt)
 end
 
 function sql.unregisterToken(processId)
@@ -181,8 +179,8 @@ end
 
 -- ---------------- EXPORT
 
-dexiCore.registerToken = function(processId, name, denominator, totalSupply, fixedSupply, updatedAt)
-  sql.registerToken(processId, name, denominator, totalSupply, fixedSupply, updatedAt)
+dexiCore.registerToken = function(processId, name, ticker, denominator, totalSupply, fixedSupply, updatedAt)
+  sql.registerToken(processId, name, ticker, denominator, totalSupply, fixedSupply, updatedAt)
 end
 
 dexiCore.registerAMM = function(name, processId, token0, token1, discoveredAt)
