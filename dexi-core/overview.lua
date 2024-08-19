@@ -39,7 +39,7 @@ function overview.getOverview(now, orderBy)
     t.token_name AS token_name,
     t.total_supply AS total_supply,
     t.fixed_supply AS fixed_supply,
-    t.total_supply * current_price AS market_cap,
+    t.total_supply / POWER(10, t.denominator) * current_price AS market_cap,
     (SELECT price FROM amm_transactions_view WHERE amm_process = r.amm_process ORDER BY created_at_ts DESC LIMIT 1) AS current_price,
     (SELECT price FROM amm_transactions_view WHERE amm_process = r.amm_process AND created_at_ts <= :now - 300 ORDER BY created_at_ts DESC LIMIT 1) AS price_5m_ago,
     (SELECT price FROM amm_transactions_view WHERE amm_process = r.amm_process AND created_at_ts <= :now - 3600 ORDER BY created_at_ts DESC LIMIT 1) AS price_1h_ago,
