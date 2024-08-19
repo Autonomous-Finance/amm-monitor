@@ -1,6 +1,6 @@
 - name: dexi-aggregator
   file: build/output.lua
-  prerun: reset-modules.lua
+  resetModules: true
   scheduler: _GQ33BkPtZrqxA84vM8Zk-N2aO0toNNu_C-l-rawrBA
   module: GYrbbe0VbHim_7Hi6zrOpHQXrSQz07XNtwCnfbFo2I0
   tags:
