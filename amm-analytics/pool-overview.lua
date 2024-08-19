@@ -21,6 +21,7 @@ WITH latest_transactions_for_pool AS (
         t0.token_name AS quote_token_name,
         t1.token_process AS quote_token_process,
         t0.token_process AS base_token_process,
+        asp.amm_process AS amm_process,
         ((CAST(reserves_0 AS REAL) + (CAST(reserves_1 AS REAL) * coalesce(price, 0))) / POW(10, quote_denominator)) tvl_in_quote,
         ((CAST(reserves_0 AS REAL) + (CAST(reserves_1 AS REAL)) * coalesce(price, 0)) / POW(10, quote_denominator)) * 1.0 tvl_in_usd,
         0.15 AS apr_30d,
