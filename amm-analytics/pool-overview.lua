@@ -15,8 +15,8 @@ WITH latest_transactions_for_pool AS (
     SELECT amm_process, count(1) cnt FROM amm_transactions_view GROUP BY 1
 ), preagg AS (
     SELECT
-        t1.token_name AS base_token_ticker,
-        t0.token_name AS quote_token_ticker,
+        t1.token_ticker AS base_token_ticker,
+        t0.token_ticker AS quote_token_ticker,
         t1.token_name AS base_token_name,
         t0.token_name AS quote_token_name,
         t1.token_process AS quote_token_process,
