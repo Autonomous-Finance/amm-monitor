@@ -90,6 +90,23 @@ Handlers.add(
   usdPrice.updateUsdPrice
 )
 
+
+Handlers.add(
+  'Get-Oracle-Price',
+  Handlers.utils.hasMatchingTag("Action", "Get-Oracle-Price"),
+  function(msg)
+    assert(msg.Tags["Process-Id"], "Process-Id is required")
+
+    local price = usdPrice.getOraclePrice(msg.Tags["Process-Id"])
+    ao.send({
+      Target = msg.From,
+      ResponseFor = msg.Action,
+      ['Process-Id'] = msg.Tags['Process-Id'],
+      Price = price
+    })
+  end
+)
+
 -- SWAP & SWAP PARAMS CHANGES INGESTION --
 
 Handlers.add(
