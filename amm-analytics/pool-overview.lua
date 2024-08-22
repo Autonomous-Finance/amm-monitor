@@ -26,7 +26,7 @@ WITH latest_transactions_for_pool AS (
         asp.amm_process AS amm_process,
         ((CAST(reserves_0 AS REAL) + (CAST(reserves_1 AS REAL) * coalesce(ltfp.price, 0))) / POW(10, quote_denominator)) tvl_in_quote,
         ((CAST(reserves_0 AS REAL) + (CAST(reserves_1 AS REAL)) * coalesce(ltfp.price, 0)) / POW(10, quote_denominator)) * op.price tvl_in_usd,
-        f30.fees_in_quote_30d / tvl_in_quote AS apr_30d,
+        f30.fees_in_quote_30d / ((CAST(reserves_0 AS REAL) + (CAST(reserves_1 AS REAL) * coalesce(ltfp.price, 0))) / POW(10, quote_denominator)) AS apr_30d,
         tx_counts.cnt AS tx_count
     FROM amm_swap_params asp
     LEFT JOIN latest_transactions_for_pool ltfp ON ltfp.amm_process = asp.amm_process AND seq = 1
