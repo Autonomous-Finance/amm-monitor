@@ -17,7 +17,7 @@ local volumeQuery = [[
         DATE(date_range.date, 'unixepoch') as date,
         quote_token_process,
         COALESCE(SUM(volume), 0) AS daily_volume_quote_token,
-        COALESCE(SUM(volume * 1.0), 0) AS daily_volume_usd
+        COALESCE(SUM(volume_usd), 0) AS daily_volume_usd
     FROM date_range
     LEFT JOIN amm_transactions_view ON DATE(created_at_ts, 'unixepoch') = DATE(date_range.date, 'unixepoch')
     JOIN process_id ON TRUE
