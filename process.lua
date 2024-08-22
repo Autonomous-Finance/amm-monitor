@@ -103,7 +103,7 @@ Handlers.add(
         Target = msg.From,
         ResponseFor = msg.Action,
         ['Process-Id'] = msg.Tags['Process-Id'],
-        Price = price
+        Price = tostring(price)
       })
     else
       ao.send({
