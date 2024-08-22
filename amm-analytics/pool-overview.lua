@@ -24,8 +24,8 @@ WITH latest_transactions_for_pool AS (
         t0.token_process AS quote_token_process,
         t1.token_process AS base_token_process,
         asp.amm_process AS amm_process,
-        ((CAST(reserves_0 AS REAL) + (CAST(reserves_1 AS REAL) * coalesce(price, 0))) / POW(10, quote_denominator)) tvl_in_quote,
-        ((CAST(reserves_0 AS REAL) + (CAST(reserves_1 AS REAL)) * coalesce(price, 0)) / POW(10, quote_denominator)) * op.price tvl_in_usd,
+        ((CAST(reserves_0 AS REAL) + (CAST(reserves_1 AS REAL) * coalesce(ltfp.price, 0))) / POW(10, quote_denominator)) tvl_in_quote,
+        ((CAST(reserves_0 AS REAL) + (CAST(reserves_1 AS REAL)) * coalesce(ltfp.price, 0)) / POW(10, quote_denominator)) * op.price tvl_in_usd,
         fees30d.fees_in_quote_30d / tvl_in_quote AS apr_30d,
         tx_counts.cnt AS tx_count
     FROM amm_swap_params asp
