@@ -126,8 +126,8 @@ local function recordSwap(msg, swapData, source, sourceAmm)
   assert(swapData['To-Quantity'], 'Missing To-Quantity')
   assert(swapData['Fee-Percentage'], 'Missing Fee-Percentage')
 
-  local fromTokenUsdPrice = usdPrice.getUsdPrice(swapData['From-Token'])
-  local toTokenUsdPrice = usdPrice.getUsdPrice(swapData['To-Token'])
+  local fromTokenUsdPrice = usdPrice.getUsdPriceForToken(swapData['From-Token'])
+  local toTokenUsdPrice = usdPrice.getUsdPriceForToken(swapData['To-Token'])
 
   local entry = {
     id = msg.Id,
