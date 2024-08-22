@@ -41,6 +41,9 @@ function dbSeed.createMissingTables()
 
   db:exec(sqlschema.create_token_registry_table)
   print("create_token_registry_table: " .. (db:errmsg() == 'not an error' and '✅' or db:errmsg()))
+
+  db:exec(sqlschema.create_oracle_prices_table)
+  print("create_oracle_prices_table: " .. (db:errmsg() == 'not an error' and '✅' or db:errmsg()))
 end
 
 local function seedAMMs()

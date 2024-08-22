@@ -20,18 +20,7 @@ function mod.getOraclePriceByProcessId(processId)
         process_id = processId
     })
 
-    local row = dbUtils.queryOne(stmt)
-
-    if row then
-        return {
-            process_id = row.process_id,
-            ticker = row.ticker,
-            price = row.price,
-            last_update = row.last_update
-        }
-    else
-        return nil
-    end
+    return dbUtils.queryOne(stmt)
 end
 
 function mod.getUsdPriceForToken(processId)
@@ -53,9 +42,9 @@ function mod.updateUsdPrice(message)
     local date = os.date("%Y-%m-%d %H:%M:%S", timestamp)
 
     -- insert ar price as ao price
-    local stmt = db:prepare([[
+    local stmt = db:prepare [[
         INSERT OR REPLACE INTO oracle_prices (process_id, ticker, price, last_update) VALUES ('j7w28CJQHYwamMsotkhE7x0aVUggGwrBtdO5-MQ80uU', 'AO', :price, :date);
-    ]])
+    ]]
 
     stmt:bind_names({ price = arPrice, date = date })
     dbUtils.execute(stmt)
