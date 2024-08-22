@@ -26,14 +26,14 @@ WITH latest_transactions_for_pool AS (
         asp.amm_process AS amm_process,
         ((CAST(reserves_0 AS REAL) + (CAST(reserves_1 AS REAL) * coalesce(ltfp.price, 0))) / POW(10, quote_denominator)) tvl_in_quote,
         ((CAST(reserves_0 AS REAL) + (CAST(reserves_1 AS REAL)) * coalesce(ltfp.price, 0)) / POW(10, quote_denominator)) * op.price tvl_in_usd,
-        fees30d.fees_in_quote_30d / tvl_in_quote AS apr_30d,
+        f30.fees_in_quote_30d / tvl_in_quote AS apr_30d,
         tx_counts.cnt AS tx_count
     FROM amm_swap_params asp
     LEFT JOIN latest_transactions_for_pool ltfp ON ltfp.amm_process = asp.amm_process AND seq = 1
     LEFT JOIN tx_counts USING (amm_process)
     LEFT JOIN amm_registry ar USING (amm_process)
     LEFT JOIN oracle_prices op ON op.process_id = ar.amm_token0
-    LEFT JOIN fees30d v30 ON v30.amm_process = ar.amm_process
+    LEFT JOIN fees30d f30 ON f30.amm_process = ar.amm_process
     LEFT JOIN token_registry t0 ON t0.token_process = ar.amm_token0
     LEFT JOIN token_registry t1 ON t1.token_process = ar.amm_token1
 ), sorted AS (
