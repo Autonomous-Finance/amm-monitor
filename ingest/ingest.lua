@@ -36,9 +36,9 @@ function ingestSql.recordSwap(entry)
   local stmt = db:prepare [[
     INSERT OR REPLACE INTO amm_transactions (
       id, source, block_height, block_id, sender, created_at_ts,
-      to_token, from_token, from_quantity, to_quantity, fee_percentage, amm_process, from_token_usd_price, to_token_usd_price
+      to_token, from_token, from_quantity, to_quantity, fee_percentage, amm_process, from_token_usd_price, to_token_usd_price, reserves_token_a, reserves_token_b
     ) VALUES (:id, :source, :block_height, :block_id, :sender, :created_at_ts,
-              :to_token, :from_token, :from_quantity, :to_quantity, :fee_percentage, :amm_process, :from_token_usd_price, :to_token_usd_price);
+              :to_token, :from_token, :from_quantity, :to_quantity, :fee_percentage, :amm_process, :from_token_usd_price, :to_token_usd_price, :reserves_token_a, :reserves_token_b);
   ]]
 
   if not stmt then
@@ -143,7 +143,9 @@ local function recordSwap(msg, swapData, source, sourceAmm)
     fee_percentage = tonumber(swapData['Fee-Percentage']),
     amm_process = sourceAmm,
     from_token_usd_price = fromTokenUsdPrice,
-    to_token_usd_price = toTokenUsdPrice
+    to_token_usd_price = toTokenUsdPrice,
+    reserves_token_a = swapData['Reserves-Token-A'],
+    reserves_token_b = swapData['Reserves-Token-B']
   }
   ingestSql.recordSwap(entry)
   --[[
