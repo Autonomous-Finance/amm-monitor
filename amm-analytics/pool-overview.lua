@@ -63,6 +63,7 @@ function analytics.getPoolOverview(msg)
     stmt:bind_names({
         start_rank = startRank,
         end_rank = endRank,
+        now = math.floor(msg.Timestamp / 1000)
     })
 
     local result = dbUtils.queryMany(stmt)
