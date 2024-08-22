@@ -1,6 +1,7 @@
 local sqlite3 = require("lsqlite3")
 
 local dexiCore = require("dexi-core.dexi-core")
+local usdPrice = require("dexi-core.usd-price")
 local subscriptions = require("subscriptions.subscriptions")
 local indicators = require("indicators.indicators")
 local seeder = require("db.seed")
@@ -81,6 +82,12 @@ Handlers.add(
   'Update-Total-Supply',
   Handlers.utils.hasMatchingTag("Action", "Update-Total-Supply"),
   dexiCore.handleUpdateTokenSupply
+)
+
+Handlers.add(
+  'Receive-RedStone-Prices',
+  Handlers.utils.hasMatchingTag("Action", "Receive-RedStone-Prices"),
+  usdPrice.updateUsdPrice
 )
 
 -- SWAP & SWAP PARAMS CHANGES INGESTION --

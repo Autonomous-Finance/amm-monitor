@@ -8,3 +8,13 @@
       value: Dexi-Aggregator
     - name: Operator
       value: MyFANA8GUtIaD1jrhvW4_IxMCa69XwGP5kHlMCBzVfk
+
+- name: redstone-proxy
+  file: redstone-proxy.lua
+  scheduler: _GQ33BkPtZrqxA84vM8Zk-N2aO0toNNu_C-l-rawrBA
+  module: cNlipBptaF9JeFAf4wUmpi43EojNanIBos3EfNrEOWo
+  tags:
+    - name: Cron-Interval
+      value: 30-seconds
+    - name: Cron-Tag-Action
+      value: Cron-Tick

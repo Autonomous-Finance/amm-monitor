@@ -118,6 +118,17 @@ CREATE TABLE IF NOT EXISTS indicator_subscriptions (
 );
 ]]
 
+
+sqlschema.create_oracle_prices_table = [[
+CREATE TABLE IF NOT EXISTS oracle_prices (
+    process_id VARCHAR NOT NULL,
+    ticker VARCHAR NOT NULL,
+    price NUMERIC NOT NULL,
+    last_update TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    PRIMARY KEY (process_id)
+);
+]]
+
 sqlschema.create_top_n_subscriptions_table = [[
 CREATE TABLE IF NOT EXISTS top_n_subscriptions (
     process_id TEXT NOT NULL,

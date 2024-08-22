@@ -1,5 +1,6 @@
 local sqlschema = require('db.sqlschema')
 local dexiCore = require('dexi-core.dexi-core')
+local dbUtils = require('db-utils')
 
 local dbSeed = {}
 
@@ -64,9 +65,18 @@ local function seedTokens()
   dexiCore.registerToken('Sa0iBLPNyJQrwpTTG-tWLQU-1QeUAJA73DdxGGiKoJc', 'AOCRED', 3, 2782410, false, 1716217288)
 end
 
+local function seedOraclePrices()
+  local stmt = db:prepare([[
+      INSERT OR REPLACE INTO oracle_prices (process_id, ticker, price, last_update) VALUES ('j7w28CJQHYwamMsotkhE7x0aVUggGwrBtdO5-MQ80uU', 'mockAO', 1.0, '2024-08-22');
+  ]])
+  dbUtils.execute(stmt)
+end
+
+
 function dbSeed.seed()
   seedAMMs()
   seedTokens()
+  seedOraclePrices()
 end
 
 function dbSeed.handleResetDBState(msg)

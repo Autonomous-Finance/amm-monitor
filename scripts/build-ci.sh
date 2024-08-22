@@ -11,7 +11,7 @@ amalg.lua -s process.lua -o build/output.lua \
     subscriptions.subscriptions \
     integrate-amm.integrate-amm \
     dexi-core.dexi-core \
-    dexi-core.intervals dexi-core.candles dexi-core.stats dexi-core.overview dexi-core.price-around\
+    dexi-core.intervals dexi-core.candles dexi-core.stats dexi-core.overview dexi-core.price-around dexi-core.usd-price \
     ingest.ingest \
     indicators.indicators indicators.calc \
     top-n.top-n \
