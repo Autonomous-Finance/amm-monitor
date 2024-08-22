@@ -188,7 +188,7 @@ SELECT
     WHEN to_token = amm_token1
       THEN from_quantity  * 1.0 / POWER(10, t0.denominator) * from_token_usd_price
       ELSE to_quantity  * 1.0 / POWER(10, t0.denominator) * to_token_usd_price
-  END) AS volume,
+  END) AS volume_usd,
   POWER(10, ABS(t0.denominator - tq.denominator)) AS denominator_conversion,
   t0.denominator AS quote_denominator,
   tq.denominator AS base_denominator,
