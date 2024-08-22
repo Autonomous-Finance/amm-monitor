@@ -1,6 +1,6 @@
 local sqlschema = require('db.sqlschema')
 local dexiCore = require('dexi-core.dexi-core')
-local dbUtils = require('db-utils')
+local dbUtils = require('db.utils')
 
 local dbSeed = {}
 

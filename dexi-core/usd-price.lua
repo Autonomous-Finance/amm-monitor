@@ -1,4 +1,4 @@
-local dbUtils = require("db-utils")
+local dbUtils = require("db.utils")
 local json = require("json")
 
 local mod = {}
