@@ -36,7 +36,7 @@ function ingestSql.recordSwap(entry)
   local stmt = db:prepare [[
     INSERT OR REPLACE INTO amm_transactions (
       id, source, block_height, block_id, sender, created_at_ts,
-      to_token, from_token, from_quantity, to_quantity, fee_percentage, amm_process
+      to_token, from_token, from_quantity, to_quantity, fee_percentage, amm_process, from_token_usd_price, to_token_usd_price
     ) VALUES (:id, :source, :block_height, :block_id, :sender, :created_at_ts,
               :to_token, :from_token, :from_quantity, :to_quantity, :fee_percentage, :amm_process, :from_token_usd_price, :to_token_usd_price);
   ]]
