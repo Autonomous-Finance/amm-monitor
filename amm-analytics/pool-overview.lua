@@ -13,7 +13,7 @@ WITH latest_transactions_for_pool AS (
     FROM amm_transactions_view
 ), tx_counts AS (
     SELECT amm_process, count(1) cnt FROM amm_transactions_view GROUP BY 1
-) fees30d AS (
+), fees30d AS (
     SELECT amm_process, SUM(volume * .2) AS fees_in_quote_30d FROM amm_transactions_view WHERE created_at_ts >= :now - 2592000 GROUP BY 1
 ), preagg AS (
     SELECT
