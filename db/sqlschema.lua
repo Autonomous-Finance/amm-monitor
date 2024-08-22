@@ -15,7 +15,9 @@ CREATE TABLE IF NOT EXISTS amm_transactions (
     from_quantity TEXT NOT NULL,
     to_quantity TEXT NOT NULL,
     fee_percentage TEXT NOT NULL,
-    amm_process TEXT NOT NULL
+    amm_process TEXT NOT NULL,
+    from_token_usd_price NUMERIC,
+    to_token_usd_price NUMERIC
 );
 ]]
 

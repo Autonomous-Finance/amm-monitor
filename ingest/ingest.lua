@@ -6,6 +6,7 @@ local dbUtils = require('db.utils')
 local dexiCore = require('dexi-core.dexi-core')
 local indicators = require('indicators.indicators')
 local topN = require('top-n.top-n')
+local usdPrice = require('dexi-core.usd-price')
 
 local ingest = {}
 
@@ -37,7 +38,7 @@ function ingestSql.recordSwap(entry)
       id, source, block_height, block_id, sender, created_at_ts,
       to_token, from_token, from_quantity, to_quantity, fee_percentage, amm_process
     ) VALUES (:id, :source, :block_height, :block_id, :sender, :created_at_ts,
-              :to_token, :from_token, :from_quantity, :to_quantity, :fee_percentage, :amm_process);
+              :to_token, :from_token, :from_quantity, :to_quantity, :fee_percentage, :amm_process, :from_token_usd_price, :to_token_usd_price);
   ]]
 
   if not stmt then
@@ -125,6 +126,9 @@ local function recordSwap(msg, swapData, source, sourceAmm)
   assert(swapData['To-Quantity'], 'Missing To-Quantity')
   assert(swapData['Fee-Percentage'], 'Missing Fee-Percentage')
 
+  local fromTokenUsdPrice = usdPrice.getUsdPrice(swapData['From-Token'])
+  local toTokenUsdPrice = usdPrice.getUsdPrice(swapData['To-Token'])
+
   local entry = {
     id = msg.Id,
     source = source,
@@ -137,7 +141,9 @@ local function recordSwap(msg, swapData, source, sourceAmm)
     from_quantity = tonumber(swapData['From-Quantity']),
     to_quantity = tonumber(swapData['To-Quantity']),
     fee_percentage = tonumber(swapData['Fee-Percentage']),
-    amm_process = sourceAmm
+    amm_process = sourceAmm,
+    from_token_usd_price = fromTokenUsdPrice,
+    to_token_usd_price = toTokenUsdPrice
   }
   ingestSql.recordSwap(entry)
   --[[
