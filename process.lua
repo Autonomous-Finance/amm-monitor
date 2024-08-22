@@ -97,13 +97,22 @@ Handlers.add(
   function(msg)
     assert(msg.Tags["Process-Id"], "Process-Id is required")
 
-    local price = usdPrice.getOraclePrice(msg.Tags["Process-Id"])
-    ao.send({
-      Target = msg.From,
-      ResponseFor = msg.Action,
-      ['Process-Id'] = msg.Tags['Process-Id'],
-      Price = price
-    })
+    local price = usdPrice.getUsdPriceForToken(msg.Tags["Process-Id"])
+    if price then
+      ao.send({
+        Target = msg.From,
+        ResponseFor = msg.Action,
+        ['Process-Id'] = msg.Tags['Process-Id'],
+        Price = price
+      })
+    else
+      ao.send({
+        Target = msg.From,
+        ResponseFor = msg.Action,
+        ['Process-Id'] = msg.Tags['Process-Id'],
+        Error = "Price not found"
+      })
+    end
   end
 )
 
