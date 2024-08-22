@@ -32,7 +32,7 @@ WITH latest_transactions_for_pool AS (
     LEFT JOIN latest_transactions_for_pool ltfp ON ltfp.amm_process = asp.amm_process AND seq = 1
     LEFT JOIN tx_counts USING (amm_process)
     LEFT JOIN amm_registry ar USING (amm_process)
-    LEFT JOIN oracle_price op ON op.process_id = ar.amm_token0
+    LEFT JOIN oracle_prices op ON op.process_id = ar.amm_token0
     LEFT JOIN fees30d v30 ON v30.amm_process = ar.amm_process
     LEFT JOIN token_registry t0 ON t0.token_process = ar.amm_token0
     LEFT JOIN token_registry t1 ON t1.token_process = ar.amm_token1
