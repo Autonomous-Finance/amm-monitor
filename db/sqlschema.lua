@@ -170,10 +170,25 @@ SELECT
       END
     ELSE NULL
   END, 12) AS price,
+  ROUND(CASE
+    WHEN from_quantity > 0 AND to_quantity > 0 THEN
+      CASE
+        WHEN to_token = amm_token1 THEN
+          (from_quantity * 1.0 / to_quantity) * POWER(10, ABS(t0.denominator - tq.denominator)) * from_token_usd_price
+        ELSE
+          (to_quantity * 1.0 / from_quantity) * POWER(10, ABS(t0.denominator - tq.denominator)) * to_token_usd_price
+      END
+    ELSE NULL
+  END, 5) AS usd_price,
   (CASE
     WHEN to_token = amm_token1 THEN from_quantity
     ELSE to_quantity
   END) * 1.0 / POWER(10, t0.denominator) AS volume,
+  (CASE
+    WHEN to_token = amm_token1
+      THEN from_quantity  * 1.0 / POWER(10, t0.denominator) * from_token_usd_price
+      ELSE to_quantity  * 1.0 / POWER(10, t0.denominator) * to_token_usd_price
+  END) AS volume,
   POWER(10, ABS(t0.denominator - tq.denominator)) AS denominator_conversion,
   t0.denominator AS quote_denominator,
   tq.denominator AS base_denominator,
