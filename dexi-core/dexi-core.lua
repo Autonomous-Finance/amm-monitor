@@ -211,11 +211,12 @@ end
 dexiCore.handleGetOverview = function(msg)
   local now = math.floor(msg.Timestamp / 1000)
   local orderBy = msg.Tags['Order-By']
+  local offset = msg.Tags['Offset']
   ao.send({
     ['App-Name'] = 'Dexi',
     ['Payload'] = 'Overview',
     Target = msg.From,
-    Data = json.encode(overview.getOverview(now, orderBy))
+    Data = json.encode(overview.getOverview(now, orderBy, offset))
   })
 end
 

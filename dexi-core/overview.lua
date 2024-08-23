@@ -2,7 +2,7 @@ local dbUtils = require('db.utils')
 
 local overview = {}
 
-function overview.getOverview(now, orderBy)
+function overview.getOverview(now, orderBy, offset)
   local orderByClause = "amm_discovered_at_ts DESC"
 
   if orderBy == "volume" then
@@ -12,6 +12,8 @@ function overview.getOverview(now, orderBy)
   elseif orderBy == "market_cap" then
     orderByClause = "market_cap DESC"
   end
+
+  local offsetValue = tonumber(offset) or 0
 
   local stmt = db:prepare(string.format([[
   WITH stats AS (
@@ -51,8 +53,9 @@ function overview.getOverview(now, orderBy)
   LEFT JOIN current_prices c ON c.amm_process = r.amm_process
   LEFT JOIN token_registry t ON t.token_process = r.amm_token1
   ORDER BY %s
-  LIMIT 100
-  ]], 'market_cap DESC'))
+  LIMIT 25
+  OFFSET %d
+  ]], 'market_cap DESC', offsetValue))
 
   if not stmt then
     error("Err: " .. db:errmsg())
