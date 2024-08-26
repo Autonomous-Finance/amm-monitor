@@ -145,7 +145,7 @@ CREATE TABLE IF NOT EXISTS top_n_subscriptions (
 ]]
 
 
-sqlschema.create_price_subscription_table = [[
+sqlschema.create_swap_subscription_table = [[
 CREATE TABLE IF NOT EXISTS swap_subscriptions (
     process_id TEXT NOT NULL,
     amm_process_id TEXT NOT NULL,
