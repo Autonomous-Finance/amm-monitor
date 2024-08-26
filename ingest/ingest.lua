@@ -55,7 +55,7 @@ function ingestSql.getSwapSubscribers(ammProcessId)
     SELECT process_id FROM swap_subscriptions WHERE amm_process_id = :amm_process_id;
   ]]
   stmt:bind_names({ amm_process_id = ammProcessId })
-  return dbUtils.queryAll(stmt)
+  return dbUtils.queryMany(stmt)
 end
 
 function ingestSql.recordChangeInSwapParams(entry)
