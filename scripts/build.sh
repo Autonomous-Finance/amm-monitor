@@ -24,7 +24,8 @@ $BIN_PATH/luacheck process.lua \
     utils/debug.lua \
     ownable/ownable.lua \
     ops/config-ops.lua ops/emergency.lua ops/initialize.lua \
-    amm-analytics/main.lua amm-analytics/volume.lua amm-analytics/pool-overview.lua
+    amm-analytics/main.lua amm-analytics/volume.lua amm-analytics/pool-overview.lua \
+    swap-subscribers/main.lua
     
 $BIN_PATH/amalg.lua -s process.lua -o build/output.lua \
     validation.validation validation.validation-schemas \
@@ -39,4 +40,5 @@ $BIN_PATH/amalg.lua -s process.lua -o build/output.lua \
     utils.debug \
     ownable.ownable \
     ops.config-ops ops.emergency ops.initialize \
-    amm-analytics.main amm-analytics.volume amm-analytics.pool-overview
+    amm-analytics.main amm-analytics.volume amm-analytics.pool-overview \
+    swap-subscribers.main

@@ -7,6 +7,7 @@ local dexiCore = require('dexi-core.dexi-core')
 local indicators = require('indicators.indicators')
 local topN = require('top-n.top-n')
 local usdPrice = require('dexi-core.usd-price')
+local swapSubscribers = require('swap-subscribers.main')
 
 local ingest = {}
 
@@ -48,14 +49,6 @@ function ingestSql.recordSwap(entry)
   -- going for brevity - this will be more robust with teal
   stmt:bind_names(entry)
   dbUtils.execute(stmt, "ingestSql.recordSwap")
-end
-
-function ingestSql.getSwapSubscribers(ammProcessId)
-  local stmt = db:prepare [[
-    SELECT process_id FROM swap_subscriptions WHERE amm_process_id = :amm_process_id;
-  ]]
-  stmt:bind_names({ amm_process_id = ammProcessId })
-  return dbUtils.queryMany(stmt)
 end
 
 function ingestSql.recordChangeInSwapParams(entry)
@@ -123,24 +116,6 @@ local function recordChangeInSwapParams(msg, payload, source, sourceAmm, cause)
   ingestSql.updateCurrentSwapParams(entry)
 end
 
--- todo move this somewhere else
-local function dispatchSwapNotifications(sourceMessageId, sourceAmm)
-  local subscribers = ingestSql.getSwapSubscribers(sourceAmm)
-
-  local stmt = db:prepare [[
-    SELECT * FROM amm_transactions_view WHERE id = :id LIMIT 1;
-  ]]
-  stmt:bind_names({ id = sourceMessageId })
-  local transformedSwapData = dbUtils.queryOne(stmt)
-  for _, subscriber in ipairs(subscribers) do
-    ao.send({
-      Target = subscriber.process_id,
-      Action = 'Dexi-Swap-Notification',
-      Data = json.encode(transformedSwapData)
-    })
-  end
-end
-
 local function recordSwap(msg, swapData, source, sourceAmm)
   assert(msg.Id, 'Missing Id')
   assert(msg['Block-Height'], 'Missing Block-Height')
@@ -175,7 +150,7 @@ local function recordSwap(msg, swapData, source, sourceAmm)
   }
   ingestSql.recordSwap(entry)
 
-  dispatchSwapNotifications(msg.Id, sourceAmm)
+  swapSubscribers.dispatchSwapNotifications(msg.Id, sourceAmm)
 
   --[[
       the new swap affects

@@ -4,6 +4,7 @@ local dexiCore = require("dexi-core.dexi-core")
 local usdPrice = require("dexi-core.usd-price")
 local subscriptions = require("subscriptions.subscriptions")
 local indicators = require("indicators.indicators")
+local swapSubscribers = require("swap-subscribers.main")
 local seeder = require("db.seed")
 local ingest = require("ingest.ingest")
 local topN = require("top-n.top-n")
@@ -174,6 +175,19 @@ Handlers.add(
   "Unsubscribe-Indicators",
   Handlers.utils.hasMatchingTag("Action", "Unsubscribe-Indicators"),
   subscriptions.handleUnsubscribeForIndicators
+)
+
+-- SWAP SUBSCRIBERS
+Handlers.add(
+  "Subscribe-Swaps",
+  Handlers.utils.hasMatchingTag("Action", "Subscribe-Swaps"),
+  swapSubscribers.handleSubscribeForSwaps
+)
+
+Handlers.add(
+  "Unsubscribe-Swaps",
+  Handlers.utils.hasMatchingTag("Action", "Unsubscribe-Swaps"),
+  swapSubscribers.handleUnsubscribeForSwaps
 )
 
 -- TOP N --
