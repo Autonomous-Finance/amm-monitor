@@ -149,8 +149,7 @@ sqlschema.create_swap_subscription_table = [[
 CREATE TABLE IF NOT EXISTS swap_subscriptions (
     process_id TEXT NOT NULL,
     amm_process_id TEXT NOT NULL,
-    PRIMARY KEY (process_id, amm_process_id),
-    INDEX idx_price_subscriptions_amm_process_id (amm_process_id)
+    PRIMARY KEY (process_id, amm_process_id)
 );
 ]]
 
