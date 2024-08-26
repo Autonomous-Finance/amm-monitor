@@ -50,6 +50,14 @@ function ingestSql.recordSwap(entry)
   dbUtils.execute(stmt, "ingestSql.recordSwap")
 end
 
+function ingestSql.getSwapSubscribers(ammProcessId)
+  local stmt = db:prepare [[
+    SELECT process_id FROM swap_subscriptions WHERE amm_process_id = :amm_process_id;
+  ]]
+  stmt:bind_names({ amm_process_id = ammProcessId })
+  return dbUtils.queryAll(stmt)
+end
+
 function ingestSql.recordChangeInSwapParams(entry)
   --
   -- :source, :block_height, :block_id, :sender, :created_at_ts, :cause, :reserves_0, :reserves_1, :fee_percentage, :amm_process
@@ -115,6 +123,24 @@ local function recordChangeInSwapParams(msg, payload, source, sourceAmm, cause)
   ingestSql.updateCurrentSwapParams(entry)
 end
 
+-- todo move this somewhere else
+local function dispatchSwapNotifications(sourceMessageId, sourceAmm)
+  local subscribers = ingestSql.getSwapSubscribers(sourceAmm)
+
+  local stmt = db:prepare [[
+    SELECT * FROM amm_transactions_view WHERE id = :id LIMIT 1;
+  ]]
+  stmt:bind_names({ id = sourceMessageId })
+  local transformedSwapData = dbUtils.queryOne(stmt)
+  for _, subscriber in ipairs(subscribers) do
+    ao.send({
+      Target = subscriber.process_id,
+      Action = 'Dexi-Swap-Notification',
+      Data = json.encode(transformedSwapData)
+    })
+  end
+end
+
 local function recordSwap(msg, swapData, source, sourceAmm)
   assert(msg.Id, 'Missing Id')
   assert(msg['Block-Height'], 'Missing Block-Height')
@@ -148,6 +174,9 @@ local function recordSwap(msg, swapData, source, sourceAmm)
     reserves_token_b = swapData['Reserves-Token-B']
   }
   ingestSql.recordSwap(entry)
+
+  dispatchSwapNotifications(msg.Id, sourceAmm)
+
   --[[
       the new swap affects
         the latest price =>
@@ -209,6 +238,8 @@ function ingest.handleMonitorIngestSwap(msg)
     local now = math.floor(msg.Timestamp / 1000)
 
     recordSwap(msg, json.decode(msg.Data), 'message', ammProcessId)
+
+
 
     -- the new swap affects indicators for this amm
     indicators.dispatchIndicatorsForAMM(ammProcessId, now)

@@ -87,6 +87,27 @@ function sql.registerTopNSubscriber(processId, quoteToken, nInTopN)
   end
 end
 
+-- TOP N SQL
+
+function sql.registerPriceSubscriber(processId, ammProcessId)
+  local stmt = db:prepare [[
+    INSERT INTO price_subscriptions (process_id, amm_process_id)
+    VALUES (:process_id, :amm_process_id)
+  ]]
+  if not stmt then
+    error("Failed to prepare SQL statement for registering process: " .. db:errmsg())
+  end
+  stmt:bind_names({
+    process_id = processId,
+    amm_process_id = ammProcessId
+  })
+  local _, err = stmt:step()
+  stmt:finalize()
+  if err then
+    error("Err: " .. db:errmsg())
+  end
+end
+
 function sql.getTopNSubscription(processId, quoteToken)
   local stmt = db:prepare [[
     SELECT *
