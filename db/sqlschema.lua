@@ -204,7 +204,9 @@ SELECT
   amm_token0 as quote_token_process,
   amm_token1 as base_token_process,
   t0.token_name as quote_token_name,
-  tq.token_name as base_token_name
+  tq.token_name as base_token_name,
+  reserves_token_a AS reserves_0,
+  reserves_token_b AS reserves_1
 FROM amm_transactions
 LEFT JOIN amm_registry USING (amm_process)
 LEFT JOIN token_registry t0 ON t0.token_process = amm_token0
