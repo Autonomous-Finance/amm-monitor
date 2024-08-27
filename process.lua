@@ -178,17 +178,17 @@ Handlers.add(
 )
 
 -- SWAP SUBSCRIBERS
-Handlers.add(
-  "Subscribe-Swaps",
-  Handlers.utils.hasMatchingTag("Action", "Subscribe-Swaps"),
-  swapSubscribers.handleSubscribeForSwaps
-)
+-- Handlers.add(
+--   "Subscribe-Swaps",
+--   Handlers.utils.hasMatchingTag("Action", "Subscribe-Swaps"),
+--   swapSubscribers.handleSubscribeForSwaps
+-- )
 
-Handlers.add(
-  "Unsubscribe-Swaps",
-  Handlers.utils.hasMatchingTag("Action", "Unsubscribe-Swaps"),
-  swapSubscribers.handleUnsubscribeForSwaps
-)
+-- Handlers.add(
+--   "Unsubscribe-Swaps",
+--   Handlers.utils.hasMatchingTag("Action", "Unsubscribe-Swaps"),
+--   swapSubscribers.handleUnsubscribeForSwaps
+-- )
 
 -- TOP N --
 
