@@ -49,6 +49,9 @@ end
 function mod.registerSwapSubscriberHandler(msg)
     local processId = msg.Tags['Process-Id']
     local ammProcessId = msg.Tags['Amm-Process-Id']
+    assert(ammProcessId, 'Amm-Process-Id is required')
+    assert(processId, 'Process-Id is required')
+
     mod.registerSwapSubscriber(processId, ammProcessId)
 
     ao.send({
@@ -61,6 +64,9 @@ end
 function mod.unregisterSwapSubscriberHandler(msg)
     local processId = msg.Tags['Process-Id']
     local ammProcessId = msg.Tags['Amm-Process-Id']
+    assert(ammProcessId, 'Amm-Process-Id is required')
+    assert(processId, 'Process-Id is required')
+
     mod.unregisterSwapSubscriber(processId, ammProcessId)
 
     ao.send({
