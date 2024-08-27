@@ -1,17 +1,11 @@
 #!/bin/bash
 
-if [[ "$(uname)" == "Linux" ]]; then
-    BIN_PATH="$HOME/.luarocks/bin"
-else
-    BIN_PATH="/opt/homebrew/bin"
-fi
-
 # Recreate build directories
 rm -rf ./build
 
 mkdir -p ./build
 
-$BIN_PATH/luacheck process.lua \
+luacheck process.lua \
     validation/validation.lua validation/validation-schemas.lua \
     db/sqlschema.lua db/seed.lua db/utils.lua \
     subscriptions/subscriptions.lua \
@@ -27,7 +21,7 @@ $BIN_PATH/luacheck process.lua \
     amm-analytics/main.lua amm-analytics/volume.lua amm-analytics/pool-overview.lua \
     swap-subscribers/main.lua
     
-$BIN_PATH/amalg.lua -s process.lua -o build/output.lua \
+amalg.lua -s process.lua -o build/output.lua \
     validation.validation validation.validation-schemas \
     db.sqlschema db.seed db.utils \
     subscriptions.subscriptions \

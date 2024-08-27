@@ -1,9 +1,10 @@
 local utils = require ".utils"
 local json = require "json"
 
-local function newmodule(selfId)
+local function newmodule(selfId, env)
   local ao = {}
   ao.id = selfId
+  ao.env = env
 
   local _my = {}
 
@@ -26,9 +27,22 @@ local function newmodule(selfId)
 
     local msg = _my.formatMsg(rawMsg)
 
+    if _G.AllMessages then
+      table.insert(_G.AllMessages, msg)
+    end
 
     if msg.Target == _G.Owner then
-      printVerb(2)('⚠️ Skip handle: Message from ' .. msg.From .. ' to agent owner: ' .. tostring(msg.Action))
+      _G.LastMsgToOwner = msg
+      return
+    end
+
+    if msg.Target == _G.User then
+      _G.LastMsgToUser = msg
+      return
+    end
+
+    if msg.Assignments and utils.includes(_G.User, msg.Assignments) then
+      _G.LastMsgToUser = msg
       return
     end
 
@@ -51,6 +65,10 @@ local function newmodule(selfId)
         printVerb(2)('Message: ' .. json.encode(msg))
       end
     end
+  end
+
+  function ao.spawn(msg)
+    printVerb(2)('Message: ' .. json.encode(msg))
   end
 
   -- INTERNAL
