@@ -203,6 +203,8 @@ SELECT
   tq.denominator AS base_denominator,
   amm_token0 as quote_token_process,
   amm_token1 as base_token_process,
+  amm_token0,
+  amm_token1,
   t0.token_name as quote_token_name,
   tq.token_name as base_token_name,
   reserves_token_a AS reserves_0,
