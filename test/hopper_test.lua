@@ -41,7 +41,6 @@ describe("hopper lib", function()
       }
     })
 
-    -- Replace this with the actual expected result based on your logic
     local expected_result = { baseToken = "bark", quoteToken = "mockAO", price = 2 }
 
     assert.are.same(result, expected_result)
@@ -57,7 +56,6 @@ describe("hopper lib", function()
       }
     })
 
-    -- Replace this with the actual expected result based on your logic
     local expected_result = { baseToken = "dexi-token", quoteToken = "mockAO", price = nil }
 
     assert.are.same(result, expected_result)
@@ -73,7 +71,6 @@ describe("hopper lib", function()
       }
     })
 
-    -- Replace this with the actual expected result based on your logic
     local expected_result = { baseToken = "lola", quoteToken = "mockAO", price = 4 }
 
     assert.are.same(result, expected_result)
@@ -89,7 +86,6 @@ describe("hopper lib", function()
       }
     })
 
-    -- Replace this with the actual expected result based on your logic
     local expected_result = { baseToken = "dog", quoteToken = "mockAO", price = 8 }
 
     assert.are.same(result, expected_result)
@@ -105,8 +101,22 @@ describe("hopper lib", function()
       }
     })
 
-    -- Replace this with the actual expected result based on your logic
     local expected_result = { baseToken = "cat", quoteToken = "mockAO", price = 4 }
+
+    assert.are.same(result, expected_result)
+  end)
+
+  it("should get price for token with 3 hops", function()
+    resetGlobals()
+
+    local result = hopper.getPriceForToken({
+      Tags = {
+        ["Quote-Token-Process"] = "cat",
+        ["Base-Token-Process"] = "mockAO"
+      }
+    })
+
+    local expected_result = { baseToken = "mockAO", quoteToken = "cat", price = 0.25 }
 
     assert.are.same(result, expected_result)
   end)
