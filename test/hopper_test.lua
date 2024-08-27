@@ -8,14 +8,23 @@ _G.VerboseTests = 0
 
 local resetGlobals = function()
   _G.db = {
-    nrows = function(query)
-      -- Simulate the rows returned by the query
-      local data = {
-        { token0 = "bark", token1 = "mockAO", reserve0 = 1, reserve1 = 2 },
-        { token0 = "lola", token1 = "bark", reserve0 = 1, reserve1 = 2 },
-        { token0 = "dog", token1 = "lola", reserve0 = 1, reserve1 = 2 },
-        { token0 = "dog", token1 = "cat", reserve0 = 1, reserve1 = 2 },
-      }
+    nrows = function(this, query)
+      local data = {}
+      if query == "SELECT ticker, price FROM oracle_prices" then
+        data = {
+          {
+            ticker = "mockAO",
+            price = 50
+          },
+        }
+      else
+        data = {
+          { token0 = "bark", token1 = "mockAO", reserve0 = 1, reserve1 = 2 },
+          { token0 = "lola", token1 = "bark",   reserve0 = 1, reserve1 = 2 },
+          { token0 = "dog",  token1 = "lola",   reserve0 = 1, reserve1 = 2 },
+          { token0 = "dog",  token1 = "cat",    reserve0 = 1, reserve1 = 2 },
+        }
+      end
 
       -- Iterator function that mimics db:nrows behavior
       local i = 0
@@ -106,7 +115,22 @@ describe("hopper lib", function()
     assert.are.same(result, expected_result)
   end)
 
-  it("should get price for token with 3 hops", function()
+  it("should get price for token with 3 hops - USD", function()
+    resetGlobals()
+
+    local result = hopper.getPriceForToken({
+      Tags = {
+        ["Quote-Token-Process"] = "USD",
+        ["Base-Token-Process"] = "cat"
+      }
+    })
+
+    local expected_result = { baseToken = "cat", quoteToken = "USD", price = 200 }
+
+    assert.are.same(result, expected_result)
+  end)
+
+  it("should get price for token with 3 hops reversed", function()
     resetGlobals()
 
     local result = hopper.getPriceForToken({

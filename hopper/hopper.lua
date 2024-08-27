@@ -5,12 +5,27 @@ local function get_price(pool, from_token)
   -- If from_token is token0, calculate price as token1/token0
   if pool.token0 == from_token then
     return pool.reserve1 / pool.reserve0
-  -- If from_token is token1, calculate price as token0/token1
+    -- If from_token is token1, calculate price as token0/token1
   elseif pool.token1 == from_token then
     return pool.reserve0 / pool.reserve1
   else
     return nil
   end
+end
+
+local function fetch_oracle_pools()
+  local pools = {}
+
+  for row in db:nrows("SELECT ticker, price FROM oracle_prices") do
+    table.insert(pools, {
+      token0 = row.ticker,
+      token1 = 'USD',
+      reserve0 = 1,
+      reserve1 = row.price
+    })
+  end
+
+  return pools
 end
 
 local function fetch_pools()
@@ -25,7 +40,6 @@ local function fetch_pools()
     })
   end
 
-  db:close()
   return pools
 end
 
@@ -96,7 +110,12 @@ function hopper.getPriceForToken(msg)
   -- print('baseToken', baseToken)
   -- print('quoteToken', quoteToken)
 
+  local oracle_pools = fetch_oracle_pools()
   local pools = fetch_pools()
+  for _, pool in ipairs(oracle_pools) do
+    table.insert(pools, pool)
+  end
+
   -- print('pools', pools[1].token0)
   -- print('pools', pools[1].token1)
   -- print('pools', pools[1].reserve0)
@@ -115,7 +134,7 @@ function hopper.getPriceForToken(msg)
 
   print('path length', #path)
   for _, step in ipairs(path) do
-    print('step:', 'pool', step.pool.token0 .. '...'.. step.pool.token1,"----", 'token', step.token)
+    print('step:', 'pool', step.pool.token0 .. '...' .. step.pool.token1, "----", 'token', step.token)
   end
 
   local best_price = 1
