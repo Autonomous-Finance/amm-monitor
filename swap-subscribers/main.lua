@@ -50,4 +50,22 @@ function mod.registerSwapSubscriberHandler(msg)
     local processId = msg.Tags['Process-Id']
     local ammProcessId = msg.Tags['Amm-Process-Id']
     mod.registerSwapSubscriber(processId, ammProcessId)
+
+    ao.send({
+        Target = msg.From,
+        Action = 'Swap-Subscription-Success',
+        ['Amm-Process-Id'] = ammProcessId
+    })
+end
+
+function mod.unregisterSwapSubscriberHandler(msg)
+    local processId = msg.Tags['Process-Id']
+    local ammProcessId = msg.Tags['Amm-Process-Id']
+    mod.unregisterSwapSubscriber(processId, ammProcessId)
+
+    ao.send({
+        Target = msg.From,
+        Action = 'Swap-Unsubscription-Success',
+        ['Amm-Process-Id'] = ammProcessId
+    })
 end
