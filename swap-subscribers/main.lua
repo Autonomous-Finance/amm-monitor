@@ -69,3 +69,5 @@ function mod.unregisterSwapSubscriberHandler(msg)
         ['Amm-Process-Id'] = ammProcessId
     })
 end
+
+return mod
