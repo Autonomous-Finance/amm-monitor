@@ -9,7 +9,7 @@
   },
   "devDependencies": {
     "@permaweb/aoconnect": "^0.0.58",
-    "aoform": "^1.0.2",
+    "aoform": "^1.0.3",
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7"
   },
