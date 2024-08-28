@@ -5,7 +5,7 @@
   "scripts": {
     "build": "bash ./scripts/build.sh",
     "deploy-dev": "bash ./deploy-dev.sh",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "bash ./scripts/test.sh"
   },
   "devDependencies": {
     "@permaweb/aoconnect": "^0.0.58",

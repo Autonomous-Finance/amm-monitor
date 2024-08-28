@@ -1,0 +1,39 @@
+name: test
+
+on:
+  push:
+    branches:
+      - "main"
+  pull_request:
+    branches:
+      - "**"
+
+jobs:
+  test:
+    name: Run unit tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v1
+      - uses: leafo/gh-actions-lua@v10
+        with:
+          luaVersion: "5.4.6"
+      - uses: leafo/gh-actions-luarocks@v4
+
+      - name: Install Busted
+        run: luarocks install busted
+      
+      - name: Install Teal
+        run: luarocks install tl
+      
+      - name: Install Cyan
+        run: luarocks install cyan
+
+      - name: Install amalg
+        run: luarocks install amalg
+
+      - name: Run build
+        run: bash ./scripts/build.sh
+
+      - name: Run tests
+        run: bash ./scripts/test.sh

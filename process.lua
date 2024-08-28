@@ -14,6 +14,7 @@ local emergency = require("ops.emergency")
 local configOps = require("ops.config-ops")
 local initialize = require("ops.initialize")
 local analytics = require("amm-analytics.main")
+local hopper = require("hopper.hopper")
 
 db = db or sqlite3.open_memory()
 
@@ -372,4 +373,10 @@ Handlers.add(
   "Get-Pool-Overview",
   Handlers.utils.hasMatchingTag("Action", "Get-Pool-Overview"),
   analytics.getPoolOverview
+)
+
+Handlers.add(
+  "Get-Price-For-Token",
+  Handlers.utils.hasMatchingTag("Action", "Get-Price-For-Token"),
+  hopper.getPriceForToken
 )
