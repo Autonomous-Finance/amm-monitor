@@ -57,7 +57,8 @@ function mod.registerSwapSubscriberHandler(msg)
     ao.send({
         Target = msg.From,
         Action = 'Swap-Subscription-Success',
-        ['Amm-Process-Id'] = ammProcessId
+        ['Amm-Process-Id'] = ammProcessId,
+        ['Process-Id'] = processId
     })
 end
 
@@ -72,7 +73,8 @@ function mod.unregisterSwapSubscriberHandler(msg)
     ao.send({
         Target = msg.From,
         Action = 'Swap-Unsubscription-Success',
-        ['Amm-Process-Id'] = ammProcessId
+        ['Amm-Process-Id'] = ammProcessId,
+        ['Process-Id'] = processId
     })
 end
 
