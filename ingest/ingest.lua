@@ -125,6 +125,8 @@ local function recordSwap(msg, swapData, source, sourceAmm)
   assert(swapData['From-Quantity'], 'Missing From-Quantity')
   assert(swapData['To-Quantity'], 'Missing To-Quantity')
   assert(swapData['Fee-Percentage'], 'Missing Fee-Percentage')
+  assert(swapData['Reserves-Token-A'], 'Missing Reserves-Token-A')
+  assert(swapData['Reserves-Token-B'], 'Missing Reserves-Token-B')
 
   local fromTokenUsdPrice = usdPrice.getUsdPriceForToken(swapData['From-Token'])
   local toTokenUsdPrice = usdPrice.getUsdPriceForToken(swapData['To-Token'])
@@ -145,7 +147,9 @@ local function recordSwap(msg, swapData, source, sourceAmm)
     from_token_usd_price = fromTokenUsdPrice,
     to_token_usd_price = toTokenUsdPrice,
     reserves_token_a = swapData['Reserves-Token-A'],
-    reserves_token_b = swapData['Reserves-Token-B']
+    reserves_token_b = swapData['Reserves-Token-B'],
+    lp_fee_percentage = swapData['LP-Fee'],
+    protocol_fee_percentage = swapData['Protocol-Fee'],
   }
   ingestSql.recordSwap(entry)
 

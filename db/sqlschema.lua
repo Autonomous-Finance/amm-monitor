@@ -15,6 +15,8 @@ CREATE TABLE IF NOT EXISTS amm_transactions (
     from_quantity TEXT NOT NULL,
     to_quantity TEXT NOT NULL,
     fee_percentage TEXT NOT NULL,
+    lp_fee_percentage TEXT,
+    protocol_fee_percentage TEXT,
     reserves_token_a TEXT,
     reserves_token_b TEXT,
     amm_process TEXT NOT NULL,
@@ -177,6 +179,8 @@ SELECT
   from_quantity,
   to_quantity,
   fee_percentage as fee,
+  cast(lp_fee_percentage as NUMERIC) as lp_fee_percentage,
+  cast(protocol_fee_percentage as NUMERIC) as protocol_fee_percentage,
   amm_process,
   CASE WHEN to_token = amm_token1 THEN 1 ELSE 0 END AS is_buy,
   ROUND(CASE
