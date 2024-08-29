@@ -42,6 +42,9 @@ function dbSeed.createMissingTables()
   db:exec(sqlschema.create_swap_subscription_table)
   print("create_swap_subscription_table: " .. (db:errmsg() == 'not an error' and '✅' or db:errmsg()))
 
+  db:exec(sqlschema.create_reserve_change_subscription_table)
+  print("create_reserve_change_subscription_table: " .. (db:errmsg() == 'not an error' and '✅' or db:errmsg()))
+
   db:exec(sqlschema.create_token_registry_table)
   print("create_token_registry_table: " .. (db:errmsg() == 'not an error' and '✅' or db:errmsg()))
 
