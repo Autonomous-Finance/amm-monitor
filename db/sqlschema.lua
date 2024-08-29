@@ -149,6 +149,17 @@ sqlschema.create_swap_subscription_table = [[
 CREATE TABLE IF NOT EXISTS swap_subscriptions (
     process_id TEXT NOT NULL,
     amm_process_id TEXT NOT NULL,
+    subscribed_at_ts INTEGER NOT NULL,
+    PRIMARY KEY (process_id, amm_process_id)
+);
+]]
+
+
+sqlschema.create_swap_params_subscription_table = [[
+CREATE TABLE IF NOT EXISTS swap_params_subscriptions (
+    process_id TEXT NOT NULL,
+    amm_process_id TEXT NOT NULL,
+    subscribed_at_ts INTEGER NOT NULL,
     PRIMARY KEY (process_id, amm_process_id)
 );
 ]]
