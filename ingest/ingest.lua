@@ -8,6 +8,7 @@ local indicators = require('indicators.indicators')
 local topN = require('top-n.top-n')
 local usdPrice = require('dexi-core.usd-price')
 local swapSubscribers = require('swap-subscribers.main')
+local reserveSubscribers = require('swap-subscribers.reserves')
 
 local ingest = {}
 
@@ -114,6 +115,7 @@ local function recordChangeInSwapParams(msg, payload, source, sourceAmm, cause)
   print('Recording change in swap params ' .. json.encode(entry))
   ingestSql.recordChangeInSwapParams(entry)
   ingestSql.updateCurrentSwapParams(entry)
+  reserveSubscribers.dispatchSwapParamsNotifications(msg.Id, sourceAmm)
 end
 
 local function recordSwap(msg, swapData, source, sourceAmm)
