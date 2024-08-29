@@ -76,9 +76,9 @@ end
 function ingestSql.updateCurrentSwapParams(entry)
   local stmt = db:prepare [[
     INSERT OR REPLACE INTO amm_swap_params (
-      amm_process, reserves_0, reserves_1, fee_percentage
+      amm_process, reserves_0, reserves_1
     ) VALUES (
-     :amm_process, :reserves_0, :reserves_1, :fee_percentage
+     :amm_process, :reserves_0, :reserves_1
     );
   ]]
   if not stmt then
