@@ -92,11 +92,9 @@ local function recordChangeInSwapParams(msg, payload, source, sourceAmm, cause)
 
   local reserves_0 = payload["Reserves-Token-A"]
   local reserves_1 = payload["Reserves-Token-B"]
-  local fee_percentage = payload["TotalFee"]
 
   assert(reserves_0, 'Missing Reserves-Token-A')
   assert(reserves_1, 'Missing Reserves-Token-B')
-  assert(fee_percentage, 'Missing TotalFee')
 
   local entry = {
     id = msg.Id,
@@ -106,7 +104,6 @@ local function recordChangeInSwapParams(msg, payload, source, sourceAmm, cause)
     sender = msg.recipient or '',
     created_at_ts = math.floor(msg.Timestamp / 1000),
     cause = cause,
-    fee_percentage = fee_percentage,
     reserves_0 = reserves_0,
     reserves_1 = reserves_1,
     amm_process = sourceAmm
@@ -182,7 +179,7 @@ function ingest.handleMonitorIngestSwapParamsChange(msg)
       or (msg.From == Owner and msg.Tags["AMM"] or nil)
   if ammProcessId then
     local now = math.floor(msg.Timestamp / 1000)
-    recordChangeInSwapParams(msg, json.decode(msg.Data), 'message', ammProcessId, 'swap-params-change')
+    recordChangeInSwapParams(msg, json.decode(msg.Data), 'message', ammProcessId, 'liquidity-add-remove')
     -- disable for now TODO!!!
     -- topN.dispatchMarketDataIncludingAMM(now, ammProcessId)
   end
@@ -193,7 +190,7 @@ function ingest.handleFeedIngestSwapParamsChange(msg)
     local data = json.decode(msg.Data)
     for _, liquidityUpdate in ipairs(data) do
       -- TODO rework considering the msg / payload separation
-      recordChangeInSwapParams(liquidityUpdate, 'gateway', liquidityUpdate.Tags['AMM'], 'swap-params-change')
+      recordChangeInSwapParams(liquidityUpdate, 'gateway', liquidityUpdate.Tags['AMM'], 'liquidity-add-remove')
     end
 
     local isLatestSwapParamsChange = false -- TODO implement; check if data goes up to present and this is the latest data entry;

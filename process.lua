@@ -136,7 +136,9 @@ Handlers.add(
   function(msg)
     return Handlers.utils.hasMatchingTag("Action", "Notify-On-Topic")(msg)
         and
-        Handlers.utils.hasMatchingTag("Topic", "swap-params-change")(msg) -- TODO add check that msg.From is am AMM registered as topics provider
+        (Handlers.utils.hasMatchingTag("Topic", "swap-params-change")(msg)
+          or
+          Handlers.utils.hasMatchingTag("Topic", "liquidity-add-remove")(msg))
   end,
   ingest.handleMonitorIngestSwapParamsChange
 )

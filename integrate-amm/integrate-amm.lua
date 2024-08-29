@@ -69,7 +69,7 @@ local subscribeToAmm = function(ammProcessId)
   ao.send({
     Target = ammProcessId,
     Action = "Register-Subscriber",
-    Topics = json.encode({ "order-confirmation", "swap-params-change" })
+    Topics = json.encode({ "order-confirmation", "liquidity-add-remove" })
   })
 end
 
@@ -77,7 +77,7 @@ local unsubscribeAmm = function(ammProcessId)
   ao.send({
     Target = ammProcessId,
     Action = "Unsubscribe-From-Topics",
-    Topics = json.encode({ "order-confirmation", "swap-params-change" })
+    Topics = json.encode({ "order-confirmation", "liquidity-add-remove" })
   })
 end
 
@@ -244,11 +244,10 @@ integrateAmm.handleSubscriptionConfirmationFromAmm = function(msg)
   assert(msg.Tags["Updated-Topics"], 'Subscription confirmation data must contain a valid updated-topics')
 
   local topics = json.decode(msg.Tags["Updated-Topics"])
-
   assert(
     #topics == 2
-    and (topics[1] == 'order-confirmation' and topics[2] == 'swap-params-change')
-    or (topics[1] == 'swap-params-change' and topics[2] == 'order-confirmation'),
+    and (topics[1] == 'order-confirmation' and topics[2] == 'liquidity-add-remove')
+    or (topics[1] == 'liquidity-add-remove' and topics[2] == 'order-confirmation'),
     'Invalid topics received from amm: ' .. msg.From .. ' - ' .. json.encode(topics))
 
   local ammProcessId = msg.From
