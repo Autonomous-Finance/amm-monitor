@@ -59,10 +59,14 @@ function ingestSql.recordChangeInSwapParams(entry)
   local stmt = db:prepare [[
     INSERT OR REPLACE INTO amm_swap_params_changes (
       id, source, block_height, block_id, sender, created_at_ts,
-      cause, reserves_0, reserves_1, fee_percentage, amm_process
+      cause, reserves_0, reserves_1, amm_process
     ) VALUES (:id, :source, :block_height, :block_id, :sender, :created_at_ts,
-              :cause, :reserves_0, :reserves_1, :fee_percentage, :amm_process);
+              :cause, :reserves_0, :reserves_1,  :amm_process);
   ]]
+
+  if not stmt then
+    error("Failed to prepare SQL statement: " .. db:errmsg())
+  end
 
   -- going for brevity - this will be more robust with teal
   stmt:bind_names(entry)
@@ -77,6 +81,10 @@ function ingestSql.updateCurrentSwapParams(entry)
      :amm_process, :reserves_0, :reserves_1, :fee_percentage
     );
   ]]
+  if not stmt then
+    error("Failed to prepare SQL statement: " .. db:errmsg())
+  end
+
   -- going for brevity - this will be more robust with teal
   stmt:bind_names(entry)
   dbUtils.execute(stmt, "ingestSql.updateCurrentSwapParams")
