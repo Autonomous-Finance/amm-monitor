@@ -19,7 +19,7 @@ luacheck process.lua \
     ownable/ownable.lua \
     ops/config-ops.lua ops/emergency.lua ops/initialize.lua \
     amm-analytics/main.lua amm-analytics/volume.lua amm-analytics/pool-overview.lua \
-    swap-subscribers/main.lua swap-subscribers/swap-params.lua \
+    swap-subscribers/main.lua swap-subscribers/reserves.lua \
     hopper/hopper.lua
     
 amalg.lua -s process.lua -o build/output.lua \
