@@ -36,5 +36,5 @@ amalg.lua -s process.lua -o build/output.lua \
     ownable.ownable \
     ops.config-ops ops.emergency ops.initialize \
     amm-analytics.main amm-analytics.volume amm-analytics.pool-overview \
-    swap-subscribers.main swap-subscribers.swap-params \
+    swap-subscribers.main swap-subscribers.reserves \
     hopper.hopper
