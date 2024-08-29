@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS amm_swap_params_changes (
     block_id TEXT,
     sender TEXT NOT NULL,
     created_at_ts INTEGER,
-    cause TEXT NOT NULL CHECK (cause IN ('swap', 'swap-params-change', 'liquidity-add-remove)),
+    cause TEXT NOT NULL CHECK (cause IN ('swap', 'swap-params-change', 'liquidity-add-remove')),
     reserves_0 TEXT NOT NULL,
     reserves_1 TEXT NOT NULL,
     amm_process TEXT NOT NULL
