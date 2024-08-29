@@ -197,7 +197,7 @@ Handlers.add(
 Handlers.add(
   "Subscribe-Reserve-Changes",
   Handlers.utils.hasMatchingTag("Action", "Subscribe-Reserve-Changes"),
-  reserveSubscribers.registerSwapParamsSubscriber
+  reserveSubscribers.registerSwapParamsSubscriberHandler
 )
 
 Handlers.add(
