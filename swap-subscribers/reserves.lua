@@ -11,11 +11,11 @@ function mod.getSwapParamsSubscribers(ammProcessId)
     return dbUtils.queryMany(stmt)
 end
 
-function mod.dispatchSwapParamsNotifications(sourceMessageId, sourceAmm)
-    local subscribers = mod.getSwapParamsSubscribers(sourceAmm)
-
-    -- todo add balance check
-    local stmt = db:prepare [[
+function mod.getSwapParamsMessage(sourceAmm, sourceMessageId)
+    local condition = 'WHERE source_amm = :source_amm ORDER BY created_at DESC '
+    if sourceMessageId then
+        condition = ' WHERE id = :id '
+    local stmt = db:prepare([[
     SELECT
         amm_token0 as token0,
         amm_token1 as token1,
@@ -23,10 +23,15 @@ function mod.dispatchSwapParamsNotifications(sourceMessageId, sourceAmm)
         reserves_1 as reserves1
     FROM amm_swap_params_changes
     LEFT JOIN amm_registry USING (amm_process)
-    WHERE id = :id LIMIT 1;
-    ]]
-    stmt:bind_names({ id = sourceMessageId })
+    ]] .. condition .. [[' LIMIT 1;']])
+    stmt:bind_names({ id = sourceMessageId, source_amm = sourceAmm })
     local transformedSwapData = dbUtils.queryOne(stmt)
+    return transformedSwapData
+end
+
+function mod.dispatchSwapParamsNotifications(sourceMessageId, sourceAmm)
+    local subscribers = mod.getSwapParamsSubscribers(sourceAmm)
+    local transformedSwapData = mod.getSwapParamsMessage(sourceAmm, sourceMessageId)
     for _, subscriber in ipairs(subscribers) do
         ao.send({
             Target = subscriber.process_id,
@@ -66,18 +71,21 @@ function mod.registerSwapParamsSubscriberHandler(msg)
 
     mod.registerSwapParamsSubscriber(processId, ammProcessId, math.floor(msg.Timestamp / 1000))
 
+    local swapParamsMessage = mod.getSwapParamsMessage(ammProcessId, nil)
     ao.send({
         Target = msg.From,
         Action = 'Reserve-Change-Subscription-Success',
         ['Amm-Process-Id'] = ammProcessId,
-        ['Process-Id'] = processId
+        ['Process-Id'] = processId,
+        Data = swapParamsMessage.Data
     })
 
     ao.send({
         Target = processId,
         Action = 'Reserve-Change-Subscription-Success',
         ['Amm-Process-Id'] = ammProcessId,
-        ['Process-Id'] = processId
+        ['Process-Id'] = processId,
+        Data = swapParamsMessage.Data
     })
 end
 
