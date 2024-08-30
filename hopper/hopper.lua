@@ -15,7 +15,6 @@ local function get_price(pool, from_token)
 end
 
 function hopper.fetch_oracle_pools()
-  print('fetch_oracle_pools')
   local pools = {}
 
   for row in db:nrows("SELECT ticker, price FROM oracle_prices") do
@@ -153,10 +152,10 @@ function hopper.getPriceForToken(msg)
   if ao then
     ao.send({
       Target = msg.From,
-      Action = "Hopper-Price",
-      ['Base-Token-Process'] = baseToken,
-      ['Quote-Token-Process'] = quoteToken,
-      ['Price'] = best_price
+      Action = "Hopper-Price-Update",
+      ['Base-Token-Process'] = tostring(baseToken),
+      ['Quote-Token-Process'] = tostring(quoteToken),
+      ['Price'] = tostring(best_price)
     })
   end
 
