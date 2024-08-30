@@ -2,6 +2,7 @@ local hopper = {}
 local dbUtils = require("db.utils")
 local json = require("json")
 
+-- TODO use bint!
 local function get_price(pool, from_token)
   -- If from_token is token0, calculate price as token1/token0
   if pool.token0 == from_token then
@@ -34,8 +35,8 @@ function hopper.fetch_pools()
   SELECT
     amm_token0 as token0,
     amm_token1 as token1,
-    reserves_0 as reserve0,
-    reserves_1 as reserve1
+    CAST(reserves_0 AS NUMERIC) as reserve0,
+    CAST(reserves_1 AS NUMERIC) as reserve1
   FROM amm_swap_params
   LEFT JOIN amm_registry USING (amm_process)
   ]])
