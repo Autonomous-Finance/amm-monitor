@@ -31,7 +31,13 @@ function mod.dispatchSwapParamsNotifications(sourceMessageId, sourceAmm)
         ao.send({
             Target = subscriber.process_id,
             Action = 'Dexi-Swap-Params-Change-Notification',
-            Data = json.encode(transformedSwapData)
+            Data = json.encode(transformedSwapData),
+            ['Amm-Process-Id'] = sourceAmm,
+            ['Source-Message-Id'] = sourceMessageId,
+            ['Token-0'] = tostring(transformedSwapData.token0),
+            ['Token-1'] = tostring(transformedSwapData.token1),
+            ['Reserves-0'] = tostring(transformedSwapData.reserves0),
+            ['Reserves-1'] = tostring(transformedSwapData.reserves1)
         })
     end
 end
