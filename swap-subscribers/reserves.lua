@@ -24,8 +24,12 @@ function mod.getSwapParamsMessage(sourceAmm, sourceMessageId)
             reserves_0 as reserves0,
             reserves_1 as reserves1
         FROM amm_swap_params_changes
-        LEFT JOIN amm_registry USING (amm_process_id)
-        ]] .. condition .. [[ LIMIT 1;]])
+        LEFT JOIN amm_registry USING (amm_process)
+         ]] .. condition .. [[ LIMIT 1;]])
+
+    if not stmt then
+        error("Err: " .. db:errmsg())
+    end
 
     stmt:bind_names({ id = sourceMessageId, source_amm = sourceAmm })
     local transformedSwapData = dbUtils.queryOne(stmt)
@@ -74,13 +78,13 @@ function mod.registerSwapParamsSubscriberHandler(msg)
 
     mod.registerSwapParamsSubscriber(processId, ammProcessId, math.floor(msg.Timestamp / 1000))
 
-    -- local swapParamsMessage = mod.getSwapParamsMessage(ammProcessId, nil)
+    local swapParamsMessage = mod.getSwapParamsMessage(ammProcessId, nil)
     ao.send({
         Target = msg.From,
         Action = 'Reserve-Change-Subscription-Success',
         ['Amm-Process-Id'] = ammProcessId,
         ['Process-Id'] = processId,
-        -- Data = swapParamsMessage.Data
+        Data = swapParamsMessage.Data
     })
 
     ao.send({
@@ -88,7 +92,7 @@ function mod.registerSwapParamsSubscriberHandler(msg)
         Action = 'Reserve-Change-Subscription-Success',
         ['Amm-Process-Id'] = ammProcessId,
         ['Process-Id'] = processId,
-        -- Data = swapParamsMessage.Data
+        Data = swapParamsMessage.Data
     })
 end
 
