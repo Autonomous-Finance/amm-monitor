@@ -1,5 +1,6 @@
 local hopper = {}
 local dbUtils = require("db.utils")
+local json = require("json")
 
 local function get_price(pool, from_token)
   -- If from_token is token0, calculate price as token1/token0
@@ -13,7 +14,8 @@ local function get_price(pool, from_token)
   end
 end
 
-local function fetch_oracle_pools()
+function hopper.fetch_oracle_pools()
+  print('fetch_oracle_pools')
   local pools = {}
 
   for row in db:nrows("SELECT ticker, price FROM oracle_prices") do
@@ -28,7 +30,7 @@ local function fetch_oracle_pools()
   return pools
 end
 
-local function fetch_pools()
+function hopper.fetch_pools()
   local stmt = db:prepare([[
   SELECT
     amm_token0 as token0,
@@ -38,6 +40,11 @@ local function fetch_pools()
   FROM amm_swap_params
   LEFT JOIN amm_registry USING (amm_process)
   ]])
+
+  if not stmt then
+    error("Err: " .. db:errmsg())
+  end
+
   return dbUtils.queryMany(stmt)
 end
 
@@ -108,8 +115,8 @@ function hopper.getPriceForToken(msg)
   -- print('baseToken', baseToken)
   -- print('quoteToken', quoteToken)
 
-  local oracle_pools = fetch_oracle_pools()
-  local pools = fetch_pools()
+  local oracle_pools = hopper.fetch_oracle_pools()
+  local pools = hopper.fetch_pools()
   for _, pool in ipairs(oracle_pools) do
     table.insert(pools, pool)
   end
@@ -142,13 +149,18 @@ function hopper.getPriceForToken(msg)
     best_price = best_price * price
   end
 
-  ao.send({
-    Target = msg.From,
-    Action = "Hopper-Price",
-    ['Base-Token-Process'] = baseToken,
-    ['Quote-Token-Process'] = quoteToken,
-    ['Price'] = best_price
-  })
+  -- check if running in test or in prod
+  if ao then
+    ao.send({
+      Target = msg.From,
+      Action = "Hopper-Price",
+      ['Base-Token-Process'] = baseToken,
+      ['Quote-Token-Process'] = quoteToken,
+      ['Price'] = best_price
+    })
+  end
+
+  return { baseToken = baseToken, quoteToken = quoteToken, price = best_price }
 end
 
 return hopper
