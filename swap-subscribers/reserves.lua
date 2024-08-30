@@ -11,13 +11,17 @@ function mod.getSwapParamsSubscribers(ammProcessId)
     return dbUtils.queryMany(stmt)
 end
 
--- todo move this somewhere else
 function mod.dispatchSwapParamsNotifications(sourceMessageId, sourceAmm)
     local subscribers = mod.getSwapParamsSubscribers(sourceAmm)
 
     -- todo add balance check
     local stmt = db:prepare [[
-    SELECT * FROM amm_swap_params_changes
+    SELECT
+        amm_token0 as token0,
+        amm_token1 as token1,
+        reserves_0 as reserves0,
+        reserves_1 as reserves1
+    FROM amm_swap_params_changes
     LEFT JOIN amm_registry USING (amm_process)
     WHERE id = :id LIMIT 1;
     ]]

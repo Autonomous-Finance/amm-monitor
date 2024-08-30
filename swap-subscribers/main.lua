@@ -17,7 +17,7 @@ function mod.dispatchSwapNotifications(sourceMessageId, sourceAmm)
 
     -- todo add balance check
     local stmt = db:prepare [[
-      SELECT  FROM amm_transactions_view WHERE id = :id LIMIT 1;
+      SELECT * FROM amm_transactions_view WHERE id = :id LIMIT 1;
     ]]
     stmt:bind_names({ id = sourceMessageId })
     local transformedSwapData = dbUtils.queryOne(stmt)
@@ -57,8 +57,7 @@ function mod.registerSwapSubscriberHandler(msg)
     ao.send({
         Target = msg.From,
         Action = 'Swap-Subscription-Success',
-        ['Amm-Process-Id'] = ammProcessId,
-        ['Process-Id'] = processId
+        ['Amm-Process-Id'] = ammProcessId
     })
 end
 
