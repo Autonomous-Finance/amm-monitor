@@ -66,6 +66,13 @@ function mod.registerSwapParamsSubscriberHandler(msg)
         ['Amm-Process-Id'] = ammProcessId,
         ['Process-Id'] = processId
     })
+
+    ao.send({
+        Target = processId,
+        Action = 'Reserve-Change-Subscription-Success',
+        ['Amm-Process-Id'] = ammProcessId,
+        ['Process-Id'] = processId
+    })
 end
 
 function mod.unregisterSwapParamsSubscriberHandler(msg)
