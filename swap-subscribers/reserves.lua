@@ -74,7 +74,7 @@ function mod.unregisterSwapParamsSubscriberHandler(msg)
 
     ao.send({
         Target = msg.From,
-        Action = 'Reserve-Change-Unsubscription-Success',
+        Action = 'Swap-Params-Unsubscription-Success',
         ['Amm-Process-Id'] = ammProcessId,
         ['Process-Id'] = processId
     })
