@@ -74,13 +74,13 @@ function mod.registerSwapParamsSubscriberHandler(msg)
 
     mod.registerSwapParamsSubscriber(processId, ammProcessId, math.floor(msg.Timestamp / 1000))
 
-    local swapParamsMessage = mod.getSwapParamsMessage(ammProcessId, nil)
+    -- local swapParamsMessage = mod.getSwapParamsMessage(ammProcessId, nil)
     ao.send({
         Target = msg.From,
         Action = 'Reserve-Change-Subscription-Success',
         ['Amm-Process-Id'] = ammProcessId,
         ['Process-Id'] = processId,
-        Data = swapParamsMessage.Data
+        -- Data = swapParamsMessage.Data
     })
 
     ao.send({
@@ -88,7 +88,7 @@ function mod.registerSwapParamsSubscriberHandler(msg)
         Action = 'Reserve-Change-Subscription-Success',
         ['Amm-Process-Id'] = ammProcessId,
         ['Process-Id'] = processId,
-        Data = swapParamsMessage.Data
+        -- Data = swapParamsMessage.Data
     })
 end
 
