@@ -17,9 +17,9 @@ end
 function hopper.fetch_oracle_pools()
   local pools = {}
 
-  for row in db:nrows("SELECT amm_process, price FROM oracle_prices") do
+  for row in db:nrows("SELECT process_id, price FROM oracle_prices") do
     table.insert(pools, {
-      token0 = row.amm_process,
+      token0 = row.process_id,
       token1 = 'USD',
       reserve0 = 1,
       reserve1 = row.price
