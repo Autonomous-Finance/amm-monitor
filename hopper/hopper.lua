@@ -17,9 +17,9 @@ end
 function hopper.fetch_oracle_pools()
   local pools = {}
 
-  for row in db:nrows("SELECT ticker, price FROM oracle_prices") do
+  for row in db:nrows("SELECT amm_process, price FROM oracle_prices") do
     table.insert(pools, {
-      token0 = row.ticker,
+      token0 = row.amm_process,
       token1 = 'USD',
       reserve0 = 1,
       reserve1 = row.price
@@ -117,6 +117,7 @@ function hopper.getPriceForToken(msg)
   local oracle_pools = hopper.fetch_oracle_pools()
   local pools = hopper.fetch_pools()
   for _, pool in ipairs(oracle_pools) do
+    print('pool', json.encode(pool))
     table.insert(pools, pool)
   end
 
@@ -149,14 +150,23 @@ function hopper.getPriceForToken(msg)
   end
 
   -- check if running in test or in prod
-  if ao then
-    ao.send({
-      Target = msg.From,
-      Action = "Hopper-Price-Update",
-      ['Base-Token-Process'] = tostring(baseToken),
-      ['Quote-Token-Process'] = tostring(quoteToken),
-      ['Price'] = tostring(best_price)
-    })
+  if ao ~= nil then
+    if best_price ~= nil then
+      ao.send({
+        Target = msg.From,
+        Action = "Hopper-Price-Update",
+        ['Base-Token-Process'] = tostring(baseToken),
+        ['Quote-Token-Process'] = tostring(quoteToken),
+        ['Price'] = tostring(best_price)
+      })
+    else
+      ao.send({
+        Target = msg.From,
+        Action = "Hopper-Price-Failure",
+        ['Base-Token-Process'] = tostring(baseToken),
+        ['Quote-Token-Process'] = tostring(quoteToken),
+      })
+    end
   else
     return { baseToken = baseToken, quoteToken = quoteToken, price = best_price }
   end
