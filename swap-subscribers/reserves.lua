@@ -12,7 +12,7 @@ function mod.getSwapParamsSubscribers(ammProcessId)
 end
 
 function mod.getSwapParamsMessage(sourceAmm, sourceMessageId)
-    local condition = 'WHERE amm_process = :source_amm ORDER BY created_at DESC'
+    local condition = 'WHERE amm_process = :source_amm ORDER BY created_at_ts DESC'
     if sourceMessageId then
         condition = 'WHERE id = :id'
     end
