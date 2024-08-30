@@ -12,18 +12,21 @@ function mod.getSwapParamsSubscribers(ammProcessId)
 end
 
 function mod.getSwapParamsMessage(sourceAmm, sourceMessageId)
-    local condition = 'WHERE source_amm = :source_amm ORDER BY created_at DESC '
+    local condition = 'WHERE source_amm = :source_amm ORDER BY created_at DESC'
     if sourceMessageId then
-        condition = ' WHERE id = :id '
+        condition = 'WHERE id = :id'
+    end
+
     local stmt = db:prepare([[
-    SELECT
-        amm_token0 as token0,
-        amm_token1 as token1,
-        reserves_0 as reserves0,
-        reserves_1 as reserves1
-    FROM amm_swap_params_changes
-    LEFT JOIN amm_registry USING (amm_process)
-    ]] .. condition .. [[' LIMIT 1;']])
+        SELECT
+            amm_token0 as token0,
+            amm_token1 as token1,
+            reserves_0 as reserves0,
+            reserves_1 as reserves1
+        FROM amm_swap_params_changes
+        LEFT JOIN amm_registry USING (amm_process_id)
+        ]] .. condition .. [[ LIMIT 1;]])
+
     stmt:bind_names({ id = sourceMessageId, source_amm = sourceAmm })
     local transformedSwapData = dbUtils.queryOne(stmt)
     return transformedSwapData
