@@ -157,9 +157,9 @@ function hopper.getPriceForToken(msg)
       ['Quote-Token-Process'] = tostring(quoteToken),
       ['Price'] = tostring(best_price)
     })
+  else
+    return { baseToken = baseToken, quoteToken = quoteToken, price = best_price }
   end
-
-  return { baseToken = baseToken, quoteToken = quoteToken, price = best_price }
 end
 
 return hopper
