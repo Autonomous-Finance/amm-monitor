@@ -33,8 +33,8 @@ local function fetch_pools()
   SELECT
     amm_token0 as token0,
     amm_token1 as token1,
-    reserves0 as reserve0,
-    reserves1 as reserve1
+    reserves_0 as reserve0,
+    reserves_1 as reserve1
   FROM amm_swap_params
   LEFT JOIN amm_registry USING (amm_process)
   ]])
