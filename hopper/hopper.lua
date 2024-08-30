@@ -142,7 +142,13 @@ function hopper.getPriceForToken(msg)
     best_price = best_price * price
   end
 
-  return { baseToken = baseToken, quoteToken = quoteToken, price = best_price }
+  ao.send({
+    Target = msg.From,
+    Action = "Hopper-Price",
+    ['Base-Token-Process'] = baseToken,
+    ['Quote-Token-Process'] = quoteToken,
+    ['Price'] = best_price
+  })
 end
 
 return hopper
