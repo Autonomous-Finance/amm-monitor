@@ -1,5 +1,5 @@
-local sqlite3 = require("lsqlite3")
 local hopper = {}
+local dbUtils = require("db.utils")
 
 local function get_price(pool, from_token)
   -- If from_token is token0, calculate price as token1/token0
@@ -29,18 +29,16 @@ local function fetch_oracle_pools()
 end
 
 local function fetch_pools()
-  local pools = {}
-
-  for row in db:nrows("SELECT token0, token1, reserve0, reserve1 FROM pools") do
-    table.insert(pools, {
-      token0 = row.token0,
-      token1 = row.token1,
-      reserve0 = row.reserve0,
-      reserve1 = row.reserve1
-    })
-  end
-
-  return pools
+  local stmt = db:prepare([[
+  SELECT
+    amm_token0 as token0,
+    amm_token1 as token1,
+    reserves0 as reserve0,
+    reserves1 as reserve1
+  FROM amm_swap_params
+  LEFT JOIN amm_registry USING (amm_process)
+  ]])
+  return dbUtils.queryMany(stmt)
 end
 
 local function build_graph(pools)
