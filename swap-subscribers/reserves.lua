@@ -84,7 +84,7 @@ function mod.registerSwapParamsSubscriberHandler(msg)
         Action = 'Reserve-Change-Subscription-Success',
         ['Amm-Process-Id'] = ammProcessId,
         ['Process-Id'] = processId,
-        Data = swapParamsMessage.Data
+        Data = json.encode(swapParamsMessage)
     })
 
     ao.send({
@@ -92,7 +92,7 @@ function mod.registerSwapParamsSubscriberHandler(msg)
         Action = 'Reserve-Change-Subscription-Success',
         ['Amm-Process-Id'] = ammProcessId,
         ['Process-Id'] = processId,
-        Data = swapParamsMessage.Data
+        Data = json.encode(swapParamsMessage)
     })
 end
 
