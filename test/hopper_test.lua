@@ -38,94 +38,59 @@ describe("hopper lib", function()
   end)
 
   it("should get price for token", function()
-    local result = hopper_mock.getPriceForToken({
-      Tags = {
-        ["Quote-Token-Process"] = "mockAO",
-        ["Base-Token-Process"] = "bark"
-      }
-    })
+    local result = hopper_mock.getPrice("bark", "mockAO")
 
     print('result', result)
 
-    local expected_result = { baseToken = "bark", quoteToken = "mockAO", price = 2 }
+    local expected_result = 2
 
     assert.are.same(result, expected_result)
   end)
 
   it("should not get price for token", function()
-    local result = hopper_mock.getPriceForToken({
-      Tags = {
-        ["Quote-Token-Process"] = "mockAO",
-        ["Base-Token-Process"] = "dexi-token"
-      }
-    })
+    local result = hopper_mock.getPrice("dexi-token", "mockAO")
 
-    local expected_result = { baseToken = "dexi-token", quoteToken = "mockAO", price = nil }
+    local expected_result = nil
 
     assert.are.same(result, expected_result)
   end)
 
   it("should get price for token with 1 hop", function()
-    local result = hopper_mock.getPriceForToken({
-      Tags = {
-        ["Quote-Token-Process"] = "mockAO",
-        ["Base-Token-Process"] = "lola"
-      }
-    })
+    local result = hopper_mock.getPrice("lola", "mockAO")
 
-    local expected_result = { baseToken = "lola", quoteToken = "mockAO", price = 4 }
+    local expected_result = 4
 
     assert.are.same(result, expected_result)
   end)
 
   it("should get price for token with 2 hops", function()
-    local result = hopper_mock.getPriceForToken({
-      Tags = {
-        ["Quote-Token-Process"] = "mockAO",
-        ["Base-Token-Process"] = "dog"
-      }
-    })
+    local result = hopper_mock.getPrice("dog", "mockAO")
 
-    local expected_result = { baseToken = "dog", quoteToken = "mockAO", price = 8 }
+    local expected_result = 8
 
     assert.are.same(result, expected_result)
   end)
 
   it("should get price for token with 3 hops", function()
-    local result = hopper_mock.getPriceForToken({
-      Tags = {
-        ["Quote-Token-Process"] = "mockAO",
-        ["Base-Token-Process"] = "cat"
-      }
-    })
+    local result = hopper_mock.getPrice("cat", "mockAO")
 
-    local expected_result = { baseToken = "cat", quoteToken = "mockAO", price = 4 }
+    local expected_result = 4
 
     assert.are.same(result, expected_result)
   end)
 
   it("should get price for token with 3 hops - USD", function()
-    local result = hopper_mock.getPriceForToken({
-      Tags = {
-        ["Quote-Token-Process"] = "USD",
-        ["Base-Token-Process"] = "cat"
-      }
-    })
+    local result = hopper_mock.getPrice("cat", "USD")
 
-    local expected_result = { baseToken = "cat", quoteToken = "USD", price = 200 }
+    local expected_result = 200
 
     assert.are.same(result, expected_result)
   end)
 
   it("should get price for token with 3 hops reversed", function()
-    local result = hopper_mock.getPriceForToken({
-      Tags = {
-        ["Quote-Token-Process"] = "cat",
-        ["Base-Token-Process"] = "mockAO"
-      }
-    })
+    local result = hopper_mock.getPrice("mockAO", "cat")
 
-    local expected_result = { baseToken = "mockAO", quoteToken = "cat", price = 0.25 }
+    local expected_result = 0.25
 
     assert.are.same(result, expected_result)
   end)
