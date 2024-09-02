@@ -369,12 +369,11 @@ This process implements basic ownable functionality, as provided by this [packag
 
 Most importantly, this prepares the process for having its ownership renounced at the appropriate moment after release. That moment will be determined based on the operational experience, when the team is confident that functionality is reliable.
 
+## License
+
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+
 ## TODO
-
-
-- REORGANIZE
-  - use squishy and remap package paths
-  - move .lua files into a src/
 
 - thorough VALIDATIONS
   
