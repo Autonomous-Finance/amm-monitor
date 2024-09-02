@@ -252,4 +252,25 @@ ORDER BY market_cap DESC
 LIMIT 100
 ]]
 
+sqlschema.create_reserve_change_table = [[
+CREATE TABLE IF NOT EXISTS reserve_changes (
+    id TEXT NOT NULL PRIMARY KEY,
+    amm_process TEXT NOT NULL,
+    reserves_token_a TEXT NOT NULL,
+    reserves_token_b TEXT NOT NULL,
+    delta_token_a TEXT NOT NULL,
+    delta_token_b TEXT NOT NULL,
+    action TEXT NOT NULL,
+    delta_pool_tokens TEXT NOT NULL,
+    total_pool_tokens TEXT NOT NULL,
+    token_a TEXT NOT NULL,
+    token_b TEXT NOT NULL,
+    original_message_id TEXT NOT NULL,
+    transfer_quantity TEXT,
+    recipient TEXT,
+    sender TEXT NOT NULL,
+    tvl_in_usd NUMERIC NOT NULL,
+    created_at INTEGER
+);]]
+
 return sqlschema
