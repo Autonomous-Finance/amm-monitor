@@ -270,7 +270,7 @@ CREATE TABLE IF NOT EXISTS reserve_changes (
     recipient TEXT,
     sender TEXT NOT NULL,
     tvl_in_usd NUMERIC NOT NULL,
-    created_at INTEGER
+    created_at_ts INTEGER
 );]]
 
 return sqlschema
