@@ -157,14 +157,8 @@ local function getDenominator(token)
   return row and row.denominator
 end
 
-local function recordLiquidityChange(msg, changeData, sourceAmm)
-  assert(msg.Id, 'Missing Id')
-  assert(msg['Block-Height'], 'Missing Block-Height')
-  assert(msg.From, 'Missing From')
-  assert(msg.Timestamp, 'Missing Timestamp')
-  assert(changeData['Reserves-Token-A'], 'Missing Reserves-Token-A')
-  assert(changeData['Reserves-Token-B'], 'Missing Reserves-Token-B')
-
+local function recordLiquidityChange(msg)
+  local changeData = json.decode(msg.Data)
   if not changeData['Delta-Token-A'] then
     print('old style message, skipping')
     return
@@ -179,26 +173,26 @@ local function recordLiquidityChange(msg, changeData, sourceAmm)
 
   local entry = {
     id = msg.Id,
-    amm_process = sourceAmm,
-    reserves_token_a = msg["Reserves-Token-A"],
-    reserves_token_b = msg["Reserves-Token-B"],
-    delta_token_a = msg["Delta-Token-A"],
-    delta_token_b = msg["Delta-Token-B"],
-    action = msg["Action"],
-    delta_pool_tokens = msg["Delta-Pool-Tokens"],
-    total_pool_tokens = msg["Total-Pool-Tokens"],
-    token_a = msg["Token-A"],
-    token_b = msg["Token-B"],
-    original_message_id = msg["Original-Message-Id"],
-    transfer_quantity = msg["Transfer-Quantity"],
-    recipient = msg["Recipient"],
-    sender = msg["Sender"],
+    amm_process = msg.From,
+    reserves_token_a = changeData["Reserves-Token-A"],
+    reserves_token_b = changeData["Reserves-Token-B"],
+    delta_token_a = changeData["Delta-Token-A"],
+    delta_token_b = changeData["Delta-Token-B"],
+    action = changeData["Action"],
+    delta_pool_tokens = changeData["Delta-Pool-Tokens"],
+    total_pool_tokens = changeData["Total-Pool-Tokens"],
+    token_a = changeData["Token-A"],
+    token_b = changeData["Token-B"],
+    original_message_id = changeData["Original-Message-Id"],
+    transfer_quantity = changeData["Transfer-Quantity"],
+    recipient = changeData["Recipient"],
+    sender = changeData["Sender"],
     created_at = math.floor(msg.Timestamp / 1000),
     tvl_in_usd = tvlInUsd
   }
 
   print('Recording liquidity change ' .. json.encode(entry))
-  -- ingestSql.recordLiquidityChange(entry)
+  ingestSql.recordLiquidityChange(entry)
 end
 
 local function recordSwap(msg, swapData, source, sourceAmm)
