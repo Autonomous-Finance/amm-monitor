@@ -397,7 +397,7 @@ Handlers.add(
 Handlers.add(
   "Get-Price-For-Token",
   Handlers.utils.hasMatchingTag("Action", "Get-Price-For-Token"),
-  hopper.getPriceForToken
+  hopper.getPriceForTokenHandler
 )
 
 -- Token Profile Update
