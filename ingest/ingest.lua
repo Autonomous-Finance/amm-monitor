@@ -168,8 +168,8 @@ local function recordLiquidityChange(msg)
   local tokenBPrice = hopper.getPrice(changeData['Token-B'], 'USD')
   local tokenADenominator = getDenominator(changeData['Token-A'])
   local tokenBDenominator = getDenominator(changeData['Token-B'])
-  local tvlInUsd = (tonumber(changeData['Reserves-Token-A']) * tokenAPrice / tokenADenominator) +
-      (tonumber(changeData['Reserves-Token-B']) * tokenBPrice / tokenBDenominator)
+  local tvlInUsd = ((tonumber(changeData['Reserves-Token-A']) * tokenAPrice / tokenADenominator) +
+    (tonumber(changeData['Reserves-Token-B']) * tokenBPrice / tokenBDenominator))
 
   local entry = {
     id = msg.Id,
