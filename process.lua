@@ -410,3 +410,9 @@ Handlers.add(
   end,
   updateToken.handlePayForUpdateToken
 )
+
+Handlers.add(
+  "Get-Token-Update-Price",
+  Handlers.utils.hasMatchingTag("Action", "Get-Token-Update-Price"),
+  updateToken.handleGetPriceForUpdate
+)

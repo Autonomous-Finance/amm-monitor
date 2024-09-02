@@ -106,12 +106,7 @@ local function dijkstra(graph, start_token, end_token)
   return path
 end
 
-function hopper.getPriceForToken(msg)
-  assert(msg.Tags["Base-Token-Process"], "Base-Token-Process is required")
-  assert(msg.Tags["Quote-Token-Process"], "Quote-Token-Process is required")
-
-  local baseToken = msg.Tags["Base-Token-Process"]
-  local quoteToken = msg.Tags["Quote-Token-Process"]
+function hopper.getPriceForTokenInternal(baseToken, quoteToken)
   -- print('baseToken', baseToken)
   -- print('quoteToken', quoteToken)
 
@@ -150,15 +145,27 @@ function hopper.getPriceForToken(msg)
     best_price = best_price * price
   end
 
+  return { baseToken = baseToken, quoteToken = quoteToken, price = best_price }
+end
+
+function hopper.getPriceForToken(msg)
+  assert(msg.Tags["Base-Token-Process"], "Base-Token-Process is required")
+  assert(msg.Tags["Quote-Token-Process"], "Quote-Token-Process is required")
+
+  local baseToken = msg.Tags["Base-Token-Process"]
+  local quoteToken = msg.Tags["Quote-Token-Process"]
+
+  local priceResult = hopper.getPriceForTokenInternal(baseToken, quoteToken)
+
   -- check if running in test or in prod
   if ao ~= nil then
-    if best_price ~= nil then
+    if priceResult.price ~= nil then
       ao.send({
         Target = msg.From,
         Action = "Hopper-Price-Update",
         ['Base-Token-Process'] = tostring(baseToken),
         ['Quote-Token-Process'] = tostring(quoteToken),
-        ['Price'] = tostring(best_price)
+        ['Price'] = tostring(priceResult.price)
       })
     else
       ao.send({
@@ -169,7 +176,7 @@ function hopper.getPriceForToken(msg)
       })
     end
   else
-    return { baseToken = baseToken, quoteToken = quoteToken, price = best_price }
+    return { baseToken = baseToken, quoteToken = quoteToken, price = priceResult.price }
   end
 end
 
