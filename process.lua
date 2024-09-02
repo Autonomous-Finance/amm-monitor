@@ -16,6 +16,7 @@ local configOps = require("ops.config-ops")
 local initialize = require("ops.initialize")
 local analytics = require("amm-analytics.main")
 local hopper = require("hopper.hopper")
+local updateToken = require("update-token.update-token")
 
 db = db or sqlite3.open_memory()
 
@@ -397,4 +398,15 @@ Handlers.add(
   "Get-Price-For-Token",
   Handlers.utils.hasMatchingTag("Action", "Get-Price-For-Token"),
   hopper.getPriceForToken
+)
+
+-- Token Profile Update
+
+Handlers.add(
+  "Receive-Payment-For-Token-Profile-Update",
+  function(msg)
+    return Handlers.utils.hasMatchingTag("Action", "Credit-Notice")(msg)
+        and Handlers.utils.hasMatchingTag("X-Action", "Update-Token-Profile")(msg)
+  end,
+  updateToken.handlePayForUpdateToken
 )

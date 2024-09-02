@@ -20,7 +20,8 @@ luacheck process.lua \
     ops/config-ops.lua ops/emergency.lua ops/initialize.lua \
     amm-analytics/main.lua amm-analytics/volume.lua amm-analytics/pool-overview.lua \
     swap-subscribers/main.lua swap-subscribers/reserves.lua \
-    hopper/hopper.lua
+    hopper/hopper.lua \
+    update-token/update-token.lua
     
 amalg.lua -s process.lua -o build/output.lua \
     validation.validation validation.validation-schemas \
@@ -37,4 +38,5 @@ amalg.lua -s process.lua -o build/output.lua \
     ops.config-ops ops.emergency ops.initialize \
     amm-analytics.main amm-analytics.volume amm-analytics.pool-overview \
     swap-subscribers.main swap-subscribers.reserves \
-    hopper.hopper
+    hopper.hopper \
+    update-token.update-token
