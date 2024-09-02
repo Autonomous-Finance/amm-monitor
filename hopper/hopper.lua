@@ -106,15 +106,7 @@ local function dijkstra(graph, start_token, end_token)
   return path
 end
 
-function hopper.getPriceForToken(msg)
-  assert(msg.Tags["Base-Token-Process"], "Base-Token-Process is required")
-  assert(msg.Tags["Quote-Token-Process"], "Quote-Token-Process is required")
-
-  local baseToken = msg.Tags["Base-Token-Process"]
-  local quoteToken = msg.Tags["Quote-Token-Process"]
-  -- print('baseToken', baseToken)
-  -- print('quoteToken', quoteToken)
-
+function hopper.getPrice(baseToken, quoteToken)
   local oracle_pools = hopper.fetch_oracle_pools()
   local pools = hopper.fetch_pools()
   for _, pool in ipairs(oracle_pools) do
@@ -122,20 +114,11 @@ function hopper.getPriceForToken(msg)
     table.insert(pools, pool)
   end
 
-  -- print('pools', pools[1].token0)
-  -- print('pools', pools[1].token1)
-  -- print('pools', pools[1].reserve0)
-  -- print('pools', pools[1].reserve1)
-
-  -- Calculate the best price
   local graph = build_graph(pools)
-  -- print('graph', graph[pools[1].token0][1].token)
-  -- print('graph', graph[pools[1].token1][1].token)
-
   local path = dijkstra(graph, baseToken, quoteToken)
 
   if not path then
-    return { baseToken = baseToken, quoteToken = quoteToken, price = nil }
+    return nil
   end
 
   print('path length', #path)
@@ -150,7 +133,17 @@ function hopper.getPriceForToken(msg)
     best_price = best_price * price
   end
 
-  -- check if running in test or in prod
+  return best_price
+end
+
+function hopper.getPriceForTokenHandler(msg)
+  assert(msg.Tags["Base-Token-Process"], "Base-Token-Process is required")
+  assert(msg.Tags["Quote-Token-Process"], "Quote-Token-Process is required")
+
+  local baseToken = msg.Tags["Base-Token-Process"]
+  local quoteToken = msg.Tags["Quote-Token-Process"]
+  local best_price = hopper.getPrice(baseToken, quoteToken)
+
   if ao ~= nil then
     if best_price ~= nil then
       ao.send({

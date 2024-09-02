@@ -9,6 +9,7 @@ local topN = require('top-n.top-n')
 local usdPrice = require('dexi-core.usd-price')
 local swapSubscribers = require('swap-subscribers.main')
 local reserveSubscribers = require('swap-subscribers.reserves')
+local hopper = require('hopper.hopper')
 
 local ingest = {}
 
@@ -136,8 +137,8 @@ local function recordSwap(msg, swapData, source, sourceAmm)
   assert(swapData['Reserves-Token-A'], 'Missing Reserves-Token-A')
   assert(swapData['Reserves-Token-B'], 'Missing Reserves-Token-B')
 
-  local fromTokenUsdPrice = usdPrice.getUsdPriceForToken(swapData['From-Token'])
-  local toTokenUsdPrice = usdPrice.getUsdPriceForToken(swapData['To-Token'])
+  local fromTokenUsdPrice = hopper.getPrice(swapData['From-Token'], 'USD')
+  local toTokenUsdPrice = hopper.getPrice(swapData['To-Token'], 'USD')
 
   local entry = {
     id = msg.Id,
