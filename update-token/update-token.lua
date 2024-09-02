@@ -8,8 +8,8 @@ local priceInUSD = 20
 updateToken.handleGetPriceForUpdate = function(msg)
     assert(msg.Tags["Token-Process"], 'Token info data must contain a valid Token Process tag')
 
-    local priceResponse = hopper.getPriceForTokenInternal("USD", msg.Tags["Token-Process"])
-    local totalCost = priceResponse.price * priceInUSD
+    local priceResponse = hopper.getPrice("USD", msg.Tags["Token-Process"])
+    local totalCost = priceResponse * priceInUSD
 
     ao.send({
         Target = msg.From,
@@ -24,8 +24,8 @@ updateToken.handlePayForUpdateToken = function(msg)
     assert(msg.Tags["X-Token-Process"], 'Token info data must contain a valid Token Process tag')
     assert(msg.Tags["X-Details"], 'Token info data must contain a valid Details tag')
 
-    local priceResponse = hopper.getPriceForTokenInternal("USD", msg.From)
-    local totalCost = priceResponse.price * priceInUSD
+    local priceResponse = hopper.getPrice("USD", msg.From)
+    local totalCost = priceResponse * priceInUSD
 
     if (msg.Tags.Quantity < totalCost) then
         -- Send back the funds

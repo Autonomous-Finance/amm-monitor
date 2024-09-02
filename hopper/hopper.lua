@@ -145,13 +145,13 @@ function hopper.getPriceForTokenHandler(msg)
   local best_price = hopper.getPrice(baseToken, quoteToken)
 
   if ao ~= nil then
-    if priceResult.price ~= nil then
+    if best_price ~= nil then
       ao.send({
         Target = msg.From,
         Action = "Hopper-Price-Update",
         ['Base-Token-Process'] = tostring(baseToken),
         ['Quote-Token-Process'] = tostring(quoteToken),
-        ['Price'] = tostring(priceResult.price)
+        ['Price'] = tostring(best_price)
       })
     else
       ao.send({
@@ -162,7 +162,7 @@ function hopper.getPriceForTokenHandler(msg)
       })
     end
   else
-    return { baseToken = baseToken, quoteToken = quoteToken, price = priceResult.price }
+    return { baseToken = baseToken, quoteToken = quoteToken, price = best_price }
   end
 end
 
