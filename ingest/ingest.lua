@@ -198,7 +198,7 @@ local function recordLiquidityChange(msg, changeData, sourceAmm)
   }
 
   print('Recording liquidity change ' .. json.encode(entry))
-  ingestSql.recordLiquidityChange(entry)
+  -- ingestSql.recordLiquidityChange(entry)
 end
 
 local function recordSwap(msg, swapData, source, sourceAmm)
