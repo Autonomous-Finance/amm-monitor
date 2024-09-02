@@ -270,6 +270,8 @@ CREATE TABLE IF NOT EXISTS reserve_changes (
     recipient TEXT,
     sender TEXT NOT NULL,
     tvl_in_usd NUMERIC NOT NULL,
+    token_a_price NUMERIC NOT NULL,
+    token_b_price NUMERIC NOT NULL,
     created_at_ts INTEGER
 );]]
 

@@ -40,11 +40,11 @@ function ingestSql.recordLiquidityChange(entry)
     INSERT INTO reserve_changes (
       id, reserves_token_a, reserves_token_b, delta_token_a, delta_token_b,
       action, delta_pool_tokens, total_pool_tokens, token_a, token_b,
-      original_message_id, transfer_quantity, recipient, sender, created_at_ts, amm_process, tvl_in_usd
+      original_message_id, transfer_quantity, recipient, sender, created_at_ts, amm_process, tvl_in_usd, token_a_price, token_b_price
     ) VALUES (
       :id, :reserves_token_a, :reserves_token_b, :delta_token_a, :delta_token_b,
       :action, :delta_pool_tokens, :total_pool_tokens, :token_a, :token_b,
-      :original_message_id, :transfer_quantity, :recipient, :sender, :created_at_ts, :amm_process, :tvl_in_usd
+      :original_message_id, :transfer_quantity, :recipient, :sender, :created_at_ts, :amm_process, :tvl_in_usd, :token_a_price, :token_b_price
     );
   ]]
 
@@ -188,7 +188,9 @@ local function recordLiquidityChange(msg)
     recipient = changeData["Recipient"],
     sender = changeData["Sender"],
     created_at = math.floor(msg.Timestamp / 1000),
-    tvl_in_usd = tvlInUsd
+    tvl_in_usd = tvlInUsd,
+    token_a_price = tokenAPrice,
+    token_b_price = tokenBPrice,
   }
 
   print('Recording liquidity change ' .. json.encode(entry))
