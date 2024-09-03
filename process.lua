@@ -400,7 +400,7 @@ Handlers.add(
 )
 
 Handlers.add(
-  "Get-Pool-Pnl-History-For-User",
-  Handlers.utils.hasMatchingTag("Action", "Get-Pool-Pnl-History-For-User"),
-  analytics.getPnlHistoryForUser
+  "Get-Pool-Pnl-History",
+  Handlers.utils.hasMatchingTag("Action", "Get-Pool-Pnl-History"),
+  analytics.getPoolPnlHistoryForUser
 )
