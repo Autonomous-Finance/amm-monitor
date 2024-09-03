@@ -5,7 +5,7 @@ local hopper = require("hopper.hopper")
 local analytics = {}
 
 function analytics.getCurrentTvl(ammProcess)
-    local stmt = db:prepare [[
+    local stmt = db:prepare([[
         SELECT
             reserves0,
             reserves1,
@@ -18,7 +18,7 @@ function analytics.getCurrentTvl(ammProcess)
         JOIN token_registry t1 ON t1.token_process = amm_token1
         WHERE amm_process = :amm_process
         ORDER BY created_at_ts DESC
-    ]]
+    ]])
 
     if not stmt then
         error("Err: " .. db:errmsg())
@@ -61,8 +61,8 @@ end
 function getInitalTvlForUserAndAmm(ammProcess)
     local stmt = db:prepare([[
         select tvl_in_usd from reserve_changes where amm_process = :amm_process
-    ]]
-    
+    ]])
+
     if not stmt then
         error("Err: " .. db:errmsg())
     end
@@ -70,7 +70,7 @@ function getInitalTvlForUserAndAmm(ammProcess)
     stmt:bind_names({
         amm_process = ammProcess,
     })
-    
+
     return dbUtils.queryOne(stmt)
 end
 
@@ -105,8 +105,6 @@ function getPoolTokensForUser(user)
 
     return dbUtils.queryMany(stmt)
 end
-
-
 
 function analytics.getPoolPnlHistoryForUser(msg)
     assert(msg.Tags.User, "User is required")
