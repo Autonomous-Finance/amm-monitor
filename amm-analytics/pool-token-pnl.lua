@@ -45,11 +45,11 @@ function analytics.getCurrentTvl(ammProcess)
     return value0 + value1
 end
 
-function calculatePnlForUserAndAmm(user)
-    local pools = getPoolTokensForUser(user)
+function analytics.calculatePnlForUserAndAmm(user)
+    local pools = analytics.getPoolTokensForUser(user)
 
     for _, pool in ipairs(pools) do
-        local initialTvl = getInitalTvlForUserAndAmm(pool.amm_process) * pool.user_share
+        local initialTvl = analytics.getInitalTvlForUserAndAmm(pool.amm_process) * pool.user_share
         local currentTvl = analytics.getCurrentTvl(pool.amm_process) * pool.user_share
         local pnl = currentTvl - initialTvl
         pool.pnl = pnl
@@ -58,7 +58,7 @@ function calculatePnlForUserAndAmm(user)
     return pools
 end
 
-function getInitalTvlForUserAndAmm(ammProcess)
+function analytics.getInitalTvlForUserAndAmm(ammProcess)
     local stmt = db:prepare([[
         select tvl_in_usd from reserve_changes where amm_process = :amm_process
     ]])
@@ -75,7 +75,7 @@ function getInitalTvlForUserAndAmm(ammProcess)
     return result.tvl_in_usd
 end
 
-function getPoolTokensForUser(user)
+function analytics.getPoolTokensForUser(user)
     local stmt = db:prepare([[
     with pool_token_balances as (
         select
@@ -110,7 +110,7 @@ end
 
 function analytics.getPoolPnlHistoryForUser(msg)
     assert(msg.Tags.User, "User is required")
-    local result = calculatePnlForUserAndAmm(msg.Tags.User)
+    local result = analytics.calculatePnlForUserAndAmm(msg.Tags.User)
 
     ao.send({
         ['Response-For'] = 'Get-Pool-Pnl-History',
