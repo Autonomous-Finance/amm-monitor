@@ -71,7 +71,8 @@ function getInitalTvlForUserAndAmm(ammProcess)
         amm_process = ammProcess,
     })
 
-    return dbUtils.queryOne(stmt)
+    local result = dbUtils.queryOne(stmt)
+    return result.tvl_in_usd
 end
 
 function getPoolTokensForUser(user)
