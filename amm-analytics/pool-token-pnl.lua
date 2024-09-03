@@ -7,8 +7,8 @@ local analytics = {}
 function analytics.getCurrentTvl(ammProcess)
     local stmt = db:prepare([[
         SELECT
-            reserves0,
-            reserves1,
+            reserves_0,
+            reserves_1,
             t0.denominator as demoninator0,
             t1.denominator as demoninator1,
             amm_token0 as token0,
@@ -28,13 +28,13 @@ function analytics.getCurrentTvl(ammProcess)
 
     local result = dbUtils.queryOne(stmt)
 
-    local reserves0 = result.reserves0
-    local reserves1 = result.reserves1
+    local reserves_0 = result.reserves_0
+    local reserves_1 = result.reserves_1
     local denominator0 = result.denominator0
     local denominator1 = result.denominator1
 
-    local value0 = reserves0 / 10 ^ denominator0
-    local value1 = reserves1 / 10 ^ denominator1
+    local value0 = reserves_0 / 10 ^ denominator0
+    local value1 = reserves_1 / 10 ^ denominator1
 
     local price0 = hopper.getPrice(result.token0, 'USD')
     local price1 = hopper.getPrice(result.token1, 'USD')
