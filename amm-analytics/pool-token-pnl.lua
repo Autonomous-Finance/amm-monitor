@@ -16,7 +16,7 @@ function analytics.getCurrentTvl(ammProcess)
         FROM amm_transactions_view
         JOIN token_registry t0 ON t0.token_process = amm_token0
         JOIN token_registry t1 ON t1.token_process = amm_token1
-        WHERE amm_process = :amm_process AND denominator0 IS NOT NULL AND denominator1 IS NOT NULL
+        WHERE amm_process = :amm_process AND t0.denominator IS NOT NULL AND t1.denominator IS NOT NULL
         ORDER BY created_at_ts DESC
     ]])
 
