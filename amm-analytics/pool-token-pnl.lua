@@ -16,7 +16,7 @@ function analytics.getCurrentTvl(ammProcess)
         FROM amm_transactions_view
         JOIN token_registry t0 ON t0.token_process = amm_token0
         JOIN token_registry t1 ON t1.token_process = amm_token1
-        WHERE amm_process = :amm_process
+        WHERE amm_process = :amm_process AND denominator0 IS NOT NULL AND denominator1 IS NOT NULL
         ORDER BY created_at_ts DESC
     ]])
 
@@ -27,6 +27,10 @@ function analytics.getCurrentTvl(ammProcess)
     stmt:bind_names({ amm_process = ammProcess })
 
     local result = dbUtils.queryOne(stmt)
+
+    if not result then
+        return nil
+    end
 
     local reserves_0 = result.reserves_0
     local reserves_1 = result.reserves_1
@@ -51,8 +55,10 @@ function analytics.calculatePnlForUserAndAmm(user)
     for _, pool in ipairs(pools) do
         local initialTvl = analytics.getInitalTvlForUserAndAmm(pool.amm_process) * pool.user_share
         local currentTvl = analytics.getCurrentTvl(pool.amm_process) * pool.user_share
-        local pnl = currentTvl - initialTvl
-        pool.pnl = pnl
+        if not currentTvl then
+            local pnl = currentTvl - initialTvl
+            pool.pnl = pnl
+        end
     end
 
     return pools
