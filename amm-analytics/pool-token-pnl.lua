@@ -82,26 +82,27 @@ function getPoolTokensForUser(user)
             recipient,
             sum(transfer_quantity) as user_total_tokens
         from reserve_changes
-        group by amm_process, recipient
         where recipient = :recipient
+        group by amm_process, recipient
     ), latest_pool_token_balances as (
         SELECT
             amm_process,
             SUM(CAST(delta_pool_tokens AS NUMERIC)) AS total_pool_tokens
         FROM reserve_changes
-        GROUP BY amm_process
         where recipient = :recipient
+        GROUP BY amm_process
     )
     select *, user_total_tokens / CAST(total_pool_tokens AS NUMERIC) as user_share
     from pool_token_balances
         left join latest_pool_token_balances using (amm_process)
     ]])
 
-    stmt:bind_names({ recipient = user })
-
     if not stmt then
         error("Err: " .. db:errmsg())
     end
+
+    stmt:bind_names({ recipient = user })
+
 
     return dbUtils.queryMany(stmt)
 end
