@@ -81,9 +81,9 @@ function ingestSql.recordChangeInSwapParams(entry)
   local stmt = db:prepare [[
     INSERT OR REPLACE INTO amm_swap_params_changes (
       id, source, block_height, block_id, sender, created_at_ts,
-      cause, reserves_0, reserves_1, amm_process
+      cause, reserves_0, reserves_1, amm_process, created_at_ts
     ) VALUES (:id, :source, :block_height, :block_id, :sender, :created_at_ts,
-              :cause, :reserves_0, :reserves_1,  :amm_process);
+              :cause, :reserves_0, :reserves_1,  :amm_process, :created_at_ts);
   ]]
 
   if not stmt then

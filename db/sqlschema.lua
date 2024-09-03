@@ -90,7 +90,7 @@ CREATE TABLE IF NOT EXISTS amm_swap_params (
     amm_process TEXT NOT NULL PRIMARY KEY,
     reserves_0 TEXT NOT NULL,
     reserves_1 TEXT NOT NULL,
-    fee_percentage TEXT NOT NULL
+    created_at_ts INTEGER
 );
 ]]
 
@@ -203,6 +203,8 @@ SELECT
       END
     ELSE NULL
   END, 5) AS usd_price,
+  CASE WHEN to_token = amm_token0 THEN to_token_usd_price ELSE from_token_usd_price END AS token0_usd_price,
+  CASE WHEN to_token = amm_token1 THEN from_token_usd_price ELSE to_token_usd_price END AS token1_usd_price,
   (CASE
     WHEN to_token = amm_token1 THEN from_quantity
     ELSE to_quantity
@@ -213,8 +215,10 @@ SELECT
       ELSE to_quantity  * 1.0 / POWER(10, t0.denominator) * to_token_usd_price
   END) AS volume_usd,
   POWER(10, ABS(t0.denominator - tq.denominator)) AS denominator_conversion,
-  t0.denominator AS quote_denominator,
+  t0.denominator AS quote_denominator, -- todo refactor
   tq.denominator AS base_denominator,
+  t0.denominator AS token0_denominator,
+  tq.denominator AS token1_denominator,
   amm_token0 as quote_token_process,
   amm_token1 as base_token_process,
   amm_token0,
