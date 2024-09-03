@@ -35,6 +35,27 @@ function ingestSql.getGatewayHeight(msg)
   return gatewayHeight
 end
 
+function ingestSql.recordLiquidityChange(entry)
+  local stmt = db:prepare [[
+    INSERT INTO reserve_changes (
+      id, reserves_token_a, reserves_token_b, delta_token_a, delta_token_b,
+      action, delta_pool_tokens, total_pool_tokens, token_a, token_b,
+      original_message_id, transfer_quantity, recipient, sender, created_at_ts, amm_process, tvl_in_usd, token_a_price, token_b_price
+    ) VALUES (
+      :id, :reserves_token_a, :reserves_token_b, :delta_token_a, :delta_token_b,
+      :action, :delta_pool_tokens, :total_pool_tokens, :token_a, :token_b,
+      :original_message_id, :transfer_quantity, :recipient, :sender, :created_at_ts, :amm_process, :tvl_in_usd, :token_a_price, :token_b_price
+    );
+  ]]
+
+  if not stmt then
+    error("Failed to prepare SQL statement: " .. db:errmsg())
+  end
+
+  stmt:bind_names(entry)
+  dbUtils.execute(stmt, "ingestSql.recordLiquidityChange")
+end
+
 function ingestSql.recordSwap(entry)
   local stmt = db:prepare [[
     INSERT OR REPLACE INTO amm_transactions (
@@ -124,6 +145,58 @@ local function recordChangeInSwapParams(msg, payload, source, sourceAmm, cause)
   reserveSubscribers.dispatchSwapParamsNotifications(msg.Id, sourceAmm)
 end
 
+local function getDenominator(token)
+  local stmt = db:prepare [[
+    SELECT denominator FROM token_registry WHERE token_process = :token;
+  ]]
+  stmt:bind_names({ token = token })
+  if not stmt then
+    error("Failed to prepare SQL statement: " .. db:errmsg())
+  end
+  local row = dbUtils.queryOne(stmt)
+  return row and row.denominator
+end
+
+local function recordLiquidityChange(msg)
+  local changeData = json.decode(msg.Data)
+  if not changeData['Delta-Token-A'] then
+    print('old style message, skipping')
+    return
+  end
+
+  local tokenAPrice = hopper.getPrice(changeData['Token-A'], 'USD')
+  local tokenBPrice = hopper.getPrice(changeData['Token-B'], 'USD')
+  local tokenADenominator = getDenominator(changeData['Token-A'])
+  local tokenBDenominator = getDenominator(changeData['Token-B'])
+  local tvlInUsd = ((tonumber(changeData['Reserves-Token-A']) * tokenAPrice / 10 ^ tokenADenominator) +
+    (tonumber(changeData['Reserves-Token-B']) * tokenBPrice / 10 ^ tokenBDenominator))
+
+  local entry = {
+    id = msg.Id,
+    amm_process = msg.From,
+    reserves_token_a = changeData["Reserves-Token-A"],
+    reserves_token_b = changeData["Reserves-Token-B"],
+    delta_token_a = changeData["Delta-Token-A"],
+    delta_token_b = changeData["Delta-Token-B"],
+    action = changeData["Action"],
+    delta_pool_tokens = changeData["Delta-Pool-Tokens"],
+    total_pool_tokens = changeData["Total-Pool-Tokens"],
+    token_a = changeData["Token-A"],
+    token_b = changeData["Token-B"],
+    original_message_id = changeData["Original-Message-Id"],
+    transfer_quantity = changeData["Transfer-Quantity"],
+    recipient = changeData["Recipient"],
+    sender = changeData["Sender"],
+    created_at = math.floor(msg.Timestamp / 1000),
+    tvl_in_usd = tvlInUsd,
+    token_a_price = tokenAPrice,
+    token_b_price = tokenBPrice,
+  }
+
+  print('Recording liquidity change ' .. json.encode(entry))
+  ingestSql.recordLiquidityChange(entry)
+end
+
 local function recordSwap(msg, swapData, source, sourceAmm)
   assert(msg.Id, 'Missing Id')
   assert(msg['Block-Height'], 'Missing Block-Height')
@@ -195,6 +268,7 @@ function ingest.handleMonitorIngestSwapParamsChange(msg)
     recordChangeInSwapParams(msg, json.decode(msg.Data), 'message', ammProcessId, 'liquidity-add-remove')
     -- disable for now TODO!!!
     -- topN.dispatchMarketDataIncludingAMM(now, ammProcessId)
+    recordLiquidityChange(msg, json.decode(msg.Data), ammProcessId)
   end
 end
 
