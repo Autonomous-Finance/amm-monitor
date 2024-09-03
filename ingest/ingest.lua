@@ -187,7 +187,7 @@ local function recordLiquidityChange(msg)
     transfer_quantity = changeData["Transfer-Quantity"],
     recipient = changeData["Recipient"],
     sender = changeData["Sender"],
-    created_at = math.floor(msg.Timestamp / 1000),
+    created_at_ts = math.floor(msg.Timestamp / 1000),
     tvl_in_usd = tvlInUsd,
     token_a_price = tokenAPrice,
     token_b_price = tokenBPrice,
