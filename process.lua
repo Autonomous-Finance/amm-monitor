@@ -398,3 +398,9 @@ Handlers.add(
   Handlers.utils.hasMatchingTag("Action", "Get-Price-For-Token"),
   hopper.getPriceForTokenHandler
 )
+
+Handlers.add(
+  "Get-Pool-Pnl-History-For-User",
+  Handlers.utils.hasMatchingTag("Action", "Get-Pool-Pnl-History-For-User"),
+  analytics.getPnlHistoryForUser
+)

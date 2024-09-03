@@ -18,7 +18,7 @@ luacheck process.lua \
     utils/debug.lua \
     ownable/ownable.lua \
     ops/config-ops.lua ops/emergency.lua ops/initialize.lua \
-    amm-analytics/main.lua amm-analytics/volume.lua amm-analytics/pool-overview.lua \
+    amm-analytics/main.lua amm-analytics/volume.lua amm-analytics/pool-overview.lua amm-analytics/pool-token-pnl.lua \
     swap-subscribers/main.lua swap-subscribers/reserves.lua \
     hopper/hopper.lua
     
@@ -35,6 +35,6 @@ amalg.lua -s process.lua -o build/output.lua \
     utils.debug \
     ownable.ownable \
     ops.config-ops ops.emergency ops.initialize \
-    amm-analytics.main amm-analytics.volume amm-analytics.pool-overview \
+    amm-analytics.main amm-analytics.volume amm-analytics.pool-overview amm-analytics.pool-token-pnl \
     swap-subscribers.main swap-subscribers.reserves \
     hopper.hopper
