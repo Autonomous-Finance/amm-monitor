@@ -25,9 +25,11 @@ updateToken.handlePayForUpdateToken = function(msg)
     assert(msg.Tags["X-Details"], 'Token info data must contain a valid Details tag')
 
     local priceResponse = hopper.getPrice("USD", msg.From)
-    local totalCost = priceResponse * priceInUSD
+    local totalCost = priceResponse * priceInUSD -- introduce decimals
+    local quantity = tonumber(msg.Tags.Quantity)
 
-    if (msg.Tags.Quantity < totalCost) then
+    -- if less funds received refund the user and send back the reason
+    if (quantity < totalCost) then
         -- Send back the funds
         ao.send({
             Target = msg.From,
@@ -42,6 +44,20 @@ updateToken.handlePayForUpdateToken = function(msg)
             ["Token-Process"] = msg.Tags["X-Token-Process"],
             ["X-Details"] = msg.Tags["X-Details"],
             ["Reason"] = "Insufficient funds"
+        })
+
+        -- break the execution
+        return false
+    end
+
+    -- if more funds received refund the difference to user
+    if (quantity > totalCost) then
+        -- Send back the funds
+        ao.send({
+            Target = msg.From,
+            Action = "Transfer",
+            Quantity = quantity - totalCost,
+            Recipient = msg.Sender
         })
     end
 
