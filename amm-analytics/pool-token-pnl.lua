@@ -99,18 +99,55 @@ end
 function analytics.getForwardFilledTvlForPool(ammProcess, since, userShare)
     local poolTvl = analytics.getHistoricalTvlForPool(ammProcess, since)
     local lastTvl = poolTvl[1].tvl
-    poolTvl[1].tvl_user = poolTvl[1].tvl * userShare
+    local lastUserTvl = lastTvl * userShare
+    poolTvl[1].tvl_user = lastUserTvl
+    poolTvl[1].pnl_user = 0
 
+    -- Get the current timestamp
+    local now = os.time()
+
+    -- Convert poolTvl to a map indexed by date for easier lookup
+    local tvlByDate = {}
     for _, tvl in ipairs(poolTvl) do
-        if tvl.tvl == nil then
-            tvl.tvl = lastTvl
-            if userShare then
-                tvl.tvl_user = tvl.tvl * userShare
-            end
-        end
+        tvlByDate[tvl.dt] = tvl
     end
 
-    return poolTvl
+    -- Iterate from since to now, filling in missing days
+    local currentDate = os.date("!%Y-%m-%d", since)
+    while currentDate <= os.date("!%Y-%m-%d", now) do
+        if not tvlByDate[currentDate] then
+            -- Missing day, fill with last known TVL
+            local userTvl = lastTvl * userShare
+            tvlByDate[currentDate] = {
+                amm_process = ammProcess,
+                dt = currentDate,
+                tvl = lastTvl,
+                tvl_user = userTvl,
+                pnl_user = userTvl - lastUserTvl
+            }
+            lastUserTvl = userTvl
+        else
+            -- Update last known TVL and calculate user PNL
+            local tvl = tvlByDate[currentDate]
+            lastTvl = tvl.tvl
+            local userTvl = lastTvl * userShare
+            tvl.tvl_user = userTvl
+            tvl.pnl_user = userTvl - lastUserTvl
+            lastUserTvl = userTvl
+        end
+        currentDate = os.date("!%Y-%m-%d",
+            os.time { year = currentDate:sub(1, 4), month = currentDate:sub(6, 7), day = currentDate:sub(9, 10) } +
+            24 * 60 * 60)
+    end
+
+    -- Convert map back to array
+    local result = {}
+    for _, tvl in pairs(tvlByDate) do
+        table.insert(result, tvl)
+    end
+    table.sort(result, function(a, b) return a.dt < b.dt end)
+
+    return result
 end
 
 function analytics.getPoolFees(ammProcess, since)
