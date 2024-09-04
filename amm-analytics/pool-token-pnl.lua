@@ -196,6 +196,26 @@ function analytics.getPoolFees(ammProcess, since)
     return result.volume_usd
 end
 
+function analytics.groupHistoricalPnlByDay(historicalPnlByDay, historicalPnl)
+    for _, entry in ipairs(historicalPnl) do
+        local date = entry.dt
+        if historicalPnlByDay[date] then
+            historicalPnlByDay[date] = historicalPnlByDay[date] + entry.pnl_user
+        else
+            historicalPnlByDay[date] = entry.pnl_user
+        end
+    end
+end
+
+function analytics.sumHistoricalPnlByDay(historicalPnlByDay)
+    local result = {}
+    for date, pnl in pairs(historicalPnlByDay) do
+        table.insert(result, { date = date, pnl = pnl })
+    end
+    table.sort(result, function(a, b) return a.date < b.date end)
+    return result
+end
+
 function analytics.calculatePnlForUserAndAmm(user, currentTimestamp)
     local pools = analytics.getPoolTokensForUser(user)
     local historicalPnlByDay = {}
