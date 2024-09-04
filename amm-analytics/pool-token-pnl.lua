@@ -135,7 +135,7 @@ function analytics.calculatePnlForUserAndAmm(user, currentTimestamp)
 
     for _, pool in ipairs(pools) do
         pool.current_tvl = analytics.getCurrentTvl(pool.amm_process)
-        pool.initial_user_tvl = analytics.getInitalTvlForUserAndAmm(pool.amm_process) * pool.user_share
+        pool.initial_user_tvl = analytics.getInitalTvlForUserAndAmm(pool.amm_process, user) * pool.user_share
         pool.current_user_tvl = pool.current_tvl * pool.user_share
         pool.total_volume = analytics.getPoolVolume(pool.amm_process, 0)
         pool.volume24h = analytics.getPoolVolume(pool.amm_process, currentTimestamp - 24 * 60 * 60)
@@ -143,7 +143,7 @@ function analytics.calculatePnlForUserAndAmm(user, currentTimestamp)
         pool.user_fees = analytics.getPoolFees(pool.amm_process, pool.last_change_ts) * pool.user_share
         if pool.current_tvl then
             pool.total_apy = pool.user_fees / pool.current_tvl
-            pool.pnl = pool.current_tvl - pool.initial_tvl
+            pool.pnl = pool.current_user_tvl - pool.initial_user_tvl
         end
         pool.historical_pnl = analytics.getHistoricalPnlForPool(pool.amm_process, pool.last_change_ts - 7 * 24 * 60 * 60,
             pool.user_share)
@@ -152,9 +152,9 @@ function analytics.calculatePnlForUserAndAmm(user, currentTimestamp)
     return pools
 end
 
-function analytics.getInitalTvlForUserAndAmm(ammProcess)
+function analytics.getInitalTvlForUserAndAmm(ammProcess, user)
     local stmt = db:prepare([[
-        select tvl_in_usd from reserve_changes where amm_process = :amm_process
+        select tvl_in_usd from reserve_changes where amm_process = :amm_process and recipient = :recipient order by created_at_ts limit 1
     ]])
 
     if not stmt then
@@ -163,6 +163,7 @@ function analytics.getInitalTvlForUserAndAmm(ammProcess)
 
     stmt:bind_names({
         amm_process = ammProcess,
+        recipient = user
     })
 
     local result = dbUtils.queryOne(stmt)
