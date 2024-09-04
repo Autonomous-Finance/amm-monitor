@@ -89,15 +89,16 @@ function analytics.calculatePnlForUserAndAmm(user, currentTimestamp)
     local pools = analytics.getPoolTokensForUser(user)
 
     for _, pool in ipairs(pools) do
-        pool.initialTvl = analytics.getInitalTvlForUserAndAmm(pool.amm_process) * pool.user_share
-        pool.currentTvl = analytics.getCurrentTvl(pool.amm_process) * pool.user_share
-        pool.totalVolume = analytics.getPoolVolume(pool.amm_process, 0)
+        pool.current_tvl = analytics.getCurrentTvl(pool.amm_process)
+        pool.initial_user_tvl = analytics.getInitalTvlForUserAndAmm(pool.amm_process) * pool.user_share
+        pool.current_user_tvl = pool.current_tvl * pool.user_share
+        pool.total_volume = analytics.getPoolVolume(pool.amm_process, 0)
         pool.volume24h = analytics.getPoolVolume(pool.amm_process, currentTimestamp - 24 * 60 * 60)
         pool.volume24hAgo = analytics.getPoolVolume(pool.amm_process, currentTimestamp - 48 * 60 * 60)
-        pool.userFees = analytics.getPoolFees(pool.amm_process, pool.last_change_ts) * pool.user_share
-        if pool.currentTvl then
-            pool.totalApy = pool.currentTvl / pool.initialTvl
-            pool.pnl = pool.currentTvl - pool.initialTvl
+        pool.user_fees = analytics.getPoolFees(pool.amm_process, pool.last_change_ts) * pool.user_share
+        if pool.current_tvl then
+            pool.totalApy = pool.user_fees / pool.current_tvl
+            pool.pnl = pool.current_tvl - pool.initial_tvl
         end
     end
 
