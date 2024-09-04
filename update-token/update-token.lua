@@ -1,9 +1,35 @@
 local hopper = require("hopper.hopper")
+local dbUtils = require("db.utils")
 
 local updateToken = {}
 
 local tokendropRegistry = "Mrkk8xNLfy1zhx99oAJTRDAHA3j6n1TG_hIf_I03yBY"
 local priceInUSD = 20
+
+function updateToken.get_token_denominator(tokenProcess)
+    local stmt = db:prepare [[
+        SELECT
+            token_process,
+            token_name,
+            denominator
+        FROM token_registry
+        WHERE token_process = :token_process
+        LIMIT 1;
+      ]]
+
+    if not stmt then
+        error("Failed to prepare SQL statement: " .. db:errmsg())
+    end
+
+    stmt:bind_names({
+        token_process = tokenProcess
+    })
+
+    local row = dbUtils.queryOne(stmt)
+    local denominator = row and row.denominator or 18
+
+    return denominator
+end
 
 updateToken.handleGetPriceForUpdate = function(msg)
     assert(msg.Tags["Token-Process"], 'Token info data must contain a valid Token Process tag')
@@ -24,8 +50,10 @@ updateToken.handlePayForUpdateToken = function(msg)
     assert(msg.Tags["X-Token-Process"], 'Token info data must contain a valid Token Process tag')
     assert(msg.Tags["X-Details"], 'Token info data must contain a valid Details tag')
 
+    local denominator = updateToken.get_token_denominator(msg.Tags["X-Token-Process"])
+
     local priceResponse = hopper.getPrice("USD", msg.From)
-    local totalCost = priceResponse * priceInUSD -- introduce decimals
+    local totalCost = priceResponse * priceInUSD * 10 ^ denominator
     local quantity = tonumber(msg.Tags.Quantity)
 
     -- if less funds received refund the user and send back the reason
