@@ -67,7 +67,7 @@ function analytics.getPoolVolume(ammProcess, since)
     return result.volume_usd
 end
 
-function analytics.getHistoricalTvlForPool(ammProcess, since)
+function analytics.getHistoricalTvlForPool(ammProcess, since, currentTime)
     local stmt = db:prepare([[
         select
             amm_process,
@@ -88,7 +88,35 @@ function analytics.getHistoricalTvlForPool(ammProcess, since)
 
     stmt:bind_names({ amm_process = ammProcess, since = since })
 
-    return dbUtils.queryMany(stmt)
+    local result = dbUtils.queryMany(stmt)
+
+    -- Add current TVL
+    local currentTvl = analytics.getCurrentTvl(ammProcess)
+    local currentDate = os.date("!%Y-%m-%d", currentTime)
+
+    -- Check if the current date already exists in the result
+    local currentDateExists = false
+    for i = #result, 1, -1 do
+        if result[i].dt == currentDate then
+            -- Replace the last entry for the current date with the current TVL
+            result[i].tvl = currentTvl
+            currentDateExists = true
+            break
+        end
+    end
+
+    -- If the current date doesn't exist, add a new entry
+    if not currentDateExists then
+        table.insert(result, {
+            amm_process = ammProcess,
+            dt = currentDate,
+            tvl = currentTvl,
+            total_fees = 0,
+            volume_usd = 0
+        })
+    end
+
+    return result
 end
 
 function analytics.getHistricalProfitForPools(ammProcesses, since)
@@ -96,8 +124,8 @@ function analytics.getHistricalProfitForPools(ammProcesses, since)
     -- for each pool get historical tvl with forward fill since last change multiplied by user share
 end
 
-function analytics.getForwardFilledTvlForPool(ammProcess, since, userShare)
-    local poolTvl = analytics.getHistoricalTvlForPool(ammProcess, since)
+function analytics.getForwardFilledTvlForPool(ammProcess, since, currentTimestamp, userShare)
+    local poolTvl = analytics.getHistoricalTvlForPool(ammProcess, since, currentTimestamp)
     local lastTvl = poolTvl[1].tvl
     local lastUserTvl = lastTvl * userShare
     poolTvl[1].tvl_user = lastUserTvl
@@ -185,6 +213,7 @@ function analytics.calculatePnlForUserAndAmm(user, currentTimestamp)
         end
         pool.historical_pnl = analytics.getForwardFilledTvlForPool(pool.amm_process,
             pool.last_change_ts - 7 * 24 * 60 * 60,
+            currentTimestamp,
             pool.user_share)
     end
 
