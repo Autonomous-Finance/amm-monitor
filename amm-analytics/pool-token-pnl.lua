@@ -99,6 +99,7 @@ end
 function analytics.getForwardFilledTvlForPool(ammProcess, since, userShare)
     local poolTvl = analytics.getHistoricalTvlForPool(ammProcess, since)
     local lastTvl = poolTvl[1].tvl
+    poolTvl[1].tvl_user = poolTvl[1].tvl * userShare
 
     for _, tvl in ipairs(poolTvl) do
         if tvl.tvl == nil then
