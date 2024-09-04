@@ -96,13 +96,16 @@ function analytics.getHistricalProfitForPools(ammProcesses, since)
     -- for each pool get historical tvl with forward fill since last change multiplied by user share
 end
 
-function analytics.forwardFillTvlForPool(ammProcess, since)
+function analytics.forwardFillTvlForPool(ammProcess, since, userShare)
     local poolTvl = analytics.getHistoricalTvlForPool(ammProcess, since)
     local lastTvl = poolTvl[1].tvl
 
     for _, tvl in ipairs(poolTvl) do
         if tvl.tvl == nil then
             tvl.tvl = lastTvl
+            if userShare then
+                tvl.tvl_user = tvl.tvl * userShare
+            end
         end
     end
 
@@ -142,7 +145,8 @@ function analytics.calculatePnlForUserAndAmm(user, currentTimestamp)
             pool.total_apy = pool.user_fees / pool.current_tvl
             pool.pnl = pool.current_tvl - pool.initial_tvl
         end
-        pool.historical_pnl = analytics.getHistoricalPnlForPool(pool.amm_process, pool.last_change_ts - 7 * 24 * 60 * 60)
+        pool.historical_pnl = analytics.getHistoricalPnlForPool(pool.amm_process, pool.last_change_ts - 7 * 24 * 60 * 60,
+            pool.user_share)
     end
 
     return pools
