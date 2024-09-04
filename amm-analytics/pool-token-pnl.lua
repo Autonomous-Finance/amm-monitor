@@ -26,7 +26,7 @@ function analytics.getCurrentTvl(ammProcess)
 
     stmt:bind_names({ amm_process = ammProcess })
 
-    result = dbUtils.queryOne(stmt)
+    local result = dbUtils.queryOne(stmt)
 
     if not result then
         return nil
@@ -49,15 +49,55 @@ function analytics.getCurrentTvl(ammProcess)
     return value0 + value1
 end
 
-function analytics.calculatePnlForUserAndAmm(user)
+function analytics.getPoolVolume(ammProcess, since)
+    local stmt = db:prepare([[
+        SELECT
+            SUM(volume_usd) as volume_usd
+        FROM amm_transactions_view
+        WHERE amm_process = :amm_process AND created_at_ts > :since
+    ]])
+
+    if not stmt then
+        error("Err: " .. db:errmsg())
+    end
+
+    stmt:bind_names({ amm_process = ammProcess, since = since })
+
+    local result = dbUtils.queryOne(stmt)
+    return result.volume_usd
+end
+
+function analytics.getPoolFees(ammProcess, since)
+    local stmt = db:prepare([[
+        SELECT
+            SUM(volume_usd) as volume_usd
+        FROM amm_transactions_view
+        WHERE amm_process = :amm_process AND created_at_ts > :since
+    ]])
+
+    if not stmt then
+        error("Err: " .. db:errmsg())
+    end
+
+    stmt:bind_names({ amm_process = ammProcess, since = since })
+
+    local result = dbUtils.queryOne(stmt)
+    return result.volume_usd
+end
+
+function analytics.calculatePnlForUserAndAmm(user, currentTimestamp)
     local pools = analytics.getPoolTokensForUser(user)
 
     for _, pool in ipairs(pools) do
-        local initialTvl = analytics.getInitalTvlForUserAndAmm(pool.amm_process) * pool.user_share
-        local currentTvl = analytics.getCurrentTvl(pool.amm_process) * pool.user_share
-        if not currentTvl then
-            local pnl = currentTvl - initialTvl
-            pool.pnl = pnl
+        pool.initialTvl = analytics.getInitalTvlForUserAndAmm(pool.amm_process) * pool.user_share
+        pool.currentTvl = analytics.getCurrentTvl(pool.amm_process) * pool.user_share
+        pool.totalVolume = analytics.getPoolVolume(pool.amm_process, 0)
+        pool.volume24h = analytics.getPoolVolume(pool.amm_process, currentTimestamp - 24 * 60 * 60)
+        pool.volume24hAgo = analytics.getPoolVolume(pool.amm_process, currentTimestamp - 48 * 60 * 60)
+        pool.userFees = analytics.getPoolFees(pool.amm_process, pool.last_change_ts) * pool.user_share
+        if pool.currentTvl then
+            pool.totalApy = pool.currentTvl / pool.initialTvl
+            pool.pnl = pool.currentTvl - pool.initialTvl
         end
     end
 
@@ -87,7 +127,8 @@ function analytics.getPoolTokensForUser(user)
         select
             amm_process,
             recipient,
-            sum(transfer_quantity) as user_total_tokens
+            sum(transfer_quantity) as user_total_tokens,
+            max(created_at_ts) as last_change_ts
         from reserve_changes
         where recipient = :recipient
         group by amm_process, recipient
@@ -116,7 +157,7 @@ end
 
 function analytics.getPoolPnlHistoryForUser(msg)
     assert(msg.Tags.User, "User is required")
-    local result = analytics.calculatePnlForUserAndAmm(msg.Tags.User)
+    local result = analytics.calculatePnlForUserAndAmm(msg.Tags.User, math.floor(msg.Timestamp))
 
     ao.send({
         ['Response-For'] = 'Get-Pool-Pnl-History',
