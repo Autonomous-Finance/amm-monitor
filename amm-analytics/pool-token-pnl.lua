@@ -198,6 +198,7 @@ end
 
 function analytics.calculatePnlForUserAndAmm(user, currentTimestamp)
     local pools = analytics.getPoolTokensForUser(user)
+    local historicalPnlByDay = {}
 
     for _, pool in ipairs(pools) do
         pool.current_tvl = analytics.getCurrentTvl(pool.amm_process)
@@ -215,9 +216,16 @@ function analytics.calculatePnlForUserAndAmm(user, currentTimestamp)
             pool.last_change_ts - 7 * 24 * 60 * 60,
             currentTimestamp,
             pool.user_share)
+        analytics.groupHistoricalPnlByDay(historicalPnlByDay, pool.historical_pnl)
     end
 
-    return pools
+    local totalHistoricalPnlByDay = analytics.sumHistoricalPnlByDay(historicalPnlByDay)
+
+
+    return {
+        pools = pools,
+        total_historical_pnl_by_day = totalHistoricalPnlByDay
+    }
 end
 
 function analytics.getInitalTvlForUserAndAmm(ammProcess, user)
