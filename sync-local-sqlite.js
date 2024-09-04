@@ -58,10 +58,9 @@ async function dryRunAndUpsertToSQLite(processId, tableName) {
         const placeholders = headers.map(() => '?').join(', ');
         const updateClauses = headers.filter(h => h !== primaryKey).map(header => `${header} = excluded.${header}`).join(', ');
         const upsertSQL = `
-            INSERT INTO ${tableName} (${headers.join(', ')})
+            INSERT OR REPLACE INTO ${tableName} (${headers.join(', ')})
             VALUES (${placeholders})
-            ON CONFLICT DO NOTHING
-            `;
+        `;
 
         /*
           ON CONFLICT(${primaryKey}) DO UPDATE SET
@@ -92,3 +91,4 @@ dryRunAndUpsertToSQLite('snR3flTItDdCtCqHrJBWTV2vg0kj0onq2Wydlu-crhc', 'indicato
 dryRunAndUpsertToSQLite('snR3flTItDdCtCqHrJBWTV2vg0kj0onq2Wydlu-crhc', 'token_registry')
 dryRunAndUpsertToSQLite('snR3flTItDdCtCqHrJBWTV2vg0kj0onq2Wydlu-crhc', 'token_supply_changes')
 dryRunAndUpsertToSQLite('snR3flTItDdCtCqHrJBWTV2vg0kj0onq2Wydlu-crhc', 'top_n_subscriptions')
+dryRunAndUpsertToSQLite('snR3flTItDdCtCqHrJBWTV2vg0kj0onq2Wydlu-crhc', 'reserve_changes')

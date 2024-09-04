@@ -416,3 +416,9 @@ Handlers.add(
   Handlers.utils.hasMatchingTag("Action", "Get-Token-Update-Price"),
   updateToken.handleGetPriceForUpdate
 )
+
+Handlers.add(
+  "Get-Pool-Pnl-History",
+  Handlers.utils.hasMatchingTag("Action", "Get-Pool-Pnl-History"),
+  analytics.getPoolPnlHistoryForUser
+)
