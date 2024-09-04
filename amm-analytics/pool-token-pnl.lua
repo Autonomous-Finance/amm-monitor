@@ -67,6 +67,48 @@ function analytics.getPoolVolume(ammProcess, since)
     return result.volume_usd
 end
 
+function analytics.getHistoricalTvlForPool(ammProcess, since)
+    local stmt = db:prepare([[
+        select
+            amm_process,
+            date(created_at_ts, 'unixepoch') as dt,
+            max(
+                reserves_0 / pow(10, token0_denominator) * token0_usd_price
+                + reserves_1 / pow(10, token1_denominator) * token1_usd_price
+            ) as tvl,
+            sum(volume_usd) * lp_fee_percentage as total_fees,
+            sum(volume_usd) as volume_usd
+        from amm_transactions_view
+        where amm_process = :amm_process and created_at_ts > :since
+        group by amm_process, date(created_at_ts, 'unixepoch')
+    ]])
+    if not stmt then
+        error("Err: " .. db:errmsg())
+    end
+
+    stmt:bind_names({ amm_process = ammProcess, since = since })
+
+    return dbUtils.queryMany(stmt)
+end
+
+function analytics.getHistricalProfitForPools(ammProcesses, since)
+    -- get pools for user with initial tvl
+    -- for each pool get historical tvl with forward fill since last change multiplied by user share
+end
+
+function analytics.forwardFillTvlForPool(ammProcess, since)
+    local poolTvl = analytics.getHistoricalTvlForPool(ammProcess, since)
+    local lastTvl = poolTvl[1].tvl
+
+    for _, tvl in ipairs(poolTvl) do
+        if tvl.tvl == nil then
+            tvl.tvl = lastTvl
+        end
+    end
+
+    return poolTvl
+end
+
 function analytics.getPoolFees(ammProcess, since)
     local stmt = db:prepare([[
         SELECT
@@ -97,9 +139,10 @@ function analytics.calculatePnlForUserAndAmm(user, currentTimestamp)
         pool.volume24hAgo = analytics.getPoolVolume(pool.amm_process, currentTimestamp - 48 * 60 * 60)
         pool.user_fees = analytics.getPoolFees(pool.amm_process, pool.last_change_ts) * pool.user_share
         if pool.current_tvl then
-            pool.totalApy = pool.user_fees / pool.current_tvl
+            pool.total_apy = pool.user_fees / pool.current_tvl
             pool.pnl = pool.current_tvl - pool.initial_tvl
         end
+        pool.historical_pnl = analytics.getHistoricalPnlForPool(pool.amm_process, pool.last_change_ts - 7 * 24 * 60 * 60)
     end
 
     return pools
