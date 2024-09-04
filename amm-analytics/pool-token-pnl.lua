@@ -16,7 +16,7 @@ function analytics.getCurrentTvl(ammProcess)
         FROM amm_transactions_view
         JOIN token_registry t0 ON t0.token_process = amm_token0
         JOIN token_registry t1 ON t1.token_process = amm_token1
-        WHERE amm_process = :amm_process AND t0.denominator IS NOT NULL AND t1.denominator IS NOT NULL
+        WHERE amm_process = :amm_process
         ORDER BY created_at_ts DESC
     ]])
 
@@ -26,7 +26,7 @@ function analytics.getCurrentTvl(ammProcess)
 
     stmt:bind_names({ amm_process = ammProcess })
 
-    local result = dbUtils.queryOne(stmt)
+    result = dbUtils.queryOne(stmt)
 
     if not result then
         return nil
@@ -34,8 +34,8 @@ function analytics.getCurrentTvl(ammProcess)
 
     local reserves_0 = result.reserves_0
     local reserves_1 = result.reserves_1
-    local denominator0 = result.denominator0
-    local denominator1 = result.denominator1
+    local denominator0 = result.demoninator0
+    local denominator1 = result.demoninator1
 
     local value0 = reserves_0 / 10 ^ denominator0
     local value1 = reserves_1 / 10 ^ denominator1
