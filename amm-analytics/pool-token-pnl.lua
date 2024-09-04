@@ -131,9 +131,6 @@ function analytics.getForwardFilledTvlForPool(ammProcess, since, currentTimestam
     poolTvl[1].tvl_user = lastUserTvl
     poolTvl[1].pnl_user = 0
 
-    -- Get the current timestamp
-    local now = os.time()
-
     -- Convert poolTvl to a map indexed by date for easier lookup
     local tvlByDate = {}
     for _, tvl in ipairs(poolTvl) do
@@ -142,7 +139,8 @@ function analytics.getForwardFilledTvlForPool(ammProcess, since, currentTimestam
 
     -- Iterate from since to now, filling in missing days
     local currentDate = os.date("!%Y-%m-%d", since)
-    while currentDate <= os.date("!%Y-%m-%d", now) do
+    local lastPnlUser = 0
+    while currentDate <= os.date("!%Y-%m-%d", currentTimestamp) do
         if not tvlByDate[currentDate] then
             -- Missing day, fill with last known TVL
             local userTvl = lastTvl * userShare
@@ -154,13 +152,15 @@ function analytics.getForwardFilledTvlForPool(ammProcess, since, currentTimestam
                 pnl_user = userTvl - lastUserTvl
             }
             lastUserTvl = userTvl
+            lastPnlUser = userTvl - lastUserTvl
         else
             -- Update last known TVL and calculate user PNL
             local tvl = tvlByDate[currentDate]
             lastTvl = tvl.tvl
             local userTvl = lastTvl * userShare
             tvl.tvl_user = userTvl
-            tvl.pnl_user = userTvl - lastUserTvl
+            lastPnlUser = userTvl - lastUserTvl
+            tvl.pnl_user = lastPnlUser
             lastUserTvl = userTvl
         end
         currentDate = os.date("!%Y-%m-%d",
@@ -274,7 +274,7 @@ end
 
 function analytics.getPoolPnlHistoryForUser(msg)
     assert(msg.Tags.User, "User is required")
-    local result = analytics.calculatePnlForUserAndAmm(msg.Tags.User, math.floor(msg.Timestamp))
+    local result = analytics.calculatePnlForUserAndAmm(msg.Tags.User, math.floor(msg.Timestamp / 1000))
 
     ao.send({
         ['Response-For'] = 'Get-Pool-Pnl-History',
