@@ -31,10 +31,10 @@ function dbUtils.execute(stmt, statmentHint)
   if stmt then
     stmt:step()
     if stmt:finalize() ~= sqlite3.OK then
-      error("Failed to finalize SQL statement" .. statmentHint .. ": " .. db:errmsg())
+      error("Failed to finalize SQL statement" .. (statmentHint or "") .. ": " .. db:errmsg())
     end
   else
-    error("Failed to prepare SQL statement" .. statmentHint .. ": " .. db:errmsg())
+    error("Failed to prepare SQL statement" .. (statmentHint or "") .. ": " .. db:errmsg())
   end
 end
 
