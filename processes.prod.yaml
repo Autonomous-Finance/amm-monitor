@@ -18,3 +18,13 @@
       value: 30-seconds
     - name: Cron-Tag-Action
       value: Cron-Tick
+
+- name: Dexi-aos-v2
+  file: build/output.lua
+  scheduler: _GQ33BkPtZrqxA84vM8Zk-N2aO0toNNu_C-l-rawrBA
+  module: G991Xp6Kh28k8_AZcnwaqJ6LZcHlsZcMkrH1mJoAy84
+  tags:
+    - name: Process-Type
+      value: Dexi-Aggregator
+    - name: Operator
+      value: MyFANA8GUtIaD1jrhvW4_IxMCa69XwGP5kHlMCBzVfk
