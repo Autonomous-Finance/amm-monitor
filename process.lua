@@ -406,8 +406,8 @@ Handlers.add(
 )
 
 -- HACK TODO REMOVE
-if ao.env.Module.Id == 'G991Xp6Kh28k8_AZcnwaqJ6LZcHlsZcMkrH1mJoAy84'
-  db:create_function('POWER', 2, function(ctx,a,b)
-    ctx:result_number(a^b)
+if ao.env.Module.Id == 'G991Xp6Kh28k8_AZcnwaqJ6LZcHlsZcMkrH1mJoAy84' then
+  db:create_function('POWER', 2, function(ctx, a, b)
+    ctx:result_number(a ^ b)
   end)
 end
