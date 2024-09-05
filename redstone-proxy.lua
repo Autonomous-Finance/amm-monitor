@@ -1,7 +1,7 @@
 local json = require("json")
 
 DEXI_PROCESS = 'snR3flTItDdCtCqHrJBWTV2vg0kj0onq2Wydlu-crhc'
-DEXI_PROCESS_V2 = 'Ht56YLTNQfnzYbaKroWddAtKcLB4UFI66zi-c6S4odw'
+DEXI_PROCESS_V2 = 'UPnzIDH1HnxPOPgUvVyccPAwUwCcB1JjEOTR89LYTzM'
 
 Handlers.add("Cron-Tick", Handlers.utils.hasMatchingTag("Action", "Cron-Tick"), function(message)
     ao.send({
