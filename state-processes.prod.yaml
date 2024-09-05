@@ -1,6 +1,9 @@
 dexi-aggregator:
   processId: snR3flTItDdCtCqHrJBWTV2vg0kj0onq2Wydlu-crhc
-  hash: 22f16601fb4e33ea92c99eef190ce15c309af24705a89565b47ac9907b1df9fc
+  hash: acd09e46f572ad78aacb5763d6ed6327f894bd5625c922e895df495262038009
 redstone-proxy:
   processId: VVAPEwVyTtzRddlrY88M0mcLmi_UDGqmLo8jlgpipZA
   hash: 91b198f599e423ddb5483df1f4ff933ff588cd1fa579679064fad193c98216e9
+Dexi-aos-v2:
+  processId: Ht56YLTNQfnzYbaKroWddAtKcLB4UFI66zi-c6S4odw
+  hash: acd09e46f572ad78aacb5763d6ed6327f894bd5625c922e895df495262038009
