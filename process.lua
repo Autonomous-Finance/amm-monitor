@@ -30,6 +30,7 @@ ao = ao or {}
 Ownable = require "ownable.ownable"
 
 QUOTE_TOKEN = QUOTE_TOKEN or {
+  Name = nil,
   ProcessId = nil,
   Ticker = nil,
   Denominator = nil,
