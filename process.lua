@@ -404,10 +404,3 @@ Handlers.add(
   Handlers.utils.hasMatchingTag("Action", "Get-Pool-Pnl-History"),
   analytics.getPoolPnlHistoryForUser
 )
-
--- HACK TODO REMOVE NEED NATIVE POWER FUNCTION
-if ao.env.Module.Id == 'G991Xp6Kh28k8_AZcnwaqJ6LZcHlsZcMkrH1mJoAy84' then
-  db:create_function('POWER', 2, function(ctx, a, b)
-    ctx:result_double(math.pow(a, b))
-  end)
-end
