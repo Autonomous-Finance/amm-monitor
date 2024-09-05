@@ -4,6 +4,7 @@ local hopper = require("hopper.hopper")
 
 local analytics = {}
 
+-- replace with amm_swap_params instead of transactions_view
 function analytics.getCurrentTvl(ammProcess)
     local stmt = db:prepare([[
         SELECT

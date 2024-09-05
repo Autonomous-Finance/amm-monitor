@@ -40,11 +40,11 @@ function ingestSql.recordLiquidityChange(entry)
     INSERT INTO reserve_changes (
       id, reserves_token_a, reserves_token_b, delta_token_a, delta_token_b,
       action, delta_pool_tokens, total_pool_tokens, token_a, token_b,
-      original_message_id, transfer_quantity, recipient, sender, created_at_ts, amm_process, tvl_in_usd, token_a_price, token_b_price
+      original_message_id, transfer_quantity, recipient, sender, created_at_ts, created_at_ts_ms, amm_process, tvl_in_usd, token_a_price, token_b_price
     ) VALUES (
       :id, :reserves_token_a, :reserves_token_b, :delta_token_a, :delta_token_b,
       :action, :delta_pool_tokens, :total_pool_tokens, :token_a, :token_b,
-      :original_message_id, :transfer_quantity, :recipient, :sender, :created_at_ts, :amm_process, :tvl_in_usd, :token_a_price, :token_b_price
+      :original_message_id, :transfer_quantity, :recipient, :sender, :created_at_ts, :created_at_ts_ms, :amm_process, :tvl_in_usd, :token_a_price, :token_b_price
     );
   ]]
 
@@ -59,9 +59,9 @@ end
 function ingestSql.recordSwap(entry)
   local stmt = db:prepare [[
     INSERT OR REPLACE INTO amm_transactions (
-      id, source, block_height, block_id, sender, created_at_ts,
+      id, source, block_height, block_id, sender, created_at_ts, created_at_ts_ms,
       to_token, from_token, from_quantity, to_quantity, fee_percentage, amm_process, from_token_usd_price, to_token_usd_price, reserves_token_a, reserves_token_b
-    ) VALUES (:id, :source, :block_height, :block_id, :sender, :created_at_ts,
+    ) VALUES (:id, :source, :block_height, :block_id, :sender, :created_at_ts, :created_at_ts_ms,
               :to_token, :from_token, :from_quantity, :to_quantity, :fee_percentage, :amm_process, :from_token_usd_price, :to_token_usd_price, :reserves_token_a, :reserves_token_b);
   ]]
 
@@ -80,10 +80,10 @@ function ingestSql.recordChangeInSwapParams(entry)
 
   local stmt = db:prepare [[
     INSERT OR REPLACE INTO amm_swap_params_changes (
-      id, source, block_height, block_id, sender, created_at_ts,
-      cause, reserves_0, reserves_1, amm_process, created_at_ts
-    ) VALUES (:id, :source, :block_height, :block_id, :sender, :created_at_ts,
-              :cause, :reserves_0, :reserves_1,  :amm_process, :created_at_ts);
+      id, source, block_height, block_id, sender, created_at_ts, created_at_ts_ms,
+      cause, reserves_0, reserves_1, amm_process
+    ) VALUES (:id, :source, :block_height, :block_id, :sender, :created_at_ts, :created_at_ts_ms,
+              :cause, :reserves_0, :reserves_1, :amm_process);
   ]]
 
   if not stmt then
@@ -133,6 +133,7 @@ local function recordChangeInSwapParams(msg, payload, source, sourceAmm, cause)
     block_id = msg['Block-Id'] or '',
     sender = msg.recipient or '',
     created_at_ts = math.floor(msg.Timestamp / 1000),
+    created_at_ts_ms = msg.Timestamp,
     cause = cause,
     reserves_0 = reserves_0,
     reserves_1 = reserves_1,
@@ -188,6 +189,7 @@ local function recordLiquidityChange(msg)
     recipient = changeData["Recipient"],
     sender = changeData["Sender"],
     created_at_ts = math.floor(msg.Timestamp / 1000),
+    created_at_ts_ms = msg.Timestamp,
     tvl_in_usd = tvlInUsd,
     token_a_price = tokenAPrice,
     token_b_price = tokenBPrice,
@@ -219,7 +221,8 @@ local function recordSwap(msg, swapData, source, sourceAmm)
     block_height = msg['Block-Height'],
     block_id = msg['Block-Id'] or '',
     sender = msg.recipient or '',
-    created_at_ts = msg.Timestamp / 1000,
+    created_at_ts = math.floor(msg.Timestamp / 1000),
+    created_at_ts_ms = msg.Timestamp,
     to_token = swapData['To-Token'],
     from_token = swapData['From-Token'],
     from_quantity = tonumber(swapData['From-Quantity']),

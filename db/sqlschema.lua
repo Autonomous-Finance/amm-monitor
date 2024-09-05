@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS amm_transactions (
     block_id TEXT,
     sender TEXT NOT NULL,
     created_at_ts INTEGER,
+    created_at_ts_ms INTEGER,
     to_token TEXT NOT NULL,
     from_token TEXT NOT NULL,
     from_quantity TEXT NOT NULL,
@@ -21,7 +22,11 @@ CREATE TABLE IF NOT EXISTS amm_transactions (
     reserves_token_b TEXT,
     amm_process TEXT NOT NULL,
     from_token_usd_price NUMERIC,
-    to_token_usd_price NUMERIC
+    to_token_usd_price NUMERIC,
+    token_a_price NUMERIC,
+    token_b_price NUMERIC,
+    market_cap_usd NUMERIC,
+    tvl_usd NUMERIC
 );
 ]]
 
@@ -39,6 +44,7 @@ CREATE TABLE IF NOT EXISTS amm_swap_params_changes (
     block_id TEXT,
     sender TEXT NOT NULL,
     created_at_ts INTEGER,
+    created_at_ts_ms INTEGER,
     cause TEXT NOT NULL CHECK (cause IN ('swap', 'swap-params-change', 'liquidity-add-remove')),
     reserves_0 TEXT NOT NULL,
     reserves_1 TEXT NOT NULL,
@@ -52,6 +58,7 @@ CREATE TABLE IF NOT EXISTS token_supply_changes (
     block_height INTEGER NOT NULL,
     block_id TEXT,
     supply_changed_at_ts INTEGER,
+    supply_changed_at_ts_ms INTEGER,
     token TEXT NOT NULL,
     total_supply TEXT NOT NULL
 );
@@ -103,6 +110,7 @@ CREATE TABLE IF NOT EXISTS token_registry (
     total_supply INT NOT NULL,
     fixed_supply BOOL NOT NULL,
     token_updated_at_ts INTEGER,
+    token_updated_at_ts_ms INTEGER,
     token_discovered_at_ts INTEGER
 );
 ]]
@@ -130,6 +138,7 @@ CREATE TABLE IF NOT EXISTS oracle_prices (
     ticker VARCHAR NOT NULL,
     price NUMERIC NOT NULL,
     last_update TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    last_update_ts INTEGER NOT NULL,
     PRIMARY KEY (process_id)
 );
 ]]
@@ -151,6 +160,7 @@ CREATE TABLE IF NOT EXISTS swap_subscriptions (
     process_id TEXT NOT NULL,
     amm_process_id TEXT NOT NULL,
     subscribed_at_ts INTEGER NOT NULL,
+    expires_at_ts INTEGER,
     PRIMARY KEY (process_id, amm_process_id)
 );
 ]]
@@ -161,6 +171,7 @@ CREATE TABLE IF NOT EXISTS reserve_change_subscriptions (
     process_id TEXT NOT NULL,
     amm_process_id TEXT NOT NULL,
     subscribed_at_ts INTEGER NOT NULL,
+    expires_at_ts INTEGER,
     PRIMARY KEY (process_id, amm_process_id)
 );
 ]]
@@ -276,7 +287,8 @@ CREATE TABLE IF NOT EXISTS reserve_changes (
     tvl_in_usd NUMERIC NOT NULL,
     token_a_price NUMERIC NOT NULL,
     token_b_price NUMERIC NOT NULL,
-    created_at_ts INTEGER
+    created_at_ts INTEGER,
+    created_at_ts_ms INTEGER
 );]]
 
 return sqlschema
