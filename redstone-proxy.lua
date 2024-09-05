@@ -1,6 +1,7 @@
 local json = require("json")
 
 DEXI_PROCESS = 'snR3flTItDdCtCqHrJBWTV2vg0kj0onq2Wydlu-crhc'
+DEXI_PROCESS_V2 = 'YkJnVCo3kGQ55GtpFQbZTI_NmRh5HGCqnF8XxPxwkDE'
 
 Handlers.add("Cron-Tick", Handlers.utils.hasMatchingTag("Action", "Cron-Tick"), function(message)
     ao.send({
@@ -15,6 +16,11 @@ Handlers.add("Receive-RedStone-Prices", Handlers.utils.hasMatchingTag("Action", 
     function(message)
         ao.send({
             Target = DEXI_PROCESS,
+            Action = "Receive-RedStone-Prices",
+            Data = message.Data
+        })
+        ao.send({
+            Target = DEXI_PROCESS_V2,
             Action = "Receive-RedStone-Prices",
             Data = message.Data
         })
