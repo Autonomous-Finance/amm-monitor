@@ -50,22 +50,55 @@ function analytics.getCurrentTvl(ammProcess)
     return value0 + value1
 end
 
-function analytics.getPoolVolume(ammProcess, since)
+function analytics.getPoolVolume(ammProcess, since, till)
+    if not till then
+        till = 99999999999
+    end
+
     local stmt = db:prepare([[
         SELECT
             SUM(volume_usd) as volume_usd
         FROM amm_transactions_view
-        WHERE amm_process = :amm_process AND created_at_ts > :since
+        WHERE amm_process = :amm_process AND created_at_ts > :since AND created_at_ts < :till
     ]])
 
     if not stmt then
         error("Err: " .. db:errmsg())
     end
 
-    stmt:bind_names({ amm_process = ammProcess, since = since })
+    stmt:bind_names({ amm_process = ammProcess, since = since, till = till })
 
     local result = dbUtils.queryOne(stmt)
     return result.volume_usd
+end
+
+function analytics.getTvlAtDate(ammProcess, date)
+    local stmt = [[
+        with reserves as (
+            select
+                reserves_0,
+                reserves_1,
+                token0_denominator,
+                token1_denominator,
+                token0_usd_price,
+                token1_usd_price
+            from amm_transactions_view
+            where amm_process = :amm_process and created_at_ts < :date
+            order by created_at_ts desc
+            limit 1
+        )
+        select
+            amm_process,
+            date(created_at_ts, 'unixepoch') as dt,
+            max(
+                reserves_0 / pow(10, token0_denominator) * token0_usd_price
+                + reserves_1 / pow(10, token1_denominator) * token1_usd_price
+            ) as tvl
+        from reserves
+        order by created_at_ts
+    ]]
+
+    return dbUtils.queryManyWithParams(stmt, { amm_process = ammProcess, date = date })
 end
 
 function analytics.getHistoricalTvlForPool(ammProcess, since, currentTime)
@@ -82,6 +115,7 @@ function analytics.getHistoricalTvlForPool(ammProcess, since, currentTime)
         from amm_transactions_view
         where amm_process = :amm_process and created_at_ts > :since
         group by amm_process, date(created_at_ts, 'unixepoch')
+        order by created_at_ts
     ]])
     if not stmt then
         error("Err: " .. db:errmsg())
@@ -101,21 +135,18 @@ function analytics.getHistoricalTvlForPool(ammProcess, since, currentTime)
         if result[i].dt == currentDate then
             -- Replace the last entry for the current date with the current TVL
             result[i].tvl = currentTvl
-            currentDateExists = true
             break
         end
     end
 
-    -- If the current date doesn't exist, add a new entry
-    if not currentDateExists then
-        table.insert(result, {
-            amm_process = ammProcess,
-            dt = currentDate,
-            tvl = currentTvl,
-            total_fees = 0,
-            volume_usd = 0
-        })
-    end
+    -- always add latest
+    table.insert(result, {
+        amm_process = ammProcess,
+        dt = currentDate,
+        tvl = currentTvl,
+        total_fees = 0,
+        volume_usd = 0
+    })
 
     return result
 end
@@ -227,17 +258,27 @@ function analytics.calculatePnlForUserAndAmm(user, currentTimestamp)
         pool.current_user_tvl = pool.current_tvl * pool.user_share
         pool.total_volume = analytics.getPoolVolume(pool.amm_process, 0)
         pool.volume24h = analytics.getPoolVolume(pool.amm_process, currentTimestamp - 24 * 60 * 60)
-        pool.volume24hAgo = analytics.getPoolVolume(pool.amm_process, currentTimestamp - 48 * 60 * 60)
+        pool.volume24hAgo = analytics.getPoolVolume(pool.amm_process, currentTimestamp - 48 * 60 * 60,
+            currentTimestamp - 24 * 60 * 60)
         pool.user_fees = analytics.getPoolFees(pool.amm_process, pool.last_change_ts) * pool.user_share
         if pool.current_tvl then
-            pool.total_apy = pool.user_fees / pool.current_tvl
+            pool.total_apy = pool.current_user_tvl / pool.initial_user_tvl
             pool.pnl = pool.current_user_tvl - pool.initial_user_tvl
         end
         pool.historical_pnl = analytics.getForwardFilledTvlForPool(pool.amm_process,
             pool.last_change_ts - 7 * 24 * 60 * 60,
             currentTimestamp,
             pool.user_share)
-        analytics.groupHistoricalPnlByDay(historicalPnlByDay, pool.historical_pnl)
+
+        local thirty_days_ago = currentTimestamp - 30 * 24 * 60 * 60
+        if pool.last_change_ts < thirty_days_ago then
+            -- todo pick this from transactions_view
+            pool.tvl_user_30d_ago = analytics.getTvlAtDate(pool.amm_process, thirty_days_ago).tvl * pool.user_share
+        else
+            pool.tvl_user_30d_ago = pool.initial_user_tvl
+        end
+        pool.pnl_30d_ago = pool.current_user_tvl - pool.tvl_user_30d_ago
+        pool.pnl_30d_percentage = pool.pnl_30d_ago / pool.tvl_user_30d_ago
     end
 
     local totalHistoricalPnlByDay = analytics.sumHistoricalPnlByDay(historicalPnlByDay)
@@ -267,28 +308,34 @@ function analytics.getInitalTvlForUserAndAmm(ammProcess, user)
     return result.tvl_in_usd
 end
 
+function analytics.getLastPoolTokenAmount(ammProcess)
+    local stmt = [[
+        select
+            total_pool_tokens
+        from reserve_changes
+        where amm_process = :amm_process
+        order by created_at_ts desc
+        limit 1
+    ]]
+
+    local result = dbUtils.queryOneWithParams(stmt, { amm_process = ammProcess })
+    if result then
+        return result.total_pool_tokens
+    else
+        return nil
+    end
+end
+
 function analytics.getPoolTokensForUser(user)
     local stmt = db:prepare([[
-    with pool_token_balances as (
-        select
-            amm_process,
-            recipient,
-            sum(transfer_quantity) as user_total_tokens,
-            max(created_at_ts) as last_change_ts
-        from reserve_changes
-        where recipient = :recipient
-        group by amm_process, recipient
-    ), latest_pool_token_balances as (
         SELECT
             amm_process,
-            SUM(CAST(delta_pool_tokens AS NUMERIC)) AS total_pool_tokens
+            recipient,
+            SUM(transfer_quantity) AS user_total_tokens,
+            MAX(created_at_ts) AS last_change_ts
         FROM reserve_changes
-        where recipient = :recipient
-        GROUP BY amm_process
-    )
-    select *, user_total_tokens / CAST(total_pool_tokens AS NUMERIC) as user_share
-    from pool_token_balances
-        left join latest_pool_token_balances using (amm_process)
+        WHERE recipient = :recipient
+        GROUP BY amm_process, recipient
     ]])
 
     if not stmt then
@@ -297,8 +344,22 @@ function analytics.getPoolTokensForUser(user)
 
     stmt:bind_names({ recipient = user })
 
+    local result = dbUtils.queryMany(stmt)
 
-    return dbUtils.queryMany(stmt)
+    -- Add total_pool_tokens and user_share to each pool
+    for i, pool in ipairs(result) do
+        local total_pool_tokens = analytics.getLastPoolTokenAmount(pool.amm_process)
+        if total_pool_tokens then
+            pool.total_pool_tokens = total_pool_tokens
+            pool.user_share = pool.user_total_tokens / total_pool_tokens
+        else
+            -- Handle case when total_pool_tokens is nil
+            pool.total_pool_tokens = nil
+            pool.user_share = nil
+        end
+    end
+
+    return result
 end
 
 function analytics.getPoolPnlHistoryForUser(msg)
