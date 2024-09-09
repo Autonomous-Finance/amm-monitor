@@ -187,23 +187,17 @@ function analytics.getPoolFees(ammProcess, since)
 end
 
 function analytics.groupHistoricalPnlByDay(historicalPnlByDay, historicalPnl)
+    -- Group the data by date and sum the pnl_user values
     for _, entry in ipairs(historicalPnl) do
         local date = entry.dt
+        local pnl = entry.pnl_user
+
         if historicalPnlByDay[date] then
-            historicalPnlByDay[date] = historicalPnlByDay[date] + entry.pnl_user
+            historicalPnlByDay[date] = historicalPnlByDay[date] + pnl
         else
-            historicalPnlByDay[date] = entry.pnl_user
+            historicalPnlByDay[date] = pnl
         end
     end
-end
-
-function analytics.sumHistoricalPnlByDay(historicalPnlByDay)
-    local result = {}
-    for date, pnl in pairs(historicalPnlByDay) do
-        table.insert(result, { date = date, pnl = pnl })
-    end
-    table.sort(result, function(a, b) return a.date < b.date end)
-    return result
 end
 
 function analytics.calculatePnlForUserAndAmm(user)
@@ -237,14 +231,14 @@ function analytics.calculatePnlForUserAndAmm(user)
         end
         pool.pnl_30d_ago = pool.current_user_tvl - pool.tvl_user_30d_ago
         pool.pnl_30d_percentage = pool.pnl_30d_ago / pool.tvl_user_30d_ago
+        analytics.groupHistoricalPnlByDay(historicalPnlByDay, pool.historical_pnl)
     end
 
-    local totalHistoricalPnlByDay = analytics.sumHistoricalPnlByDay(historicalPnlByDay)
 
 
     return {
         pools = pools,
-        total_historical_pnl_by_day = totalHistoricalPnlByDay
+        total_historical_pnl_by_day = historicalPnlByDay
     }
 end
 
