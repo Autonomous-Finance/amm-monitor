@@ -192,9 +192,9 @@ function analytics.getForwardFilledTvlForPool(ammProcess, since, userShare)
             local tvl = tvlByDate[currentDate]
             lastTvl = tvl.tvl
             local userTvl = lastTvl * userShare
-            tvl.tvl_user = userTvl
+            tvlByDate[currentDate].tvl_user = userTvl
             lastPnlUser = userTvl - lastUserTvl
-            tvl.pnl_user = lastPnlUser
+            tvlByDate[currentDate].pnl_user = lastPnlUser
             lastUserTvl = userTvl
         end
         currentDate = os.date("!%Y-%m-%d",
