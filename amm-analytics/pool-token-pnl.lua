@@ -163,6 +163,7 @@ function analytics.getForwardFilledTvlForPool(ammProcess, since, userShare)
         local pnlUser = userTvl - lastUserTvl
         tvl.pnl_user = pnlUser
         lastUserTvl = userTvl
+        tvl.pnl_percent = pnlUser / lastUserTvl
     end
 
     return poolTvl
