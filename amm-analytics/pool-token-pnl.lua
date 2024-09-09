@@ -130,8 +130,6 @@ function analytics.getHistoricalTvlForPool(ammProcess, since)
     local currentTvl = analytics.getCurrentTvl(ammProcess)
     local currentDate = os.date("!%Y-%m-%d", currentTime)
 
-    -- Check if the current date already exists in the result
-    local currentDateExists = false
     for i = #result, 1, -1 do
         if result[i].dt == currentDate then
             -- Replace the last entry for the current date with the current TVL
@@ -152,64 +150,22 @@ function analytics.getHistoricalTvlForPool(ammProcess, since)
     return result
 end
 
-function analytics.getHistricalProfitForPools(ammProcesses, since)
-    -- get pools for user with initial tvl
-    -- for each pool get historical tvl with forward fill since last change multiplied by user share
-end
-
 function analytics.getForwardFilledTvlForPool(ammProcess, since, userShare)
-    local currentTimestamp = math.floor(os.time() / 1000)
     local poolTvl = analytics.getHistoricalTvlForPool(ammProcess, since)
-    local lastTvl = poolTvl[1].tvl
-    local lastUserTvl = lastTvl * userShare
+    local lastUserTvl = poolTvl[1].tvl * userShare
     poolTvl[1].tvl_user = lastUserTvl
     poolTvl[1].pnl_user = 0
 
-    -- Convert poolTvl to a map indexed by date for easier lookup
-    local tvlByDate = {}
-    for _, tvl in ipairs(poolTvl) do
-        tvlByDate[tvl.dt] = tvl
+    for i = 2, #poolTvl do
+        local tvl = poolTvl[i]
+        local userTvl = tvl.tvl * userShare
+        tvl.tvl_user = userTvl
+        local pnlUser = userTvl - lastUserTvl
+        tvl.pnl_user = pnlUser
+        lastUserTvl = userTvl
     end
 
-    -- Iterate from since to now, filling in missing days
-    local currentDate = os.date("!%Y-%m-%d", since)
-    local lastPnlUser = 0
-    while currentDate <= os.date("!%Y-%m-%d", currentTimestamp) do
-        if not tvlByDate[currentDate] then
-            -- Missing day, fill with last known TVL
-            local userTvl = lastTvl * userShare
-            tvlByDate[currentDate] = {
-                amm_process = ammProcess,
-                dt = currentDate,
-                tvl = lastTvl,
-                tvl_user = userTvl,
-                pnl_user = userTvl - lastUserTvl
-            }
-            lastUserTvl = userTvl
-            lastPnlUser = userTvl - lastUserTvl
-        else
-            -- Update last known TVL and calculate user PNL
-            local tvl = tvlByDate[currentDate]
-            lastTvl = tvl.tvl
-            local userTvl = lastTvl * userShare
-            tvlByDate[currentDate].tvl_user = userTvl
-            lastPnlUser = userTvl - lastUserTvl
-            tvlByDate[currentDate].pnl_user = lastPnlUser
-            lastUserTvl = userTvl
-        end
-        currentDate = os.date("!%Y-%m-%d",
-            os.time { year = currentDate:sub(1, 4), month = currentDate:sub(6, 7), day = currentDate:sub(9, 10) } +
-            24 * 60 * 60)
-    end
-
-    -- Convert map back to array
-    local result = {}
-    for _, tvl in pairs(tvlByDate) do
-        table.insert(result, tvl)
-    end
-    table.sort(result, function(a, b) return a.dt < b.dt end)
-
-    return result
+    return poolTvl
 end
 
 function analytics.getPoolFees(ammProcess, since)
