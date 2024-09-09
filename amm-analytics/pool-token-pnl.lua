@@ -101,7 +101,8 @@ function analytics.getTvlAtDate(ammProcess, date)
     return dbUtils.queryManyWithParams(stmt, { amm_process = ammProcess, date = date })
 end
 
-function analytics.getHistoricalTvlForPool(ammProcess, since, currentTime)
+function analytics.getHistoricalTvlForPool(ammProcess, since)
+    local currentTime = math.floor(os.time() / 1000)
     local stmt = db:prepare([[
         select
             amm_process,
@@ -156,8 +157,9 @@ function analytics.getHistricalProfitForPools(ammProcesses, since)
     -- for each pool get historical tvl with forward fill since last change multiplied by user share
 end
 
-function analytics.getForwardFilledTvlForPool(ammProcess, since, currentTimestamp, userShare)
-    local poolTvl = analytics.getHistoricalTvlForPool(ammProcess, since, currentTimestamp)
+function analytics.getForwardFilledTvlForPool(ammProcess, since, userShare)
+    local currentTimestamp = math.floor(os.time() / 1000)
+    local poolTvl = analytics.getHistoricalTvlForPool(ammProcess, since)
     local lastTvl = poolTvl[1].tvl
     local lastUserTvl = lastTvl * userShare
     poolTvl[1].tvl_user = lastUserTvl
@@ -248,7 +250,8 @@ function analytics.sumHistoricalPnlByDay(historicalPnlByDay)
     return result
 end
 
-function analytics.calculatePnlForUserAndAmm(user, currentTimestamp)
+function analytics.calculatePnlForUserAndAmm(user)
+    local currentTimestamp = math.floor(os.time() / 1000)
     local pools = analytics.getPoolTokensForUser(user)
     local historicalPnlByDay = {}
 
@@ -267,7 +270,6 @@ function analytics.calculatePnlForUserAndAmm(user, currentTimestamp)
         end
         pool.historical_pnl = analytics.getForwardFilledTvlForPool(pool.amm_process,
             pool.last_change_ts - 7 * 24 * 60 * 60,
-            currentTimestamp,
             pool.user_share)
 
         local thirty_days_ago = currentTimestamp - 30 * 24 * 60 * 60
@@ -364,7 +366,7 @@ end
 
 function analytics.getPoolPnlHistoryForUser(msg)
     assert(msg.Tags.User, "User is required")
-    local result = analytics.calculatePnlForUserAndAmm(msg.Tags.User, math.floor(msg.Timestamp / 1000))
+    local result = analytics.calculatePnlForUserAndAmm(msg.Tags.User)
 
     ao.send({
         ['Response-For'] = 'Get-Pool-Pnl-History',
