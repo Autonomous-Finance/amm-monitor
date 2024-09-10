@@ -1,6 +1,7 @@
 local dbUtils = require('db.utils')
 local analytics = {}
 local json = require('json')
+local lookups = require('dexi-core.lookups')
 
 local pairFinderQuery = [[
     SELECT
@@ -11,18 +12,49 @@ local pairFinderQuery = [[
         t0.token_process AS t0_process,
         t1.token_process AS t1_process,
         asp.amm_process AS amm_process,
-        (reserves_0 / pow(10, token0_denominator) * token0_usd_price
-                + reserves_1 / pow(10, token1_denominator) * token1_usd_price) tvl_in_usd
+        reserves_0,
+        reserves_1,
+        token0_denominator,
+        token1_denominator
     FROM amm_swap_params asp
     LEFT JOIN amm_registry ar USING (amm_process)
     LEFT JOIN token_registry t0 ON t0.token_process = ar.amm_token0
     LEFT JOIN token_registry t1 ON t1.token_process = ar.amm_token1
     WHERE t0.token_process = :token OR t1.token_process = :token
-    ORDER BY tvl_in_usd DESC
 ]]
 
 function analytics.findBestPairs(tokenProcess)
-    return dbUtils.queryManyWithParams(pairFinderQuery, { token = tokenProcess })
+    local result = dbUtils.queryManyWithParams(pairFinderQuery, { token = tokenProcess })
+
+    for _, pair in ipairs(result) do
+        local token0Price = lookups.getPriceFromLastTransaction(pair.t0_process)
+        local token1Price = lookups.getPriceFromLastTransaction(pair.t1_process)
+
+        if token0Price and token1Price then
+            local reserves0 = pair.reserves_0 / (10 ^ pair.token0_denominator)
+            local reserves1 = pair.reserves_1 / (10 ^ pair.token1_denominator)
+
+            pair.tvl_in_usd = reserves0 * token0Price.price + reserves1 * token1Price.price
+        else
+            pair.tvl_in_usd = nil
+        end
+    end
+
+    -- Sort the result table by tvl_in_usd in descending order
+    table.sort(result, function(a, b)
+        -- Handle cases where tvl_in_usd might be nil
+        if a.tvl_in_usd == nil and b.tvl_in_usd == nil then
+            return false -- Consider them equal
+        elseif a.tvl_in_usd == nil then
+            return false -- nil values go to the end
+        elseif b.tvl_in_usd == nil then
+            return true  -- nil values go to the end
+        else
+            return a.tvl_in_usd > b.tvl_in_usd
+        end
+    end)
+
+    return result
 end
 
 function analytics.findBestPairsForToken(msg)
