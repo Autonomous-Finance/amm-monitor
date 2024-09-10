@@ -194,16 +194,9 @@ SELECT
   cast(protocol_fee_percentage as NUMERIC) as protocol_fee_percentage,
   amm_process,
   CASE WHEN to_token = amm_token1 THEN 1 ELSE 0 END AS is_buy,
-  ROUND(CASE
-    WHEN from_quantity > 0 AND to_quantity > 0 THEN
-      CASE
-        WHEN to_token = amm_token1 THEN
-          (reserves_token_b * 1.0 / reserves_token_a) * POWER(10, ABS(t0.denominator - tq.denominator))
-        ELSE
-          (reserves_token_b * 1.0 / reserves_token_a) * POWER(10, ABS(t0.denominator - tq.denominator))
-      END
-    ELSE NULL
-  END, 12) AS price,
+  ROUND(
+    (reserves_token_b * 1.0 / reserves_token_a) * POWER(10, ABS(t0.denominator - tq.denominator))
+  , 12) AS price,
   ROUND(CASE
     WHEN from_quantity > 0 AND to_quantity > 0 THEN
       CASE
