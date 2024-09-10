@@ -3,8 +3,7 @@ local dbUtils = require('db.utils')
 local stats = {}
 
 function stats.getAggregateStats(minTimestamp, ammProcessId)
-  print(1)
-  local stmt, err = db:prepare [[
+  local stmt = [[
     SELECT
       SUM(volume) AS total_volume,
       ROUND(SUM(CASE WHEN is_buy = 1 THEN volume ELSE 0 END)) AS buy_volume,
@@ -19,18 +18,11 @@ function stats.getAggregateStats(minTimestamp, ammProcessId)
     AND amm_process = :amm;
   ]]
 
-  if not stmt then
-    error("Failed to prepare SQL statement: " .. db:errmsg())
-  end
 
-  print(stmt, err)
-  stmt:bind_names({
+  return dbUtils.queryOneWithParams(stmt, {
     min_ts = minTimestamp,
     amm = ammProcessId
   })
-
-
-  return dbUtils.queryOne(stmt)
 end
 
 return stats
