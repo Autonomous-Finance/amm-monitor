@@ -16,6 +16,8 @@ local configOps = require("ops.config-ops")
 local initialize = require("ops.initialize")
 local analytics = require("amm-analytics.main")
 local hopper = require("hopper.hopper")
+local lookups = require("dexi-core.lookups")
+local json = require("json")
 
 db = db or sqlite3.open_memory()
 
@@ -403,4 +405,24 @@ Handlers.add(
   "Get-Pool-Pnl-History",
   Handlers.utils.hasMatchingTag("Action", "Get-Pool-Pnl-History"),
   analytics.getPoolPnlHistoryForUser
+)
+
+
+-- LOOKUPS
+
+Handlers.add(
+  "Get-Price-For-Tokens",
+  Handlers.utils.hasMatchingTag("Action", "Get-Price-For-Tokens"),
+  function(msg)
+    local tokens = json.decode(msg.Tags["Tokens"])
+    local prices = {}
+    for _, token in ipairs(tokens) do
+      prices[token] = lookups.getPriceFromLastTransaction(token)
+    end
+    ao.send({
+      Target = msg.From,
+      ResponseFor = msg.Action,
+      Prices = prices
+    })
+  end
 )
