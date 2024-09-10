@@ -407,6 +407,12 @@ Handlers.add(
   analytics.getPoolPnlHistoryForUser
 )
 
+Handlers.add(
+  "Find-Best-Pairs-For-Token",
+  Handlers.utils.hasMatchingTag("Action", "Find-Best-Pairs-For-Token"),
+  analytics.findBestPairsForToken
+)
+
 
 -- LOOKUPS
 
