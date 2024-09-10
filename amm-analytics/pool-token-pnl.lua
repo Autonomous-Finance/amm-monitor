@@ -310,8 +310,8 @@ function analytics.getPoolTokensForUser(user)
             pool.user_share = pool.user_total_tokens / total_pool_tokens
         else
             -- Handle case when total_pool_tokens is nil
-            pool.total_pool_tokens = nil
-            pool.user_share = nil
+            pool.total_pool_tokens = 0
+            pool.user_share = 0
         end
     end
 
