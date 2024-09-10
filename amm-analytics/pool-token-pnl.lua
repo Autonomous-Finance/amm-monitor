@@ -208,7 +208,7 @@ function analytics.calculatePnlForUserAndAmm(user)
     local historicalPnlByDay = {}
 
     for _, pool in ipairs(pools) do
-        pool.current_tvl = analytics.getCurrentTvl(pool.amm_process)
+        pool.current_tvl = analytics.getCurrentTvl(pool.amm_process) or 0
         pool.initial_user_tvl = analytics.getInitalTvlForUserAndAmm(pool.amm_process, user) * pool.user_share
         pool.current_user_tvl = pool.current_tvl * pool.user_share
         pool.total_volume = analytics.getPoolVolume(pool.amm_process, 0)
