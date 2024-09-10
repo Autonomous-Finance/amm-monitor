@@ -70,6 +70,9 @@ function analytics.getPoolVolume(ammProcess, since, till)
     stmt:bind_names({ amm_process = ammProcess, since = since, till = till })
 
     local result = dbUtils.queryOne(stmt)
+    if not result or not result.volume_usd then
+        return 0
+    end
     return result.volume_usd
 end
 
