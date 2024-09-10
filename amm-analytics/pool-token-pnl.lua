@@ -225,8 +225,8 @@ function analytics.calculatePnlForUserAndAmm(user)
             currentTimestamp - 24 * 60 * 60)
         pool.user_fees = analytics.getPoolFees(pool.amm_process, pool.last_change_ts) * pool.user_share
         if pool.current_tvl then
-            pool.total_apy = pool.current_user_tvl / pool.initial_user_tvl
             pool.pnl = pool.current_user_tvl - pool.initial_user_tvl
+            pool.total_apy = pool.pnl / pool.initial_user_tvl
         end
         pool.historical_pnl = analytics.getForwardFilledTvlForPool(pool.amm_process,
             pool.last_change_ts - 7 * 24 * 60 * 60,
