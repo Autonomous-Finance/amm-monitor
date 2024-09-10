@@ -13,9 +13,7 @@ local pairFinderQuery = [[
         t1.token_process AS t1_process,
         asp.amm_process AS amm_process,
         reserves_0,
-        reserves_1,
-        token0_denominator,
-        token1_denominator
+        reserves_1
     FROM amm_swap_params asp
     LEFT JOIN amm_registry ar USING (amm_process)
     LEFT JOIN token_registry t0 ON t0.token_process = ar.amm_token0
@@ -31,8 +29,8 @@ function analytics.findBestPairs(tokenProcess)
         local token1Price = lookups.getPriceFromLastTransaction(pair.t1_process)
 
         if token0Price and token1Price then
-            local reserves0 = pair.reserves_0 / (10 ^ pair.token0_denominator)
-            local reserves1 = pair.reserves_1 / (10 ^ pair.token1_denominator)
+            local reserves0 = pair.reserves_0 / (10 ^ token0Price.denominator)
+            local reserves1 = pair.reserves_1 / (10 ^ token1Price.denominator)
 
             pair.tvl_in_usd = reserves0 * token0Price.price + reserves1 * token1Price.price
         else
