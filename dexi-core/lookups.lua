@@ -37,21 +37,21 @@ end
 function mod.getPriceFromLastTransaction(token)
     local sql = [[
     SELECT
-        token0,
-        token1,
+        amm_token0,
+        amm_token1,
         token0_denominator,
         token1_denominator,
         token0_usd_price,
         token1_usd_price
     FROM amm_transactions_view
-    WHERE token0 = :token OR token1 = :token
+    WHERE amm_token0 = :token OR amm_token1 = :token
     ORDER BY created_at_ts DESC
     LIMIT 1
     ]]
     local result = dbUtils.queryOneWithParams(sql, { token = token }, "mod.getPriceFromLastTransaction")
 
     if result then
-        if result.token0 == token then
+        if result.amm_token0 == token then
             return {
                 price = result.token0_usd_price,
                 denominator = result.token0_denominator
