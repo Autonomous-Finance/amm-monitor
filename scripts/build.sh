@@ -12,6 +12,7 @@ luacheck process.lua \
     integrate-amm.integrate-amm \
     dexi-core/dexi-core.lua \
     dexi-core/intervals.lua dexi-core/candles.lua dexi-core/stats.lua dexi-core/overview.lua dexi-core/price-around.lua dexi-core/usd-price.lua \
+    dexi-core/lookups.lua \
     ingest/ingest.lua \
     indicators/indicators.lua indicators/calc.lua \
     top-n/top-n.lua \
@@ -29,6 +30,7 @@ amalg.lua -s process.lua -o build/output.lua \
     integrate-amm.integrate-amm \
     dexi-core.dexi-core \
     dexi-core.intervals dexi-core.candles dexi-core.stats dexi-core.overview dexi-core.price-around dexi-core.usd-price \
+    dexi-core.lookups \
     ingest.ingest \
     indicators.indicators indicators.calc \
     top-n.top-n \
