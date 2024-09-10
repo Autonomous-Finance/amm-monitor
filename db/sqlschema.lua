@@ -198,9 +198,9 @@ SELECT
     WHEN from_quantity > 0 AND to_quantity > 0 THEN
       CASE
         WHEN to_token = amm_token1 THEN
-          (reserves_token_a * 1.0 / reserves_token_b) * POWER(10, ABS(t0.denominator - tq.denominator))
-        ELSE
           (reserves_token_b * 1.0 / reserves_token_a) * POWER(10, ABS(t0.denominator - tq.denominator))
+        ELSE
+          (reserves_token_a * 1.0 / reserves_token_b) * POWER(10, ABS(t0.denominator - tq.denominator))
       END
     ELSE NULL
   END, 12) AS price,
@@ -208,9 +208,9 @@ SELECT
     WHEN from_quantity > 0 AND to_quantity > 0 THEN
       CASE
         WHEN to_token = amm_token1 THEN
-          (reserves_token_a * 1.0 / reserves_token_b) * POWER(10, ABS(t0.denominator - tq.denominator)) * from_token_usd_price
+          (reserves_token_b * 1.0 / reserves_token_a) * POWER(10, ABS(t0.denominator - tq.denominator)) * from_token_usd_price
         ELSE
-          (reserves_token_b * 1.0 / reserves_token_a) * POWER(10, ABS(t0.denominator - tq.denominator)) * to_token_usd_price
+          (reserves_token_a * 1.0 / reserves_token_b) * POWER(10, ABS(t0.denominator - tq.denominator)) * to_token_usd_price
       END
     ELSE NULL
   END, 5) AS usd_price,

@@ -18,7 +18,7 @@ local pairFinderQuery = [[
     LEFT JOIN amm_registry ar USING (amm_process)
     LEFT JOIN token_registry t0 ON t0.token_process = ar.amm_token0
     LEFT JOIN token_registry t1 ON t1.token_process = ar.amm_token1
-    WHERE t0.token_process = :token OR t1.token_process = :token
+    WHERE amm_token0 = :token OR amm_token1 = :token
 ]]
 
 function analytics.findBestPairs(tokenProcess)
