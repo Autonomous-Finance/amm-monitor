@@ -14,7 +14,8 @@ function analytics.getCurrentTvl(ammProcess)
             t1.denominator as demoninator1,
             amm_token0 as token0,
             amm_token1 as token1
-        FROM amm_transactions_view
+        FROM amm_registry
+        JOIN amm_swap_params USING (amm_process)
         JOIN token_registry t0 ON t0.token_process = amm_token0
         JOIN token_registry t1 ON t1.token_process = amm_token1
         WHERE amm_process = :amm_process
