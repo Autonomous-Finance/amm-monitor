@@ -209,7 +209,7 @@ function analytics.calculatePnlForUserAndAmm(user)
     local historicalPnlByDay = {}
 
     for _, pool in ipairs(pools) do
-        print('pool', pool)
+        print('pool', json.encode(pool))
         pool.current_tvl = analytics.getCurrentTvl(pool.amm_process)
         pool.initial_user_tvl = analytics.getInitalTvlForUserAndAmm(pool.amm_process, user) * pool.user_share
         pool.current_user_tvl = pool.current_tvl * pool.user_share
