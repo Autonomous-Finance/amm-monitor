@@ -29,7 +29,8 @@ mod.handleInitialize = function(msg)
 
   dexiCore.registerToken(
     QUOTE_TOKEN.ProcessId,
-    QUOTE_TOKEN.Name,
+    QUOTE_TOKEN.Ticker,
+    QUOTE_TOKEN.Ticker,
     QUOTE_TOKEN.Denominator,
     QUOTE_TOKEN.TotalSupply,
     true, -- assuming fixed supply

@@ -12,13 +12,14 @@ luacheck process.lua \
     integrate-amm.integrate-amm \
     dexi-core/dexi-core.lua \
     dexi-core/intervals.lua dexi-core/candles.lua dexi-core/stats.lua dexi-core/overview.lua dexi-core/price-around.lua dexi-core/usd-price.lua \
+    dexi-core/lookups.lua \
     ingest/ingest.lua \
     indicators/indicators.lua indicators/calc.lua \
     top-n/top-n.lua \
     utils/debug.lua \
     ownable/ownable.lua \
     ops/config-ops.lua ops/emergency.lua ops/initialize.lua \
-    amm-analytics/main.lua amm-analytics/volume.lua amm-analytics/pool-overview.lua amm-analytics/pool-token-pnl.lua \
+    amm-analytics/main.lua amm-analytics/volume.lua amm-analytics/pool-overview.lua amm-analytics/pool-token-pnl.lua amm-analytics/pair-finder.lua \
     swap-subscribers/main.lua swap-subscribers/reserves.lua \
     hopper/hopper.lua \
     update-token/update-token.lua
@@ -30,13 +31,14 @@ amalg.lua -s process.lua -o build/output.lua \
     integrate-amm.integrate-amm \
     dexi-core.dexi-core \
     dexi-core.intervals dexi-core.candles dexi-core.stats dexi-core.overview dexi-core.price-around dexi-core.usd-price \
+    dexi-core.lookups \
     ingest.ingest \
     indicators.indicators indicators.calc \
     top-n.top-n \
     utils.debug \
     ownable.ownable \
     ops.config-ops ops.emergency ops.initialize \
-    amm-analytics.main amm-analytics.volume amm-analytics.pool-overview amm-analytics.pool-token-pnl \
+    amm-analytics.main amm-analytics.volume amm-analytics.pool-overview amm-analytics.pool-token-pnl amm-analytics.pair-finder \
     swap-subscribers.main swap-subscribers.reserves \
     hopper.hopper \
     update-token.update-token

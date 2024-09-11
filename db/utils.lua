@@ -31,11 +31,29 @@ function dbUtils.execute(stmt, statmentHint)
   if stmt then
     stmt:step()
     if stmt:finalize() ~= sqlite3.OK then
-      error("Failed to finalize SQL statement" .. statmentHint .. ": " .. db:errmsg())
+      error("Failed to finalize SQL statement" .. (statmentHint or "") .. ": " .. db:errmsg())
     end
   else
-    error("Failed to prepare SQL statement" .. statmentHint .. ": " .. db:errmsg())
+    error("Failed to prepare SQL statement" .. (statmentHint or "") .. ": " .. db:errmsg())
   end
+end
+
+function dbUtils.queryManyWithParams(query, params, hint)
+  local stmt = db:prepare(query)
+  if not stmt then
+    error("Err" .. (hint or "") .. ": " .. db:errmsg())
+  end
+  stmt:bind_names(params)
+
+  return dbUtils.queryMany(stmt)
+end
+
+function dbUtils.queryOneWithParams(query, params, hint)
+  local res = dbUtils.queryManyWithParams(query, params, hint)
+  if #res == 0 then
+    return nil
+  end
+  return res[1]
 end
 
 return dbUtils
