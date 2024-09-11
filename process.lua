@@ -16,6 +16,7 @@ local configOps = require("ops.config-ops")
 local initialize = require("ops.initialize")
 local analytics = require("amm-analytics.main")
 local hopper = require("hopper.hopper")
+local updateToken = require("update-token.update-token")
 local lookups = require("dexi-core.lookups")
 local json = require("json")
 
@@ -399,6 +400,23 @@ Handlers.add(
   "Get-Price-For-Token",
   Handlers.utils.hasMatchingTag("Action", "Get-Price-For-Token"),
   hopper.getPriceForTokenHandler
+)
+
+-- Token Profile Update
+
+Handlers.add(
+  "Receive-Payment-For-Token-Profile-Update",
+  function(msg)
+    return Handlers.utils.hasMatchingTag("Action", "Credit-Notice")(msg)
+        and Handlers.utils.hasMatchingTag("X-Action", "Update-Token-Profile")(msg)
+  end,
+  updateToken.handlePayForUpdateToken
+)
+
+Handlers.add(
+  "Get-Token-Update-Price",
+  Handlers.utils.hasMatchingTag("Action", "Get-Token-Update-Price"),
+  updateToken.handleGetPriceForUpdate
 )
 
 Handlers.add(
