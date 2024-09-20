@@ -304,9 +304,9 @@ end
 function dexiCore.handleRemoveAmm(msg)
   assert(msg.From == OPERATOR, 'Only the operator can remove an AMM with its Tokens')
 
-  assert(msg.Tags.ProcessId, 'Message must contain a valid ProcessId tag')
+  assert(msg.Tags["Process-Id"], 'Message must contain a valid ProcessId tag')
 
-  local ammProcessId = msg.Tags.ProcessId
+  local ammProcessId = msg.Tags["Process-Id"]
   if not dexiCore.isKnownAmm(ammProcessId) then
     error('AMM not found: ' .. ammProcessId)
   end
