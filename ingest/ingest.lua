@@ -323,7 +323,7 @@ function ingest.handleMonitorIngestSwap(msg)
 
 
     -- the new swap affects indicators for this amm
-    indicators.dispatchIndicatorsForAMM(ammProcessId, now)
+    -- indicators.dispatchIndicatorsForAMM(ammProcessId, now)
 
     recordChangeInSwapParams(msg, json.decode(msg.Data), 'message', ammProcessId, 'swap')
     -- TODO: re-enable once fixed
@@ -344,7 +344,7 @@ function ingest.handleFeedIngestSwaps(msg)
       local isLatestSwap = false -- TODO: implement; check if data goes up to present and this is the latest data entry;
       if isLatestSwap then
         -- the new swap affects indicators for this amm
-        indicators.dispatchIndicatorsForAMM(ammProcessId, now)
+        -- indicators.dispatchIndicatorsForAMM(ammProcessId, now)
 
         --[[
           the new swap affects
