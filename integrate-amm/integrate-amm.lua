@@ -278,7 +278,7 @@ end
 
 integrateAmm.handleRemoveAmm = function(msg)
   local ammProcessId = msg.Tags["Process-Id"]
-  dexiCore.handleRemoveAmm(ammProcessId)
+  dexiCore.handleRemoveAmm(msg)
   unsubscribeAmm(ammProcessId)
 end
 
