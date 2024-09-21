@@ -158,6 +158,17 @@ local function getDenominator(token)
   return row and row.denominator
 end
 
+local function tryGetPrice(token)
+  local success, price = pcall(function()
+    return hopper.getPrice(token, 'USD')
+  end)
+  if not success then
+    print('Error retrieving price for ' .. token .. ': ' .. price)
+    return nil
+  end
+  return price
+end
+
 local function recordLiquidityChange(msg)
   local changeData = json.decode(msg.Data)
   if not changeData['Delta-Token-A'] then
@@ -165,12 +176,18 @@ local function recordLiquidityChange(msg)
     return
   end
 
-  local tokenAPrice = hopper.getPrice(changeData['Token-A'], 'USD')
-  local tokenBPrice = hopper.getPrice(changeData['Token-B'], 'USD')
+  local tokenAPrice = tryGetPrice(changeData['Token-A'])
+  local tokenBPrice = tryGetPrice(changeData['Token-B'])
+
   local tokenADenominator = getDenominator(changeData['Token-A'])
   local tokenBDenominator = getDenominator(changeData['Token-B'])
-  local tvlInUsd = ((tonumber(changeData['Reserves-Token-A']) * tokenAPrice / 10 ^ tokenADenominator) +
-    (tonumber(changeData['Reserves-Token-B']) * tokenBPrice / 10 ^ tokenBDenominator))
+  local tvlInUsd
+  if tokenAPrice and tokenBPrice then
+    tvlInUsd = ((tonumber(changeData['Reserves-Token-A']) * tokenAPrice / 10 ^ tokenADenominator) +
+      (tonumber(changeData['Reserves-Token-B']) * tokenBPrice / 10 ^ tokenBDenominator))
+  else
+    tvlInUsd = nil
+  end
 
   local entry = {
     id = msg.Id,
@@ -212,8 +229,8 @@ local function recordSwap(msg, swapData, source, sourceAmm)
   assert(swapData['Reserves-Token-A'], 'Missing Reserves-Token-A')
   assert(swapData['Reserves-Token-B'], 'Missing Reserves-Token-B')
 
-  local fromTokenUsdPrice = hopper.getPrice(swapData['From-Token'], 'USD')
-  local toTokenUsdPrice = hopper.getPrice(swapData['To-Token'], 'USD')
+  local fromTokenUsdPrice = tryGetPrice(swapData['From-Token'])
+  local toTokenUsdPrice = tryGetPrice(swapData['To-Token'])
 
   local entry = {
     id = msg.Id,
