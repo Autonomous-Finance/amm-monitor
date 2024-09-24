@@ -237,7 +237,7 @@ local function recordSwap(msg, swapData, source, sourceAmm)
     source = source,
     block_height = msg['Block-Height'],
     block_id = msg['Block-Id'] or '',
-    sender = msg.recipient or '',
+    sender = swapData['User'] or '',
     created_at_ts = math.floor(msg.Timestamp / 1000),
     created_at_ts_ms = msg.Timestamp,
     to_token = swapData['To-Token'],
