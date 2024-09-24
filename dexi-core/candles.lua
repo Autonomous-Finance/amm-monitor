@@ -31,6 +31,7 @@ function candles.generateCandlesForXDaysInIntervalY(xDays, yInterval, endTime, a
         m.low,
         t2.price as close,
         strftime('%Y-%m-%d %H:%M', min_time, 'unixepoch') as start_timestamp,
+        strftime('%Y-%m-%d %H:%M', min_time, 'unixepoch') as candle_time,
         strftime('%Y-%m-%d %H:%M', max_time, 'unixepoch') as end_timestamp,
         min_time,
         open_time,
