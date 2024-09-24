@@ -231,7 +231,7 @@ SELECT
   t0.token_name as quote_token_name,
   tq.token_name as base_token_name,
   reserves_token_a AS reserves_0,
-  reserves_token_b AS reserves_1,
+  reserves_token_b AS reserves_1
   -- add tvl_usd
   -- add market_cap_usd
 FROM amm_transactions

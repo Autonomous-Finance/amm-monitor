@@ -11,56 +11,64 @@ function candles.generateCandlesForXDaysInIntervalY(xDays, yInterval, endTime, a
   end
 
   -- Determine the GROUP BY clause based on the interval
-  local groupByClause
+  local candleTime
   if yInterval == '15m' then
-    groupByClause = "strftime('%Y-%m-%d %H:%M', \"created_at_ts\" / 900 * 900, 'unixepoch')"
+    candleTime = 60 * 15
   elseif yInterval == '1h' then
-    groupByClause = "strftime('%Y-%m-%d %H', \"created_at_ts\", 'unixepoch')"
+    candleTime = 60 * 60
   elseif yInterval == '4h' then
-    groupByClause = "strftime('%Y-%m-%d %H', \"created_at_ts\" / 14400 * 14400, 'unixepoch')"
+    candleTime = 60 * 60 * 4
   elseif yInterval == '1d' then
-    groupByClause = "strftime('%Y-%m-%d', \"created_at_ts\", 'unixepoch')"
+    candleTime = 60 * 60 * 24
   else
     error("Unsupported interval for grouping")
     return
   end
 
-  local stmt = db:prepare(string.format([[
-    SELECT
-      %s AS candle_time,
-      MIN(created_at_ts) AS start_timestamp,
-      MAX(created_at_ts) AS end_timestamp,
-      (SELECT price FROM amm_transactions WHERE created_at_ts = (SELECT MIN(created_at_ts) FROM amm_transactions_view WHERE created_at_ts >= :start_time AND created_at_ts < :end_time AND amm_process = :amm_process)) AS open,
-      MAX(price) AS high,
-      MIN(price) AS low,
-      (SELECT price FROM amm_transactions WHERE created_at_ts = (SELECT MAX(created_at_ts) FROM amm_transactions_view WHERE created_at_ts >= :start_time AND created_at_ts < :end_time AND amm_process = :amm_process)) AS close,
-      SUM(volume) / POWER(10, quote_denominator) AS volume
-    FROM
-      amm_transactions_view AS t1
-    WHERE created_at_ts >= :start_time AND created_at_ts < :end_time AND amm_process = :amm_process
-    GROUP BY
-      1
-    ORDER BY
-      candle_time ASC
-  ]], groupByClause))
+  local stmt = [[
+    SELECT t1.price AS open,
+        m.high,
+        m.low,
+        t2.price as close,
+        strftime('%Y-%m-%d %H:%M', min_time, 'unixepoch') as start_timestamp,
+        strftime('%Y-%m-%d %H:%M', max_time, 'unixepoch') as end_timestamp,
+        min_time,
+        open_time,
+        m.volume
+  FROM (SELECT
+          MAX(amm_process) AS amm_process,
+          MIN(created_at_ts) AS min_time,
+          MAX(created_at_ts) AS max_time,
+          MIN(price) as low,
+          MAX(price) as high,
+          FLOOR(amm_transactions_view.created_at_ts/:candle_time) as open_time,
+          SUM(volume) AS volume
+        FROM amm_transactions_view
+        WHERE created_at_ts >= :start_time AND created_at_ts < :end_time AND amm_process = :amm_process
+        GROUP BY open_time) m
+  JOIN amm_transactions_view t1 ON t1.created_at_ts = min_time AND t1.amm_process = m.amm_process
+  JOIN amm_transactions_view t2 ON t2.created_at_ts = max_time AND t2.amm_process = m.amm_process
+  ORDER BY min_time ASC
+  ]]
 
   local startTime = endTime - (xDays * 24 * 3600)
 
-  stmt:bind_names({
+  local params = {
     start_time = startTime,
     end_time = endTime,
-    amm_process = ammProcessId
-  })
+    amm_process = ammProcessId,
+    candle_time = candleTime
+  }
 
-  local candles = dbUtils.queryMany(stmt)
+  local candles = dbUtils.queryManyWithParams(stmt, params)
 
-  for i = 2, #candles do
-    candles[i].open = candles[i - 1].close
-  end
+  -- for i = 2, #candles do
+  --   candles[i].open = candles[i - 1].close
+  -- end
 
-  if #candles > 0 then
-    candles[1].open = 0
-  end
+  -- if #candles > 0 then
+  --   candles[1].open = 0
+  -- end
 
   return candles
 end
