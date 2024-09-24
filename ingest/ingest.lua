@@ -60,9 +60,9 @@ function ingestSql.recordSwap(entry)
   local stmt = db:prepare [[
     INSERT OR REPLACE INTO amm_transactions (
       id, source, block_height, block_id, sender, created_at_ts, created_at_ts_ms,
-      to_token, from_token, from_quantity, to_quantity, fee_percentage, amm_process, from_token_usd_price, to_token_usd_price, reserves_token_a, reserves_token_b
+      to_token, from_token, from_quantity, to_quantity, fee_percentage, amm_process, from_token_usd_price, to_token_usd_price, reserves_token_a, reserves_token_b, token_a_price, token_b_price
     ) VALUES (:id, :source, :block_height, :block_id, :sender, :created_at_ts, :created_at_ts_ms,
-              :to_token, :from_token, :from_quantity, :to_quantity, :fee_percentage, :amm_process, :from_token_usd_price, :to_token_usd_price, :reserves_token_a, :reserves_token_b);
+              :to_token, :from_token, :from_quantity, :to_quantity, :fee_percentage, :amm_process, :from_token_usd_price, :to_token_usd_price, :reserves_token_a, :reserves_token_b, :token_a_price, :token_b_price);
   ]]
 
   if not stmt then
@@ -229,8 +229,12 @@ local function recordSwap(msg, swapData, source, sourceAmm)
   assert(swapData['Reserves-Token-A'], 'Missing Reserves-Token-A')
   assert(swapData['Reserves-Token-B'], 'Missing Reserves-Token-B')
 
-  local fromTokenUsdPrice = tryGetPrice(swapData['From-Token'])
-  local toTokenUsdPrice = tryGetPrice(swapData['To-Token'])
+
+  local tokenAPrice = tryGetPrice(swapData['Token-A'])
+  local tokenBPrice = tryGetPrice(swapData['Token-B'])
+
+  local fromTokenUsdPrice = swapData['Token-A'] == swapData['From-Token'] and tokenAPrice or tokenBPrice
+  local toTokenUsdPrice = swapData['Token-A'] == swapData['To-Token'] and tokenAPrice or tokenBPrice
 
   local entry = {
     id = msg.Id,
@@ -252,6 +256,8 @@ local function recordSwap(msg, swapData, source, sourceAmm)
     reserves_token_b = swapData['Reserves-Token-B'],
     lp_fee_percentage = swapData['LP-Fee'],
     protocol_fee_percentage = swapData['Protocol-Fee'],
+    token_a_price = tokenAPrice,
+    token_b_price = tokenBPrice,
   }
   ingestSql.recordSwap(entry)
 

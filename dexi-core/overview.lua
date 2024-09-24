@@ -52,7 +52,7 @@ function overview.getOverview(now, orderBy)
   LEFT JOIN token_registry t ON t.token_process = r.amm_token1
   ORDER BY %s
   LIMIT 100
-  ]], 'market_cap DESC'))
+  ]], orderByClause))
 
   if not stmt then
     error("Err: " .. db:errmsg())
