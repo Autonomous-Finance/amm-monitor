@@ -30,11 +30,9 @@ function candles.generateCandlesForXDaysInIntervalY(xDays, yInterval, endTime, a
         m.high,
         m.low,
         t2.price as close,
-        strftime('%Y-%m-%d %H:%M', min_time, 'unixepoch') as start_timestamp,
         strftime('%Y-%m-%d %H:%M', min_time, 'unixepoch') as candle_time,
-        strftime('%Y-%m-%d %H:%M', max_time, 'unixepoch') as end_timestamp,
-        min_time,
-        open_time,
+        min_time as start_timestamp,
+        max_time as end_timestamp,
         m.volume
   FROM (SELECT
           MAX(amm_process) AS amm_process,
