@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS amm_transactions (
     amm_process TEXT NOT NULL,
     from_token_usd_price NUMERIC,
     to_token_usd_price NUMERIC,
+    -- drop these below
     token_a_price NUMERIC,
     token_b_price NUMERIC,
     market_cap_usd NUMERIC,
@@ -208,7 +209,7 @@ SELECT
     ELSE NULL
   END, 5) AS usd_price,
   CASE WHEN to_token = amm_token0 THEN to_token_usd_price ELSE from_token_usd_price END AS token0_usd_price,
-  CASE WHEN to_token = amm_token1 THEN from_token_usd_price ELSE to_token_usd_price END AS token1_usd_price,
+  CASE WHEN to_token = amm_token1 THEN to_token_usd_price ELSE from_token_usd_price END AS token1_usd_price,
   (CASE
     WHEN to_token = amm_token1 THEN from_quantity
     ELSE to_quantity
@@ -230,7 +231,9 @@ SELECT
   t0.token_name as quote_token_name,
   tq.token_name as base_token_name,
   reserves_token_a AS reserves_0,
-  reserves_token_b AS reserves_1
+  reserves_token_b AS reserves_1,
+  -- add tvl_usd
+  -- add market_cap_usd
 FROM amm_transactions
 LEFT JOIN amm_registry USING (amm_process)
 LEFT JOIN token_registry t0 ON t0.token_process = amm_token0

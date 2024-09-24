@@ -48,6 +48,8 @@ async function dryRunAndUpsertToSQLite(processId, tableName) {
 
         // Get table info to determine the primary key
         const tableInfo = await db.all(`PRAGMA table_info(${tableName})`);
+        await db.all(`DELETE FROM ${tableName}`);
+
         const primaryKey = tableInfo.find(column => column.pk === 1)?.name;
 
         if (!primaryKey) {
@@ -82,13 +84,13 @@ async function dryRunAndUpsertToSQLite(processId, tableName) {
     }
 }
 
-dryRunAndUpsertToSQLite('snR3flTItDdCtCqHrJBWTV2vg0kj0onq2Wydlu-crhc', 'amm_registry')
-dryRunAndUpsertToSQLite('snR3flTItDdCtCqHrJBWTV2vg0kj0onq2Wydlu-crhc', 'amm_swap_params')
-dryRunAndUpsertToSQLite('snR3flTItDdCtCqHrJBWTV2vg0kj0onq2Wydlu-crhc', 'amm_swap_params_changes')
-dryRunAndUpsertToSQLite('snR3flTItDdCtCqHrJBWTV2vg0kj0onq2Wydlu-crhc', 'amm_transactions')
-dryRunAndUpsertToSQLite('snR3flTItDdCtCqHrJBWTV2vg0kj0onq2Wydlu-crhc', 'balances')
-dryRunAndUpsertToSQLite('snR3flTItDdCtCqHrJBWTV2vg0kj0onq2Wydlu-crhc', 'indicator_subscriptions')
-dryRunAndUpsertToSQLite('snR3flTItDdCtCqHrJBWTV2vg0kj0onq2Wydlu-crhc', 'token_registry')
-dryRunAndUpsertToSQLite('snR3flTItDdCtCqHrJBWTV2vg0kj0onq2Wydlu-crhc', 'token_supply_changes')
-dryRunAndUpsertToSQLite('snR3flTItDdCtCqHrJBWTV2vg0kj0onq2Wydlu-crhc', 'top_n_subscriptions')
-dryRunAndUpsertToSQLite('snR3flTItDdCtCqHrJBWTV2vg0kj0onq2Wydlu-crhc', 'reserve_changes')
+dryRunAndUpsertToSQLite('uE6NBadRQTZmZXYY1EQ4i0M6G3VcIC2WrRDvKEEIaKo', 'amm_registry')
+dryRunAndUpsertToSQLite('uE6NBadRQTZmZXYY1EQ4i0M6G3VcIC2WrRDvKEEIaKo', 'amm_swap_params')
+dryRunAndUpsertToSQLite('uE6NBadRQTZmZXYY1EQ4i0M6G3VcIC2WrRDvKEEIaKo', 'amm_swap_params_changes')
+dryRunAndUpsertToSQLite('uE6NBadRQTZmZXYY1EQ4i0M6G3VcIC2WrRDvKEEIaKo', 'amm_transactions')
+dryRunAndUpsertToSQLite('uE6NBadRQTZmZXYY1EQ4i0M6G3VcIC2WrRDvKEEIaKo', 'balances')
+dryRunAndUpsertToSQLite('uE6NBadRQTZmZXYY1EQ4i0M6G3VcIC2WrRDvKEEIaKo', 'indicator_subscriptions')
+dryRunAndUpsertToSQLite('uE6NBadRQTZmZXYY1EQ4i0M6G3VcIC2WrRDvKEEIaKo', 'token_registry')
+dryRunAndUpsertToSQLite('uE6NBadRQTZmZXYY1EQ4i0M6G3VcIC2WrRDvKEEIaKo', 'token_supply_changes')
+dryRunAndUpsertToSQLite('uE6NBadRQTZmZXYY1EQ4i0M6G3VcIC2WrRDvKEEIaKo', 'top_n_subscriptions')
+dryRunAndUpsertToSQLite('uE6NBadRQTZmZXYY1EQ4i0M6G3VcIC2WrRDvKEEIaKo', 'reserve_changes')
