@@ -266,7 +266,7 @@ end
 function dexiCore.handleGetCandles(msg)
   local days = msg.Tags.Days and tonumber(msg.Tags.Days) or 30
   local candles = candles.generateCandlesForXDaysInIntervalY(days, msg.Tags.Interval, msg.Timestamp / 1000,
-    msg.Tags.AMM)
+    msg.Tags.AMM, msg.Tags.ConvertToUsd == 'true')
   ao.send({
     Target = msg.From,
     ['App-Name'] = 'Dexi',
