@@ -43,11 +43,7 @@ function sql.registerAMM(name, processId, token0, token1, discoveredAt)
     base_token = token0 == QUOTE_TOKEN.ProcessId and token1 or token0,
     discovered_at = tostring(discoveredAt)
   })
-  local _, err = stmt:step()
-  if err then
-    print("Err: " .. db:errmsg())
-  end
-  stmt:reset()
+  dbUtils.stepAndFinalize(stmt)
 end
 
 function sql.getRegisteredAMMs()
@@ -64,9 +60,7 @@ end
 function sql.unregisterAMM(processId)
   local stmt = db:prepare('DELETE FROM amm_registry WHERE amm_process = :process_id')
   stmt:bind_names({ process_id = processId })
-
-  stmt:step()
-  stmt:finalize()
+  dbUtils.stepAndFinalize(stmt)
 end
 
 function sql.registerToken(processId, name, ticker, denominator, totalSupply, fixedSupply, updatedAt)
@@ -108,9 +102,7 @@ end
 function sql.unregisterToken(processId)
   local stmt = db:prepare('DELETE FROM token_registry WHERE token_process = :process_id')
   stmt:bind_names({ process_id = processId })
-
-  stmt:step()
-  stmt:finalize()
+  dbUtils.stepAndFinalize(stmt)
 end
 
 ---@param supply_changed_at_ts number @timestamp of when the change occurred in the token contract - typically earlier than the time at which DEXI records this change
@@ -133,11 +125,7 @@ function sql.updateTokenSupply(id, block_height, block_id, supply_changed_at_ts,
     token = token,
     total_supply = total_supply
   })
-  local _, errChanges = changesStmt:step()
-  changesStmt:finalize()
-  if errChanges then
-    error("Err: " .. db:errmsg())
-  end
+  dbUtils.stepAndFinalize(changesStmt)
 
   local registryStmt = db:prepare [[
     UPDATE token_registry
@@ -152,11 +140,7 @@ function sql.updateTokenSupply(id, block_height, block_id, supply_changed_at_ts,
     total_supply = total_supply,
     token_updated_at_ts = now_ts
   })
-  local _, errRegistry = registryStmt:step()
-  registryStmt:finalize()
-  if errRegistry then
-    error("Err: " .. db:errmsg())
-  end
+  dbUtils.stepAndFinalize(registryStmt)
 
   db:execute('COMMIT;')
 end

@@ -56,4 +56,11 @@ function dbUtils.queryOneWithParams(query, params, hint)
   return res[1]
 end
 
+function dbUtils.stepAndFinalize(stmt)
+  local res = stmt:step()
+  if res ~= sqlite3.DONE then
+    print("Err: " .. db:errmsg())
+  end
+end
+
 return dbUtils
