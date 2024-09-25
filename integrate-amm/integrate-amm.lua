@@ -248,6 +248,8 @@ end
 
 
 local finalizeRegisterAMM = function(msg)
+  print('FINALIZING AMM REGISTRATION')
+
   local ammProcessId = msg.Tags["X-AMM-Process"]
   local registrationData = AmmSubscriptions[ammProcessId]
   local now = math.floor(os.time() / 1000)
@@ -258,6 +260,12 @@ local finalizeRegisterAMM = function(msg)
     registrationData.ammDetails.tokenB.processId,
     now
   )
+
+  ao.send({
+    Target = ao.id,
+    Action = "Log",
+    Message = "AMM registration completed: " .. ammProcessId
+  })
 end
 
 
