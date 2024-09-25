@@ -261,7 +261,7 @@ Handlers.add(
         and Handlers.utils.hasMatchingTag("X-Action", "Register-AMM")(msg)
         and msg.From == PAYMENT_TOKEN_PROCESS
   end,
-  integrateAmm.handlePayForAmmRegistration
+  integrateAmm.handleRegisterAmm
 )
 
 Handlers.add(
