@@ -246,11 +246,9 @@ local paySubscriptionToRegisterAMM = function(msg)
   end
 end
 
-
 local finalizeRegisterAMM = function(ammProcessId)
   local registrationData = AmmSubscriptions[ammProcessId]
   local now = math.floor(os.time() / 1000)
-  print("REGISTERING AMM")
   dexiCore.registerAMM(
     registrationData.ammDetails.name,
     ammProcessId,
@@ -258,9 +256,7 @@ local finalizeRegisterAMM = function(ammProcessId)
     registrationData.ammDetails.tokenB.processId,
     now
   )
-  print("REGISTERED AMM")
 end
-
 
 -- --------------------- EXPORT
 integrateAmm.handleRegisterAmm = function(msg)
