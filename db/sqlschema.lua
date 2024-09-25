@@ -23,7 +23,6 @@ CREATE TABLE IF NOT EXISTS amm_transactions (
     amm_process TEXT NOT NULL,
     from_token_usd_price NUMERIC,
     to_token_usd_price NUMERIC,
-    -- drop these below
     token_a_price NUMERIC,
     token_b_price NUMERIC,
     market_cap_usd NUMERIC,

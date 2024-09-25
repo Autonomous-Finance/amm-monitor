@@ -4,11 +4,10 @@ local dbUtils = require('db.utils')
 local mod = {}
 
 function mod.getSwapSubscribers(ammProcessId)
-    local stmt = db:prepare [[
-      SELECT process_id FROM swap_subscriptions WHERE amm_process_id = :amm_process_id;
+    local stmt = [[
+      SELECT process_id FROM swap_subscriptions WHERE amm_process_id = :amm_process_id AND expires_at_ts < :current_ts;
     ]]
-    stmt:bind_names({ amm_process_id = ammProcessId })
-    return dbUtils.queryMany(stmt)
+    return dbUtils.queryManyWithParams(stmt, { amm_process_id = ammProcessId, current_ts = os.time() })
 end
 
 -- todo move this somewhere else
@@ -16,11 +15,10 @@ function mod.dispatchSwapNotifications(sourceMessageId, sourceAmm)
     local subscribers = mod.getSwapSubscribers(sourceAmm)
 
     -- todo add balance check
-    local stmt = db:prepare [[
+    local stmt = [[
       SELECT * FROM amm_transactions_view WHERE id = :id LIMIT 1;
     ]]
-    stmt:bind_names({ id = sourceMessageId })
-    local transformedSwapData = dbUtils.queryOne(stmt)
+    local transformedSwapData = dbUtils.queryOneWithParams(stmt, { id = sourceMessageId })
     for _, subscriber in ipairs(subscribers) do
         ao.send({
             Target = subscriber.process_id,
@@ -30,11 +28,18 @@ function mod.dispatchSwapNotifications(sourceMessageId, sourceAmm)
     end
 end
 
-function mod.registerSwapSubscriber(processId, ammProcessId)
+function mod.registerSwapSubscriber(processId, ammProcessId, expiresAtTs)
     local stmt = db:prepare [[
-        INSERT INTO swap_subscriptions (process_id, amm_process_id) VALUES (:process_id, :amm_process_id);
+        INSERT INTO swap_subscriptions (process_id, amm_process_id, expires_at_ts, subscribed_at_ts)
+        VALUES (:process_id, :amm_process_id, :expires_at_ts, :subscribed_at_ts);
     ]]
-    stmt:bind_names({ process_id = processId, amm_process_id = ammProcessId })
+    local expiresAtTs = math.max(os.time() + 60 * 60 * 24 * 3, expiresAtTs)
+    stmt:bind_names({
+        process_id = processId,
+        amm_process_id = ammProcessId,
+        expires_at_ts = expiresAtTs,
+        subscribed_at_ts = os.time()
+    })
     dbUtils.execute(stmt, 'registerSwapSubscriber')
 end
 
