@@ -395,3 +395,12 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
     - check if token is at top of the ranking
     - check if top N token sets are correclty updated
     - check if top N updates are dispatched correctly
+
+
+- 2.0 logic upgrade
+  - remove Handlers: 
+    - Receive-Payment-For-AMM-Registration
+    - Receive-AMM-Info
+    - Receive-Token-Info
+    - Subscription-Confirmation
+    - Payment-Confirmation-From-AMM

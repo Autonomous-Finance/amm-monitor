@@ -1,34 +1,34 @@
-- name: dexi-aggregator
-  file: build/output.lua
-  resetModules: true
-  scheduler: _GQ33BkPtZrqxA84vM8Zk-N2aO0toNNu_C-l-rawrBA
-  module: GYrbbe0VbHim_7Hi6zrOpHQXrSQz07XNtwCnfbFo2I0
-  tags:
-    - name: Process-Type
-      value: Dexi-Aggregator
-    - name: Operator
-      value: MyFANA8GUtIaD1jrhvW4_IxMCa69XwGP5kHlMCBzVfk
+# - name: dexi-aggregator
+#   file: build/output.lua
+#   resetModules: true
+#   scheduler: _GQ33BkPtZrqxA84vM8Zk-N2aO0toNNu_C-l-rawrBA
+#   module: GYrbbe0VbHim_7Hi6zrOpHQXrSQz07XNtwCnfbFo2I0
+#   tags:
+#     - name: Process-Type
+#       value: Dexi-Aggregator
+#     - name: Operator
+#       value: MyFANA8GUtIaD1jrhvW4_IxMCa69XwGP5kHlMCBzVfk
 
-- name: redstone-proxy
-  file: redstone-proxy.lua
-  scheduler: _GQ33BkPtZrqxA84vM8Zk-N2aO0toNNu_C-l-rawrBA
-  module: cNlipBptaF9JeFAf4wUmpi43EojNanIBos3EfNrEOWo
-  tags:
-    - name: Cron-Interval
-      value: 30-seconds
-    - name: Cron-Tag-Action
-      value: Cron-Tick
+# - name: redstone-proxy
+#   file: redstone-proxy.lua
+#   scheduler: _GQ33BkPtZrqxA84vM8Zk-N2aO0toNNu_C-l-rawrBA
+#   module: cNlipBptaF9JeFAf4wUmpi43EojNanIBos3EfNrEOWo
+#   tags:
+#     - name: Cron-Interval
+#       value: 30-seconds
+#     - name: Cron-Tag-Action
+#       value: Cron-Tick
 
-- name: dexi-1-1-aggregator
-  file: build/output.lua
-  resetModules: true
-  scheduler: _GQ33BkPtZrqxA84vM8Zk-N2aO0toNNu_C-l-rawrBA
-  module: GYrbbe0VbHim_7Hi6zrOpHQXrSQz07XNtwCnfbFo2I0
-  tags:
-    - name: Process-Type
-      value: Dexi-Aggregator
-    - name: Operator
-      value: MyFANA8GUtIaD1jrhvW4_IxMCa69XwGP5kHlMCBzVfk
+# - name: dexi-1-1-aggregator
+#   file: build/output.lua
+#   resetModules: true
+#   scheduler: _GQ33BkPtZrqxA84vM8Zk-N2aO0toNNu_C-l-rawrBA
+#   module: GYrbbe0VbHim_7Hi6zrOpHQXrSQz07XNtwCnfbFo2I0
+#   tags:
+#     - name: Process-Type
+#       value: Dexi-Aggregator
+#     - name: Operator
+#       value: MyFANA8GUtIaD1jrhvW4_IxMCa69XwGP5kHlMCBzVfk
 
 - name: Dexi-aos-v2
   file: build/output.lua

@@ -12,7 +12,6 @@ local integrateAmm = {}
         name = ammName,
         tokenA = {
           processId = tokenAProcessId,
-          pendingInfo = true,
           tokenName = tokenAName,
           tokenTicker = tokenATicker,
           denominator = tokenADenominator,
@@ -51,28 +50,6 @@ local updateStatus = function(ammProcessId, newStatus)
   })
 end
 
-local getAmmInfo = function(ammProcessId)
-  ao.send({
-    Target = ammProcessId,
-    Action = "Info"
-  })
-end
-
-local getTokenInfo = function(tokenProcessId)
-  ao.send({
-    Target = tokenProcessId,
-    Action = "Info"
-  })
-end
-
-local subscribeToAmm = function(ammProcessId)
-  ao.send({
-    Target = ammProcessId,
-    Action = "Register-Subscriber",
-    Topics = json.encode({ "order-confirmation", "liquidity-add-remove" })
-  })
-end
-
 local unsubscribeAmm = function(ammProcessId)
   ao.send({
     Target = ammProcessId,
@@ -81,33 +58,8 @@ local unsubscribeAmm = function(ammProcessId)
   })
 end
 
-local registerAMM = function(ammProcessId, now)
-  local registrationData = AmmSubscriptions[ammProcessId]
-  dexiCore.registerAMM(
-    registrationData.ammDetails.name,
-    ammProcessId,
-    registrationData.ammDetails.tokenA.processId,
-    registrationData.ammDetails.tokenB.processId,
-    now
-  )
-end
-
-local payForSubscription = function(ammProcessId)
-  ao.send({
-    Target = PAYMENT_TOKEN_PROCESS,
-    Action = 'Transfer',
-    Recipient = ammProcessId,
-    Quantity = "1",
-    ["X-Action"] = "Pay-For-Subscription",
-    ["X-Subscriber-Process-Id"] = ao.id
-  })
-end
-
--- --------------------- EXPORT
--- Registration Steps in the order of succession
-
--- 1. Receive a Payment that kicks off the registration process
-integrateAmm.handlePayForAmmRegistration = function(msg)
+-- returns true if we can proceed with the registration
+local validateRegisterAMM = function(msg)
   assert(msg.Tags.Quantity, 'Credit notice data must contain a valid quantity')
   assert(msg.Tags.Sender, 'Credit notice data must contain a valid sender')
   assert(msg.Tags["X-AMM-Process"], 'Credit notice data must contain a valid amm-process')
@@ -118,162 +70,224 @@ integrateAmm.handlePayForAmmRegistration = function(msg)
   -- incomplete AMM registration will be overwritten by a initiating a new one (Dexi payment that was made with the previous one remains unused)
   -- TODO eventually we will delete AmmSubscriptions entries upon successful registration, and the check here will be made with dexiCore (is AMM registered)
   local existing = AmmSubscriptions[ammProcessId]
-  if existing and existing.status == 'paid--complete' then
-    local errorMsg = 'AMM registration already exists for process: ' .. ammProcessId
-    ao.send({
-      Target = msg.From,
-      Recipient = msg.Tags.Sender,
-      Action = 'Transfer',
-      Quantity = msg.Tags.Quantity,
-      ["X-Refund-Reason"] = errorMsg
-    })
-  end
+  return not (existing and existing.status == 'paid--complete')
+end
 
+local refundRegistrationPayment = function(msg)
+  local ammProcessId = msg.Tags["X-AMM-Process"]
+  local errorMsg = 'AMM registration already exists for process: ' .. ammProcessId
+  ao.send({
+    Target = msg.From,
+    Recipient = msg.Tags.Sender,
+    Action = 'Transfer',
+    Quantity = msg.Tags.Quantity,
+    ["X-Refund-Reason"] = errorMsg
+  })
+end
+
+local initializeRegisterAMM = function(msg)
+  local ammProcessId = msg.Tags["X-AMM-Process"]
   AmmSubscriptions[ammProcessId] = {
     requester = msg.Tags.Sender
   }
-
-  getAmmInfo(msg.Tags["X-AMM-Process"])
-  updateStatus(ammProcessId, 'received-request--initializing')
 end
 
--- 2A. Receive the AMM Info to initialize the registration with correct data
-integrateAmm.handleInfoResponseFromAmm = function(msg)
-  local ammProcessId = msg.From
+local getAmmInfoToRegisterAMM = function(msg)
+  local ammProcessId = msg.Tags["X-AMM-Process"]
+  ao.send({
+    Target = ammProcessId,
+    Action = "Info"
+  })
+  local ammInfoResponse = Receive(function(m)
+    return m.Tags['From-Process'] == ammProcessId
+        and m.Tags["Response-For"] == 'Info'
+        and AmmSubscriptions[ammProcessId] ~= nil
+        and AmmSubscriptions[ammProcessId].status == 'received-request--initializing'
+  end)
+
+  local ammName = ammInfoResponse.Tags.Name
+  local ammTokenA = ammInfoResponse.Tags["TokenA"]
+  local ammTokenB = ammInfoResponse.Tags["TokenB"]
+
+  assert(ammName, 'AMM info data must contain a valid Name tag')
+  assert(ammTokenA, 'AMM info data must contain a valid TokenA tag')
+  assert(ammTokenB, 'AMM info data must contain a valid TokenB tag')
+
   local registrationData = AmmSubscriptions[ammProcessId]
-  if not registrationData then
-    error('No subscription request found for amm: ' .. ammProcessId)
-  end
-
-  assert(msg.Tags.Name, 'AMM info data must contain a valid Name tag')
-  assert(msg.Tags["TokenA"], 'AMM info data must contain a valid TokenA tag')
-  assert(msg.Tags["TokenB"], 'AMM info data must contain a valid TokenB tag')
-
   registrationData.ammDetails = {
-    name = msg.Tags.Name,
+    name = ammName,
     tokenA = {
-      processId = msg.Tags["TokenA"],
-      pendingInfo = false
+      processId = ammTokenA,
     },
     tokenB = {
-      processId = msg.Tags["TokenB"],
-      pendingInfo = false
+      processId = ammTokenB,
     },
   }
+end
 
-  local ammDetails = registrationData.ammDetails
+local getTokensInfoToRegisterAMM = function(msg)
+  local ammProcessId = msg.Tags["X-AMM-Process"]
+  local ammDetails = AmmSubscriptions[ammProcessId].ammDetails
+  local ammTokenA = ammDetails.tokenA.processId
+  local ammTokenB = ammDetails.tokenB.processId
 
-  for _, token in ipairs({ msg.Tags["TokenA"], msg.Tags["TokenB"] }) do
+  -- GET TOKENS INFO
+
+  local reqs = 0
+  for _, token in ipairs({ ammTokenA, ammTokenB }) do
     if not dexiCore.isKnownToken(token) then
+      reqs = reqs + 1
       TokenInfoRequests[token] = ammProcessId
-      local index = token == ammDetails.tokenA.processId and 'tokenA' or 'tokenB'
-      ammDetails[index].pendingInfo = true
-      getTokenInfo(token)
+      ao.send({
+        Target = token,
+        Action = "Info"
+      })
     end
   end
 
-  -- if no info requests are pending, proceed with AMM subscription
-  if not ammDetails.tokenA.pendingInfo and not ammDetails.tokenB.pendingInfo then
-    subscribeToAmm(ammProcessId)
-    updateStatus(ammProcessId, 'initialized--subscribing')
+  while reqs > 0 do
+    local tokenInfoResponse = Receive(function(m)
+      local isFromToken = m.Tags['From-Process'] == ammTokenA or m.Tags['From-Process'] == ammTokenB
+      if not isFromToken then
+        return false
+      end
+
+      local token = m.Tags['From-Process']
+      return m.Tags["Response-For"] == 'Info' and TokenInfoRequests[token] == ammProcessId
+    end)
+    reqs = reqs - 1
+
+    local processId = tokenInfoResponse.Tags['From-Process']
+    local tokenName = tokenInfoResponse.Tags.Name
+    local tokenTicker = tokenInfoResponse.Tags.Ticker
+    local tokenDenominator = tokenInfoResponse.Tags.Denomination
+    local tokenTotalSupply = tokenInfoResponse.Tags.TotalSupply
+
+    assert(tokenName, 'Token info data must contain a valid Name tag')
+    assert(tokenTicker, 'Token info data must contain a valid Ticker tag')
+    assert(tokenDenominator, 'Token info data must contain a valid Denomination tag')
+    assert(tokenTotalSupply, 'Token info data must contain a valid TotalSupply tag')
+
+    local tokenInfo = {
+      processId = processId,
+      tokenName = tokenName,
+      tokenTicker = tokenTicker,
+      denominator = tokenDenominator,
+      totalSupply = tokenTotalSupply,
+      fixedSupply = false,
+      pendingInfo = false
+    }
+
+    dexiCore.registerToken(
+      tokenInfo.processId,
+      tokenInfo.tokenName,
+      tokenInfo.tokenTicker,
+      tokenInfo.denominator,
+      tokenInfo.totalSupply,
+      tokenInfo.fixedSupply,
+      math.floor(msg.Timestamp / 1000)
+    )
+
+    if ammDetails.tokenA.processId == processId then
+      ammDetails.tokenA = tokenInfo
+      TokenInfoRequests[processId] = nil
+    elseif ammDetails.tokenB.processId == processId then
+      ammDetails.tokenB = tokenInfo
+      TokenInfoRequests[processId] = nil
+    else
+      error('Token info does not match any of the AMM tokens: ' .. json.encode(tokenInfo))
+    end
   end
 end
 
-integrateAmm.hasPendingAmmInfo = function(msg)
-  return AmmSubscriptions[msg.From] ~= nil and AmmSubscriptions[msg.From].status == 'received-request--initializing'
-end
+local function subscribeToRegisterAMM(msg)
+  local ammProcessId = msg.Tags["X-AMM-Process"]
+  ao.send({
+    Target = ammProcessId,
+    Action = "Register-Subscriber",
+    Topics = json.encode({ "order-confirmation", "liquidity-add-remove" })
+  })
 
-integrateAmm.hasPendingTokenInfo = function(msg)
-  return TokenInfoRequests[msg.From] ~= nil
-end
+  local subscriptionConfirmation = Receive(function(m)
+    return m.Tags['From-Process'] == ammProcessId
+        and m.Tags["Response-For"] == 'Subscribe-To-Topics'
+  end)
 
--- 2B. Receive the Token Info to include the token registration in the AMM registration
-integrateAmm.handleTokenInfoResponse = function(msg)
-  local tokenProcessId = msg.From
-  local ammProcessId = TokenInfoRequests[tokenProcessId]
-  local registrationData = AmmSubscriptions[ammProcessId]
+  assert(subscriptionConfirmation.Tags.OK == 'true', 'Subscription failed for amm: ' .. ammProcessId)
+  assert(subscriptionConfirmation.Tags["Updated-Topics"],
+    'Subscription confirmation data must contain a valid updated-topics')
 
-  assert(msg.Tags.Name, 'Token info data must contain a valid Name tag')
-  assert(msg.Tags.Ticker, 'Token info data must contain a valid Ticker tag')
-  assert(msg.Tags.Denomination, 'Token info data must contain a valid Denominator tag')
-  assert(msg.Tags.TotalSupply, 'Token info data must contain a valid TotalSupply tag')
-
-  local tokenInfo = {
-    processId = tokenProcessId,
-    tokenName = msg.Tags.Name,
-    tokenTicker = msg.Tags.Ticker,
-    denominator = msg.Tags.Denomination,
-    totalSupply = msg.Tags.TotalSupply,
-    fixedSupply = false,
-    pendingInfo = false
-  }
-
-  dexiCore.registerToken(
-    tokenInfo.processId,
-    tokenInfo.tokenName,
-    tokenInfo.tokenTicker,
-    tokenInfo.denominator,
-    tokenInfo.totalSupply,
-    tokenInfo.fixedSupply,
-    math.floor(msg.Timestamp / 1000)
-  )
-
-  local ammDetails = registrationData.ammDetails
-
-  if ammDetails.tokenA.processId == tokenInfo.processId then
-    ammDetails.tokenA = tokenInfo
-    TokenInfoRequests[tokenInfo.processId] = nil
-  elseif ammDetails.tokenB.processId == tokenInfo.processId then
-    ammDetails.tokenB = tokenInfo
-    TokenInfoRequests[tokenInfo.processId] = nil
-  else
-    error('Token info does not match any of the AMM tokens: ' .. json.encode(tokenInfo))
-  end
-
-  -- when both token info responses have been received, proceeed within AMM registration
-  if not ammDetails.tokenA.pendingInfo and not ammDetails.tokenB.pendingInfo then
-    subscribeToAmm(ammProcessId)
-    updateStatus(ammProcessId, 'initialized--subscribing')
-  end
-end
-
-
--- 3. Receive Subscription Confirmation from AMM
-integrateAmm.handleSubscriptionConfirmationFromAmm = function(msg)
-  assert(msg.Tags.OK == 'true', 'Subscription failed for amm: ' .. msg.From)
-  assert(msg.Tags["Updated-Topics"], 'Subscription confirmation data must contain a valid updated-topics')
-
-  local topics = json.decode(msg.Tags["Updated-Topics"])
+  local topics = json.decode(subscriptionConfirmation.Tags["Updated-Topics"])
   assert(
     #topics == 2
     and (topics[1] == 'order-confirmation' and topics[2] == 'liquidity-add-remove')
     or (topics[1] == 'liquidity-add-remove' and topics[2] == 'order-confirmation'),
-    'Invalid topics received from amm: ' .. msg.From .. ' - ' .. json.encode(topics))
-
-  local ammProcessId = msg.From
-
-  if not AmmSubscriptions[ammProcessId] then
-    error('No subscription request found for amm: ' .. ammProcessId)
-  end
-
-  payForSubscription(ammProcessId)
-  updateStatus(ammProcessId, 'subscribed--paying')
+    'Invalid topics received from amm: ' .. ammProcessId .. ' - ' .. json.encode(topics))
 end
 
--- 4. Receive Payment Confirmation from AMM
-integrateAmm.handlePaymentConfirmationFromAmm = function(msg)
-  if not msg.Tags.OK == 'true' then
-    error('Payment failed for amm: ' .. msg.From)
+local paySubscriptionToRegisterAMM = function(msg)
+  local ammProcessId = msg.Tags["X-AMM-Process"]
+  ao.send({
+    Target = PAYMENT_TOKEN_PROCESS,
+    Action = 'Transfer',
+    Recipient = ammProcessId,
+    Quantity = "1",
+    ["X-Action"] = "Pay-For-Subscription",
+    ["X-Subscriber-Process-Id"] = ao.id
+  })
+
+  local ammPaymentResponse = Receive(function(m)
+    return m.Tags['From-Process'] == ammProcessId
+        and m.Tags["Response-For"] == 'Pay-For-Subscription'
+  end)
+
+  if not ammPaymentResponse.Tags.OK == 'true' then
+    error('Payment failed for amm: ' .. ammProcessId)
+  end
+end
+
+
+local finalizeRegisterAMM = function(msg)
+  local ammProcessId = msg.Tags["X-AMM-Process"]
+  local registrationData = AmmSubscriptions[ammProcessId]
+  local now = math.floor(os.time() / 1000)
+  dexiCore.registerAMM(
+    registrationData.ammDetails.name,
+    ammProcessId,
+    registrationData.ammDetails.tokenA.processId,
+    registrationData.ammDetails.tokenB.processId,
+    now
+  )
+end
+
+
+-- --------------------- EXPORT
+integrateAmm.handleRegisterAmm = function(msg)
+  if not validateRegisterAMM(msg) then
+    refundRegistrationPayment(msg)
+    return
   end
 
-  local ammProcessId = msg.From
-  if not AmmSubscriptions[ammProcessId] then
-    error('No subscription request found for amm: ' .. ammProcessId)
-  end
+  local ammProcessId = msg.Tags["X-AMM-Process"]
 
-  local now = math.floor(msg.Timestamp / 1000)
-  registerAMM(ammProcessId, now)
+  initializeRegisterAMM(msg)
+
+  updateStatus(ammProcessId, 'received-request--initializing')
+
+  getAmmInfoToRegisterAMM(msg)
+  getTokensInfoToRegisterAMM(msg)
+
+  updateStatus(ammProcessId, 'initialized--subscribing')
+
+  subscribeToRegisterAMM(msg)
+
+  updateStatus(ammProcessId, 'subscribed--paying')
+
+  paySubscriptionToRegisterAMM(msg)
+
   updateStatus(ammProcessId, 'paid--complete')
+
+  finalizeRegisterAMM(ammProcessId)
 end
 
 integrateAmm.handleRemoveAmm = function(msg)

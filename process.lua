@@ -255,43 +255,13 @@ Handlers.add(
 -- AMM Registration
 
 Handlers.add(
-  "Receive-Payment-For-AMM-Registration",
+  "Register-AMM",
   function(msg)
     return Handlers.utils.hasMatchingTag("Action", "Credit-Notice")(msg)
         and Handlers.utils.hasMatchingTag("X-Action", "Register-AMM")(msg)
         and msg.From == PAYMENT_TOKEN_PROCESS
   end,
   integrateAmm.handlePayForAmmRegistration
-)
-
-Handlers.add(
-  "Receive-AMM-Info",
-  function(msg)
-    return Handlers.utils.hasMatchingTag("Response-For", "Info")(msg)
-        and integrateAmm.hasPendingAmmInfo(msg)
-  end,
-  integrateAmm.handleInfoResponseFromAmm
-)
-
-Handlers.add(
-  "Receive-Token-Info",
-  function(msg)
-    return Handlers.utils.hasMatchingTag("Response-For", "Info")(msg)
-        and integrateAmm.hasPendingTokenInfo(msg)
-  end,
-  integrateAmm.handleTokenInfoResponse
-)
-
-Handlers.add(
-  "Subscription-Confirmation",
-  Handlers.utils.hasMatchingTag("Response-For", "Subscribe-To-Topics"),
-  integrateAmm.handleSubscriptionConfirmationFromAmm
-)
-
-Handlers.add(
-  "Payment-Confirmation-From-AMM",
-  Handlers.utils.hasMatchingTag("Response-For", "Pay-For-Subscription"),
-  integrateAmm.handlePaymentConfirmationFromAmm
 )
 
 Handlers.add(
