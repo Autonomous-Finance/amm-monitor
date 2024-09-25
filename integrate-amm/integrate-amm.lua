@@ -247,8 +247,7 @@ local paySubscriptionToRegisterAMM = function(msg)
 end
 
 
-local finalizeRegisterAMM = function(msg)
-  local ammProcessId = msg.Tags["X-AMM-Process"]
+local finalizeRegisterAMM = function(ammProcessId)
   local registrationData = AmmSubscriptions[ammProcessId]
   local now = math.floor(os.time() / 1000)
   print("REGISTERING AMM")
