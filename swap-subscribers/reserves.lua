@@ -70,11 +70,26 @@ function mod.unregisterSwapParamsSubscriber(processId, ammProcessId)
     dbUtils.execute(stmt, 'unregisterSwapParamsSubscriber')
 end
 
+function mod.registerAgent(agentId, agentType)
+    local stmt = db:prepare [[
+        INSERT OR REPLACE INTO agents (agent_id, agent_type) 
+        VALUES (:agent_id, :agent_type);
+    ]]
+    stmt:bind_names({ agent_id = agentId, agent_type = agentType })
+    dbUtils.execute(stmt, 'registerAgent')
+end
+
 function mod.registerSwapParamsSubscriberHandler(msg)
     local processId = msg.Tags['Process-Id']
     local ammProcessId = msg.Tags['Amm-Process-Id']
+    local agentType = msg.Tags['Agent-Type']
+    
     assert(ammProcessId, 'Amm-Process-Id is required')
     assert(processId, 'Process-Id is required')
+
+    if agentType then
+        mod.registerAgent(processId, agentType)
+    end
 
     mod.registerSwapParamsSubscriber(processId, ammProcessId, math.floor(msg.Timestamp / 1000))
 

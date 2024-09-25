@@ -53,6 +53,9 @@ function dbSeed.createMissingTables()
 
   db:exec(sqlschema.create_reserve_change_table)
   print("create_reserve_change_table: " .. (db:errmsg() == 'not an error' and '✅' or db:errmsg()))
+
+  db:exec(sqlschema.create_agents_table)
+  print("create_agents_table: " .. (db:errmsg() == 'not an error' and '✅' or db:errmsg()))
 end
 
 local function seedOraclePrices()

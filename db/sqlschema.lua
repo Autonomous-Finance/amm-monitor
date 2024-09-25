@@ -286,4 +286,10 @@ CREATE TABLE IF NOT EXISTS reserve_changes (
     created_at_ts_ms INTEGER
 );]]
 
+sqlschema.create_agents_table = [[
+CREATE TABLE IF NOT EXISTS agents (
+    agent_id TEXT PRIMARY KEY,
+    agent_type TEXT NOT NULL
+);]]
+
 return sqlschema

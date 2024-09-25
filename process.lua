@@ -450,3 +450,30 @@ Handlers.add(
     })
   end
 )
+
+Handlers.add(
+  "Get-Historical-Volume",
+  Handlers.utils.hasMatchingTag("Action", "Get-Historical-Volume"),
+  function(msg)
+    local agentType = msg.Tags['Agent-Type']
+    assert(agentType, 'Agent-Type is required')
+
+    local volumeQuery = [[
+        SELECT
+            COALESCE(SUM(amm_transactions_view.volume_usd), 0) AS total_volume_usd
+        FROM amm_transactions_view
+        JOIN agents ON agents.agent_id = amm_transactions_view.sender
+        WHERE agents.agent_type = :agent_type;
+    ]]
+
+    local stmt = db:prepare(volumeQuery)
+    stmt:bind_names({ agent_type = agentType })
+    local volumeData = dbUtils.queryOne(stmt)
+
+    ao.send({
+      Target = msg.From,
+      ResponseFor = msg.Action,
+      TotalVolumeUSD = tostring(volumeData.total_volume_usd)
+    })
+  end
+)
