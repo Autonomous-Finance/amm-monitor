@@ -251,6 +251,7 @@ local finalizeRegisterAMM = function(msg)
   local ammProcessId = msg.Tags["X-AMM-Process"]
   local registrationData = AmmSubscriptions[ammProcessId]
   local now = math.floor(os.time() / 1000)
+  print("REGISTERING AMM")
   dexiCore.registerAMM(
     registrationData.ammDetails.name,
     ammProcessId,
