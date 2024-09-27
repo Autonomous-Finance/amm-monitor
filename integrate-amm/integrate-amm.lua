@@ -54,6 +54,9 @@ local validateRegisterAMM = function(msg)
   assert(msg.Tags.Sender, 'Credit notice data must contain a valid sender')
   assert(msg.Tags["X-AMM-Process"], 'Credit notice data must contain a valid amm-process')
 
+  assert(msg.From == PAYMENT_TOKEN_PROCESS,
+    'AMM registration request payment must be in DEXI tokens. DEXI ID : ' .. PAYMENT_TOKEN_PROCESS .. ' ')
+
   local ammProcessId = msg.Tags["X-AMM-Process"]
 
   -- if a successful AMM registration is already in place, refund the requester;
