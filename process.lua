@@ -352,6 +352,12 @@ Handlers.add(
   debug.debugTransactions
 )
 
+
+Handlers.add(
+  "Get-Transaction-Ids",
+  debug.getTransactionIds
+)
+
 -- ANALYTICS
 
 Handlers.add(

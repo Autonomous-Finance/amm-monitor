@@ -50,6 +50,16 @@ function debug.dumpToCSV(msg)
   })
 end
 
+function debug.getTransactionIds()
+  local query = [[
+    SELECT id
+    FROM amm_transactions
+    ORDER BY created_at_ts
+    LIMIT 10000;
+  ]]
+  return dbUtils.queryManyWithParams(query, {}, 'debug.getTransactionIds')
+end
+
 function debug.debugTransactions()
   local stmt = db:prepare [[
     SELECT * FROM amm_transactions ORDER BY created_at_ts LIMIT 100;
