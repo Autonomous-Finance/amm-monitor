@@ -91,6 +91,8 @@ function dbSeed.handleResetDBState(msg)
   db:exec("DELETE FROM reserve_changes")
   dbSeed.createMissingTables()
   dbSeed.seed()
+
+  AmmSubscriptions = {}
 end
 
 return dbSeed
