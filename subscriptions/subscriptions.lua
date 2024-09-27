@@ -2,6 +2,7 @@ local indicators = require('indicators.indicators')
 local topN = require('top-n.top-n')
 local bint = require('.bint')(256)
 local dbUtils = require('db.utils')
+local responses = require('utils.responses')
 
 local subscriptions = {}
 
@@ -215,11 +216,11 @@ subscriptions.handleSubscribeForIndicators = function(msg)
     Action = 'Dexi-Indicator-Subscription-Confirmation',
     AMM = ammProcessId,
     Process = processId,
-    OK = 'true'
+    Status = 'OK'
   })
 end
 
-local unsubscribeForInidicators = function(processId, ammProcessId, asResponse)
+local unsubscribeForInidicators = function(processId, ammProcessId)
   if not sql.getIndicatorsSubscriber(processId, ammProcessId) then
     error('No indicator subscription found for process: ' .. processId .. ' and amm: ' .. ammProcessId)
   end
@@ -229,21 +230,18 @@ local unsubscribeForInidicators = function(processId, ammProcessId, asResponse)
 
   indicators.unregisterIndicatorSubscriber(processId, ammProcessId)
 
-  local tag = asResponse and 'Response-For' or 'Action'
-
   ao.send({
     Target = processId,
-    [tag] = 'Dexi-Indicator-Unsubscription-Confirmation',
+    Action = 'Dexi-Indicator-Unsubscription-Confirmation',
     AMM = ammProcessId,
-    OK = 'true'
+    Status = 'OK'
   })
 end
 
 subscriptions.handleUnsubscribeForIndicators = function(msg)
   local processId = msg.From
   local ammProcessId = msg.Tags['AMM-Process-Id']
-  local asResponse = true
-  unsubscribeForInidicators(processId, ammProcessId, asResponse)
+  unsubscribeForInidicators(processId, ammProcessId)
 end
 
 subscriptions.handleOperatorUnsubscribeForIndicators = function(msg)
@@ -252,8 +250,7 @@ subscriptions.handleOperatorUnsubscribeForIndicators = function(msg)
   end
   local processId = msg.Tags['Subscriber-Process-Id']
   local ammProcessId = msg.Tags['AMM-Process-Id']
-  local asResponse = false
-  unsubscribeForInidicators(processId, ammProcessId, asResponse)
+  unsubscribeForInidicators(processId, ammProcessId)
 end
 
 subscriptions.handleSubscribeForTopN = function(msg)
@@ -291,11 +288,11 @@ subscriptions.handleSubscribeForTopN = function(msg)
     Action = 'Dexi-Top-N-Subscription-Confirmation',
     QuoteToken = quoteToken,
     Process = processId,
-    OK = 'true'
+    Status = 'OK'
   })
 end
 
-local function unsubscribeForTopN(processId, quoteToken, asResponse)
+local function unsubscribeForTopN(processId, quoteToken)
   if not sql.getTopNSubscription(processId, quoteToken) then
     error('No top N subscription found for process: ' .. processId .. ' and quote token: ' .. quoteToken)
   end
@@ -304,21 +301,18 @@ local function unsubscribeForTopN(processId, quoteToken, asResponse)
     processId .. ' for quote token: ' .. quoteToken)
   sql.unregisterTopNSubscriber(processId, quoteToken)
 
-  local tag = asResponse and 'Response-For' or 'Action'
-
   ao.send({
     Target = processId,
-    [tag] = 'Dexi-Top-N-Unsubscription-Confirmation',
+    Action = 'Dexi-Top-N-Unsubscription-Confirmation',
     QuoteToken = quoteToken,
-    OK = 'true'
+    Status = 'OK'
   })
 end
 
 subscriptions.handleUnsubscribeForTopN = function(msg)
   local processId = msg.From
   local quoteToken = msg.Tags['Quote-Token']
-  local asResponse = true
-  unsubscribeForTopN(processId, quoteToken, asResponse)
+  unsubscribeForTopN(processId, quoteToken)
 end
 
 subscriptions.handleOperatorUnsubscribeForTopN = function(msg)
@@ -327,8 +321,7 @@ subscriptions.handleOperatorUnsubscribeForTopN = function(msg)
   end
   local processId = msg.Tags['Subscriber-Process-Id']
   local quoteToken = msg.Tags['Quote-Token']
-  local asResponse = false
-  unsubscribeForTopN(processId, quoteToken, asResponse)
+  unsubscribeForTopN(processId, quoteToken)
 end
 
 subscriptions.recordPayment = function(msg)

@@ -107,14 +107,14 @@ Handlers.add(
     if price then
       ao.send({
         Target = msg.From,
-        ResponseFor = msg.Action,
+        Action = msg.Action .. "-Response",
         ['Process-Id'] = msg.Tags['Process-Id'],
         Price = tostring(price)
       })
     else
       ao.send({
         Target = msg.From,
-        ResponseFor = msg.Action,
+        Action = msg.Action .. "-Response",
         ['Process-Id'] = msg.Tags['Process-Id'],
         Error = "Price not found"
       })

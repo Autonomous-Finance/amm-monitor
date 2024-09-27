@@ -1,6 +1,7 @@
 local dbUtils = require('db.utils')
 local calc = require('indicators.calc')
 local json = require("json")
+local responses = require('utils.responses')
 
 local indicators = {}
 
@@ -160,13 +161,12 @@ end
 function indicators.handleGetIndicators(msg)
   local ammProcessId = msg.Tags['AMM']
   local now = math.floor(msg.Timestamp / 1000)
-  ao.send({
-    Target = msg.From,
+  local replyData = getIndicators(ammProcessId, now)
+  local replyTags = {
     ['App-Name'] = 'Dexi',
-    ['Response-For'] = 'Get-Indicators',
-    ['AMM'] = ammProcessId,
-    Data = json.encode(getIndicators(ammProcessId, now))
-  })
+    ['AMM'] = ammProcessId
+  }
+  responses.sendReply(msg, replyData, replyTags)
 end
 
 function indicators.dispatchIndicatorsForAMM(ammProcessId, now)

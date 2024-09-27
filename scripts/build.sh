@@ -16,7 +16,7 @@ luacheck process.lua \
     ingest/ingest.lua \
     indicators/indicators.lua indicators/calc.lua \
     top-n/top-n.lua \
-    utils/debug.lua \
+    utils/debug.lua utils/responses.lua \
     ownable/ownable.lua \
     ops/config-ops.lua ops/emergency.lua ops/initialize.lua \
     amm-analytics/main.lua amm-analytics/volume.lua amm-analytics/pool-overview.lua amm-analytics/pool-token-pnl.lua amm-analytics/pair-finder.lua \
@@ -35,7 +35,7 @@ amalg.lua -s process.lua -o build/output.lua \
     ingest.ingest \
     indicators.indicators indicators.calc \
     top-n.top-n \
-    utils.debug \
+    utils.debug utils.responses \
     ownable.ownable \
     ops.config-ops ops.emergency ops.initialize \
     amm-analytics.main amm-analytics.volume amm-analytics.pool-overview amm-analytics.pool-token-pnl amm-analytics.pair-finder \

@@ -1,6 +1,8 @@
 local dbUtils = require("db.utils")
 local json = require("json")
 local hopper = require("hopper.hopper")
+local responses = require('utils.responses')
+
 
 local analytics = {}
 
@@ -327,12 +329,7 @@ end
 function analytics.getPoolPnlHistoryForUser(msg)
     assert(msg.Tags.User, "User is required")
     local result = analytics.calculatePnlForUserAndAmm(msg.Tags.User)
-
-    ao.send({
-        ['Response-For'] = 'Get-Pool-Pnl-History',
-        ['Target'] = msg.From,
-        ['Data'] = json.encode(result)
-    })
+    responses.sendReply(msg, result)
 end
 
 return analytics
