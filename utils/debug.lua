@@ -1,5 +1,6 @@
 local dbUtils = require('db.utils')
 local json = require('json')
+local utils = require(".utils")
 
 local debug = {}
 
@@ -50,14 +51,18 @@ function debug.dumpToCSV(msg)
   })
 end
 
-function debug.getTransactionIds()
+function debug.getTransactionIds(msg)
   local query = [[
     SELECT id
     FROM amm_transactions
     ORDER BY created_at_ts
     LIMIT 10000;
   ]]
-  return dbUtils.queryManyWithParams(query, {}, 'debug.getTransactionIds')
+  local r = dbUtils.queryManyWithParams(query, {}, 'debug.getTransactionIds')
+  local ids = utils.map(function(x) return x.id end, r)
+  msg.reply({
+    Data = json.encode(ids)
+  })
 end
 
 function debug.debugTransactions()
