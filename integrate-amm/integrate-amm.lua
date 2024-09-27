@@ -27,16 +27,6 @@ local integrateAmm = {}
 ]]
 AmmSubscriptions = AmmSubscriptions or {}
 
-
---[[
-  Associate token Info responses with pending AMM registrations
-  {
-    [tokenProcessId] = ammProcessId
-  }
-]]
-TokenInfoRequests = TokenInfoRequests or {}
-
-
 -- ----------------------- INTERNAL
 
 local updateStatus = function(ammProcessId, newStatus)
@@ -94,16 +84,10 @@ end
 
 local getAmmInfoToRegisterAMM = function(msg)
   local ammProcessId = msg.Tags["X-AMM-Process"]
-  ao.send({
+  local ammInfoResponse = ao.send({
     Target = ammProcessId,
     Action = "Info"
-  })
-  local ammInfoResponse = Receive(function(m)
-    return m.Tags['From-Process'] == ammProcessId
-        and m.Tags["Response-For"] == 'Info'
-        and AmmSubscriptions[ammProcessId] ~= nil
-        and AmmSubscriptions[ammProcessId].status == 'received-request--initializing'
-  end)
+  }).receive()
 
   local ammName = ammInfoResponse.Tags.Name
   local ammTokenA = ammInfoResponse.Tags["TokenA"]
@@ -133,69 +117,50 @@ local getTokensInfoToRegisterAMM = function(msg)
 
   -- GET TOKENS INFO
 
-  local reqs = 0
   for _, token in ipairs({ ammTokenA, ammTokenB }) do
     if not dexiCore.isKnownToken(token) then
-      reqs = reqs + 1
-      TokenInfoRequests[token] = ammProcessId
-      ao.send({
+      local tokenInfoResponse = ao.send({
         Target = token,
         Action = "Info"
-      })
-    end
-  end
+      }).receive()
 
-  while reqs > 0 do
-    local tokenInfoResponse = Receive(function(m)
-      local isFromToken = m.Tags['From-Process'] == ammTokenA or m.Tags['From-Process'] == ammTokenB
-      if not isFromToken then
-        return false
+      local tokenName = tokenInfoResponse.Tags.Name
+      local tokenTicker = tokenInfoResponse.Tags.Ticker
+      local tokenDenominator = tokenInfoResponse.Tags.Denomination
+      local tokenTotalSupply = tokenInfoResponse.Tags.TotalSupply
+
+      assert(tokenName, 'Token info data must contain a valid Name tag')
+      assert(tokenTicker, 'Token info data must contain a valid Ticker tag')
+      assert(tokenDenominator, 'Token info data must contain a valid Denomination tag')
+      assert(tokenTotalSupply, 'Token info data must contain a valid TotalSupply tag')
+
+      local tokenInfo = {
+        processId = token,
+        tokenName = tokenName,
+        tokenTicker = tokenTicker,
+        denominator = tokenDenominator,
+        totalSupply = tokenTotalSupply,
+        fixedSupply = false,
+        pendingInfo = false
+      }
+
+      dexiCore.registerToken(
+        tokenInfo.processId,
+        tokenInfo.tokenName,
+        tokenInfo.tokenTicker,
+        tokenInfo.denominator,
+        tokenInfo.totalSupply,
+        tokenInfo.fixedSupply,
+        math.floor(msg.Timestamp / 1000)
+      )
+
+      if ammDetails.tokenA.processId == token then
+        ammDetails.tokenA = tokenInfo
+      elseif ammDetails.tokenB.processId == token then
+        ammDetails.tokenB = tokenInfo
+      else
+        error('Token info does not match any of the AMM tokens: ' .. json.encode(tokenInfo))
       end
-
-      local token = m.Tags['From-Process']
-      return m.Tags["Response-For"] == 'Info' and TokenInfoRequests[token] == ammProcessId
-    end)
-    reqs = reqs - 1
-
-    local processId = tokenInfoResponse.Tags['From-Process']
-    local tokenName = tokenInfoResponse.Tags.Name
-    local tokenTicker = tokenInfoResponse.Tags.Ticker
-    local tokenDenominator = tokenInfoResponse.Tags.Denomination
-    local tokenTotalSupply = tokenInfoResponse.Tags.TotalSupply
-
-    assert(tokenName, 'Token info data must contain a valid Name tag')
-    assert(tokenTicker, 'Token info data must contain a valid Ticker tag')
-    assert(tokenDenominator, 'Token info data must contain a valid Denomination tag')
-    assert(tokenTotalSupply, 'Token info data must contain a valid TotalSupply tag')
-
-    local tokenInfo = {
-      processId = processId,
-      tokenName = tokenName,
-      tokenTicker = tokenTicker,
-      denominator = tokenDenominator,
-      totalSupply = tokenTotalSupply,
-      fixedSupply = false,
-      pendingInfo = false
-    }
-
-    dexiCore.registerToken(
-      tokenInfo.processId,
-      tokenInfo.tokenName,
-      tokenInfo.tokenTicker,
-      tokenInfo.denominator,
-      tokenInfo.totalSupply,
-      tokenInfo.fixedSupply,
-      math.floor(msg.Timestamp / 1000)
-    )
-
-    if ammDetails.tokenA.processId == processId then
-      ammDetails.tokenA = tokenInfo
-      TokenInfoRequests[processId] = nil
-    elseif ammDetails.tokenB.processId == processId then
-      ammDetails.tokenB = tokenInfo
-      TokenInfoRequests[processId] = nil
-    else
-      error('Token info does not match any of the AMM tokens: ' .. json.encode(tokenInfo))
     end
   end
 end
@@ -210,10 +175,10 @@ local function subscribeToRegisterAMM(msg)
 
   local subscriptionConfirmation = Receive(function(m)
     return m.Tags['From-Process'] == ammProcessId
-        and m.Tags["Response-For"] == 'Subscribe-To-Topics'
+        and m.Tags.Action == 'Subscribe-To-Topics-Confirmation'
   end)
 
-  assert(subscriptionConfirmation.Tags.OK == 'true', 'Subscription failed for amm: ' .. ammProcessId)
+  assert(subscriptionConfirmation.Tags.Success == 'OK', 'Subscription failed for amm: ' .. ammProcessId)
   assert(subscriptionConfirmation.Tags["Updated-Topics"],
     'Subscription confirmation data must contain a valid updated-topics')
 
@@ -238,10 +203,10 @@ local paySubscriptionToRegisterAMM = function(msg)
 
   local ammPaymentResponse = Receive(function(m)
     return m.Tags['From-Process'] == ammProcessId
-        and m.Tags["Response-For"] == 'Pay-For-Subscription'
+        and m.Tags.Action == "Pay-For-Subscription-Confirmation"
   end)
 
-  if not ammPaymentResponse.Tags.OK == 'true' then
+  if not ammPaymentResponse.Tags.Status == 'OK' then
     error('Payment failed for amm: ' .. ammProcessId)
   end
 end

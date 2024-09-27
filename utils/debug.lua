@@ -64,7 +64,7 @@ function debug.handleGetConfig(msg)
   ao.send({
     Target = msg.From,
     ['App-Name'] = 'Dexi',
-    ['Response-For'] = 'Get-Config',
+    Action = 'Get-Config-Response',
     Data = json.encode({
       ['Initialized'] = tostring(Initialized),
       ['Operator'] = OPERATOR,
