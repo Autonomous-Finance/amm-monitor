@@ -181,7 +181,7 @@ local function subscribeToRegisterAMM(msg)
         and m.Tags.Action == 'Subscribe-To-Topics-Confirmation'
   end)
 
-  assert(subscriptionConfirmation.Tags.Success == 'OK', 'Subscription failed for amm: ' .. ammProcessId)
+  assert(subscriptionConfirmation.Tags.Status == 'OK', 'Subscription failed for amm: ' .. ammProcessId)
   assert(subscriptionConfirmation.Tags["Updated-Topics"],
     'Subscription confirmation data must contain a valid updated-topics')
 
