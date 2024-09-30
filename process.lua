@@ -270,6 +270,18 @@ Handlers.add(
   integrateAmm.handleGetRegistrationStatus
 )
 
+-- AMM Activate user public subscription
+
+Handlers.add(
+  "Activate-Public-AMM",
+  function(msg)
+    return Handlers.utils.hasMatchingTag("Action", "Credit-Notice")(msg)
+        and Handlers.utils.hasMatchingTag("X-Action", "Activate-AMM")(msg)
+  end,
+  integrateAmm.handleActivateAmm
+)
+
+
 -- OPS
 
 Handlers.add(

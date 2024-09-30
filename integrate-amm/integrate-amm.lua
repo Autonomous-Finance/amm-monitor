@@ -1,5 +1,7 @@
 local json = require("json")
 local dexiCore = require("dexi-core.dexi-core")
+local updateToken = require("update-token.update-token")
+local hopper = require("hopper.hopper")
 
 local integrateAmm = {}
 
@@ -8,6 +10,7 @@ local integrateAmm = {}
     [processId] = {
       requester = requesterId,         -- whoever paid for subscribing to the AMM
       status = subscriptionStatus,     -- 'received-request--initializing' | 'initialized--subscribing' | 'subscribed--paying' | 'paid--complete'
+      userWillSubscribe = true | false,    -- if the user will pay for the subscription
       ammDetails = {
         name = ammName,
         tokenA = {
@@ -26,6 +29,10 @@ local integrateAmm = {}
   }
 ]]
 AmmSubscriptions = AmmSubscriptions or {}
+
+
+-- Set activate price in USD
+PriceInUSD = 50;
 
 -- ----------------------- INTERNAL
 
@@ -81,7 +88,8 @@ end
 local initializeRegisterAMM = function(msg)
   local ammProcessId = msg.Tags["X-AMM-Process"]
   AmmSubscriptions[ammProcessId] = {
-    requester = msg.Tags.Sender
+    requester = msg.Tags.Sender,
+    userWillSubscribe = msg.Tags["X-User-Will-Subscribe"] == "true" or false,
   }
 end
 
@@ -222,7 +230,8 @@ local finalizeRegisterAMM = function(ammProcessId)
     ammProcessId,
     registrationData.ammDetails.tokenA.processId,
     registrationData.ammDetails.tokenB.processId,
-    now
+    now,
+    registrationData.userWillSubscribe
   )
 end
 
@@ -272,6 +281,62 @@ integrateAmm.handleGetRegistrationStatus = function(msg)
     Action = "Get-AMM-Registration-Status",
     AMM = ammProcessId,
     Status = registrationData.status
+  })
+end
+
+integrateAmm.handleActivateAmm = function(msg)
+  assert(msg.Tags["AMM-Process"], "AMM activation data must contain a valid AMM-Process tag")
+
+  -- get denomiator for payment token
+  local denominator = updateToken.get_token_denominator(msg.From)
+
+  -- Get hopper price for the payment token
+  local priceResponse = hopper.getPrice("USD", msg.From)
+  local totalCost = priceResponse * PriceInUSD * 10 ^ denominator
+  local quantity = tonumber(msg.Tags.Quantity)
+
+  -- if less funds received refund the user and send back the reason
+  if (quantity < totalCost) then
+    -- Send back the funds
+    ao.send({
+      Target = msg.From,
+      Action = "Transfer",
+      Quantity = msg.Tags.Quantity,
+      Recipient = msg.Sender
+    })
+
+    ao.send({
+      Target = msg.Sender,
+      Action = 'Activate-AMM-Result',
+      Success = "false",
+      ["AMM-Process"] = msg.Tags["X-AMM-Process"],
+      ["Reason"] = "Insufficient funds"
+    })
+
+    -- break the execution
+    return false
+  end
+
+  -- if more funds received refund the difference to user
+  if (quantity > totalCost) then
+    -- Send back the funds
+    ao.send({
+      Target = msg.From,
+      Action = "Transfer",
+      Quantity = quantity - totalCost,
+      Recipient = msg.Sender
+    })
+  end
+
+  -- Update the AMM in sql with status "public"
+  dexiCore.activateAmm(msg.Tags["AMM-Process"])
+
+  ao.send({
+    Target = msg.Sender,
+    Action = 'Activate-AMM-Result',
+    Success = "true",
+    ["AMM-Process"] = msg.Tags["X-AMM-Process"],
+    Data = "true"
   })
 end
 
