@@ -34,6 +34,7 @@ function overview.getOverview(now, orderBy)
     r.amm_process as amm_process,
     r.amm_token0 AS token0,
     r.amm_token1 AS token1,
+    r.amm_status AS amm_status,
     transactions,
     volume,
     t.token_name AS token_name,
