@@ -39,6 +39,7 @@ function hopper.fetch_pools()
     CAST(reserves_1 AS NUMERIC) as reserve1
   FROM amm_swap_params
   LEFT JOIN amm_registry USING (amm_process)
+  WHERE coalesce(token0, '') != '' AND coalesce(token1, '') != ''
   ]])
 
   if not stmt then
