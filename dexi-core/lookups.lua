@@ -1,6 +1,5 @@
 local dbUtils = require("db.utils")
 local hopper = require("hopper.hopper")
-local lookups = require("dexi-core.lookups")
 local mod = {}
 
 function mod.tokenInfo(tokenProcess)
