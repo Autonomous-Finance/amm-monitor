@@ -1,5 +1,6 @@
 local dbUtils = require("db.utils")
 local hopper = require("hopper.hopper")
+local lookups = require("dexi-core.lookups")
 local mod = {}
 
 function mod.tokenInfo(tokenProcess)
@@ -70,7 +71,11 @@ end
 
 function mod.tryGetHopperPrice(token)
     local success, price = pcall(function()
-        return hopper.getPrice(token, 'USD')
+        local denominator = lookups.tokenInfo(token).denominator
+        return {
+            price = hopper.getPrice(token, 'USD'),
+            denominator = denominator
+        }
     end)
     if not success then
         print('Error retrieving price for ' .. token .. ': ' .. price)

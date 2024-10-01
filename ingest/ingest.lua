@@ -166,11 +166,15 @@ local function recordLiquidityChange(msg)
     return
   end
 
-  local tokenAPrice = lookups.tryGetHopperPrice(changeData['Token-A'])
-  local tokenBPrice = lookups.tryGetHopperPrice(changeData['Token-B'])
+  local tokenAInfo = lookups.tryGetHopperPrice(changeData['Token-A'])
+  local tokenBInfo = lookups.tryGetHopperPrice(changeData['Token-B'])
 
-  local tokenADenominator = getDenominator(changeData['Token-A'])
-  local tokenBDenominator = getDenominator(changeData['Token-B'])
+  local tokenAPrice = tokenAInfo and tokenAInfo.price or nil
+  local tokenBPrice = tokenBInfo and tokenBInfo.price or nil
+
+  local tokenADenominator = tokenAInfo and tokenAInfo.denominator or nil
+  local tokenBDenominator = tokenBInfo and tokenBInfo.denominator or nil
+
   local tvlInUsd
   if tokenAPrice and tokenBPrice then
     tvlInUsd = ((tonumber(changeData['Reserves-Token-A']) * tokenAPrice / 10 ^ tokenADenominator) +
@@ -220,8 +224,11 @@ local function recordSwap(msg, swapData, source, sourceAmm)
   assert(swapData['Reserves-Token-B'], 'Missing Reserves-Token-B')
 
 
-  local tokenAPrice = lookups.tryGetHopperPrice(swapData['Token-A'])
-  local tokenBPrice = lookups.tryGetHopperPrice(swapData['Token-B'])
+  local tokenAInfo = lookups.tryGetHopperPrice(swapData['Token-A'])
+  local tokenBInfo = lookups.tryGetHopperPrice(swapData['Token-B'])
+
+  local tokenAPrice = tokenAInfo and tokenAInfo.price or nil
+  local tokenBPrice = tokenBInfo and tokenBInfo.price or nil
 
   local fromTokenUsdPrice = swapData['Token-A'] == swapData['From-Token'] and tokenAPrice or tokenBPrice
   local toTokenUsdPrice = swapData['Token-A'] == swapData['To-Token'] and tokenAPrice or tokenBPrice
