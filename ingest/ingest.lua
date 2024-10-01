@@ -291,7 +291,7 @@ function ingest.handleMonitorIngestSwapParamsChange(msg)
     recordChangeInSwapParams(msg, json.decode(msg.Data), 'message', ammProcessId, 'liquidity-add-remove')
     -- disable for now TODO!!!
     -- topN.dispatchMarketDataIncludingAMM(now, ammProcessId)
-    recordLiquidityChange(msg, json.decode(msg.Data), ammProcessId)
+    recordLiquidityChange(msg)
   end
 end
 

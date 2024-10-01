@@ -70,7 +70,7 @@ end
 
 function mod.tryGetHopperPrice(token)
     local success, price = pcall(function()
-        local denominator = lookups.tokenInfo(token).denominator
+        local denominator = mod.tokenInfo(token).denominator
         return {
             price = hopper.getPrice(token, 'USD'),
             denominator = denominator
