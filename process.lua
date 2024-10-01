@@ -107,14 +107,14 @@ Handlers.add(
     if price then
       ao.send({
         Target = msg.From,
-        ResponseFor = msg.Action,
+        Action = msg.Action .. "-Response",
         ['Process-Id'] = msg.Tags['Process-Id'],
         Price = tostring(price)
       })
     else
       ao.send({
         Target = msg.From,
-        ResponseFor = msg.Action,
+        Action = msg.Action .. "-Response",
         ['Process-Id'] = msg.Tags['Process-Id'],
         Error = "Price not found"
       })
@@ -269,6 +269,18 @@ Handlers.add(
   Handlers.utils.hasMatchingTag("Action", "Get-AMM-Registration-Status"),
   integrateAmm.handleGetRegistrationStatus
 )
+
+-- AMM Activate user public subscription
+
+Handlers.add(
+  "Activate-Public-AMM",
+  function(msg)
+    return Handlers.utils.hasMatchingTag("Action", "Credit-Notice")(msg)
+        and Handlers.utils.hasMatchingTag("X-Action", "Activate-AMM")(msg)
+  end,
+  integrateAmm.handleActivateAmm
+)
+
 
 -- OPS
 

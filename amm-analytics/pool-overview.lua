@@ -1,5 +1,6 @@
 local dbUtils = require("db.utils")
 local json = require("json")
+local responses = require('utils.responses')
 
 local analytics = {}
 
@@ -68,11 +69,8 @@ function analytics.getPoolOverview(msg)
 
     local result = dbUtils.queryMany(stmt)
 
-    ao.send({
-        ['Response-For'] = 'Get-Pool-Overview',
-        ['Target'] = msg.From,
-        ['Data'] = json.encode(result)
-    })
+    local replyData = result
+    responses.sendReply(msg, replyData)
 end
 
 return analytics

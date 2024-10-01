@@ -87,7 +87,8 @@ CREATE TABLE IF NOT EXISTS amm_registry (
     amm_token1 TEXT NOT NULL,
     amm_base_token TEXT,
     amm_quote_token TEXT,
-    amm_discovered_at_ts INTEGER
+    amm_discovered_at_ts INTEGER,
+    amm_status TEXT NOT NULL CHECK (amm_status IN ('private', 'public'))
 );
 ]]
 

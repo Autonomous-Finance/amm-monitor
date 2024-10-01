@@ -1,7 +1,7 @@
 local dbUtils = require('db.utils')
 local analytics = {}
-local json = require('json')
 local lookups = require('dexi-core.lookups')
+local responses = require('utils.responses')
 
 local pairFinderQuery = [[
     SELECT
@@ -59,26 +59,21 @@ function analytics.findBestPairsForToken(msg)
     local tokenProcess = msg.Tags['Token']
     local pairs = analytics.findBestPairs(tokenProcess)
     if not pairs then
-        ao.send({
-            ['Response-For'] = 'Find-Best-Pairs-For-Token',
-            ['No-Pools-Found'] = true,
-            ['Target'] = msg.From,
-            ['Data'] = json.encode({
-                {
-                    ticker = 'mockAO',
-                    name = 'mockAO',
-                    process = 'j7w28CJQHYwamMsotkhE7x0aVUggGwrBtdO5-MQ80uU',
-                    tvl_in_usd = 100000000
-                }
-            })
-        })
+        local replyData = {
+            {
+                ticker = 'mockAO',
+                name = 'mockAO',
+                process = 'j7w28CJQHYwamMsotkhE7x0aVUggGwrBtdO5-MQ80uU',
+                tvl_in_usd = 100000000
+            }
+        }
+        local replyTags = { ['No-Pools-Found'] = true }
+        responses.sendReply(msg, replyData, replyTags)
         return
     end
-    ao.send({
-        ['Response-For'] = 'Find-Best-Pairs-For-Token',
-        ['Target'] = msg.From,
-        ['Data'] = json.encode(pairs)
-    })
+
+    local replyData = pairs
+    responses.sendReply(msg, replyData)
 end
 
 return analytics

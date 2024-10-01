@@ -1,5 +1,6 @@
 local dbUtils = require('db.utils')
 local json = require('json')
+local responses = require('utils.responses')
 
 local topN = {}
 
@@ -154,12 +155,9 @@ function topN.handleGetTopNTokenSet(msg)
     error('No top N token set found for this subscriber and quote token')
   end
 
-  ao.send({
-    Target = msg.From,
-    ['App-Name'] = 'Dexi',
-    ['Response-For'] = 'Get-Top-N-Token-Set',
-    Data = json.encode(tokenSet)
-  })
+  local replyData = tokenSet
+  local replyTags = { ['App-Name'] = 'Dexi' }
+  responses.sendReply(msg, replyData, replyTags)
 end
 
 function topN.handleGetTopNMarketData(msg)
@@ -173,12 +171,9 @@ function topN.handleGetTopNMarketData(msg)
     error('Quote-Token must be ' .. QUOTE_TOKEN.ProcessId .. ' ( ' .. QUOTE_TOKEN.Ticker .. ' ) ')
   end
 
-  ao.send({
-    Target = msg.From,
-    ['App-Name'] = 'Dexi',
-    ['Response-For'] = 'Get-Top-N-Market-Data',
-    Data = json.encode(sql.queryTopNMarketData(quoteToken, n))
-  })
+  local replyData = sql.queryTopNMarketData(quoteToken, n)
+  local replyTags = { ['App-Name'] = 'Dexi' }
+  responses.sendReply(msg, replyData, replyTags)
 end
 
 function topN.dispatchMarketDataIncludingAMM(now, ammProcessId)
