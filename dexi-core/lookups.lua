@@ -4,7 +4,7 @@ local mod = {}
 
 function mod.tokenInfo(tokenProcess)
     local sql = [[
-    SELECT * FROM token_registry WHERE token_process = :token_process"
+    SELECT * FROM token_registry WHERE token_process = :token_process;
     ]]
     return dbUtils.queryOneWithParams(sql, { token_process = tokenProcess }, "mod.tokenInfo")
 end
