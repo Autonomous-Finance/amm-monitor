@@ -1,4 +1,5 @@
 local dbUtils = require("db.utils")
+local hopper = require("hopper.hopper")
 local mod = {}
 
 function mod.tokenInfo(tokenProcess)
@@ -65,6 +66,17 @@ function mod.getPriceFromLastTransaction(token)
     end
 
     return nil
+end
+
+function mod.tryGetHopperPrice(token)
+    local success, price = pcall(function()
+        return hopper.getPrice(token, 'USD')
+    end)
+    if not success then
+        print('Error retrieving price for ' .. token .. ': ' .. price)
+        return nil
+    end
+    return price
 end
 
 return mod

@@ -9,7 +9,7 @@ local topN = require('top-n.top-n')
 local usdPrice = require('dexi-core.usd-price')
 local swapSubscribers = require('swap-subscribers.main')
 local reserveSubscribers = require('swap-subscribers.reserves')
-local hopper = require('hopper.hopper')
+local lookups = require('dexi-core.lookups')
 
 local ingest = {}
 
@@ -158,16 +158,6 @@ local function getDenominator(token)
   return row and row.denominator
 end
 
-local function tryGetPrice(token)
-  local success, price = pcall(function()
-    return hopper.getPrice(token, 'USD')
-  end)
-  if not success then
-    print('Error retrieving price for ' .. token .. ': ' .. price)
-    return nil
-  end
-  return price
-end
 
 local function recordLiquidityChange(msg)
   local changeData = json.decode(msg.Data)
@@ -176,8 +166,8 @@ local function recordLiquidityChange(msg)
     return
   end
 
-  local tokenAPrice = tryGetPrice(changeData['Token-A'])
-  local tokenBPrice = tryGetPrice(changeData['Token-B'])
+  local tokenAPrice = lookups.tryGetHopperPrice(changeData['Token-A'])
+  local tokenBPrice = lookups.tryGetHopperPrice(changeData['Token-B'])
 
   local tokenADenominator = getDenominator(changeData['Token-A'])
   local tokenBDenominator = getDenominator(changeData['Token-B'])
@@ -230,8 +220,8 @@ local function recordSwap(msg, swapData, source, sourceAmm)
   assert(swapData['Reserves-Token-B'], 'Missing Reserves-Token-B')
 
 
-  local tokenAPrice = tryGetPrice(swapData['Token-A'])
-  local tokenBPrice = tryGetPrice(swapData['Token-B'])
+  local tokenAPrice = lookups.tryGetHopperPrice(swapData['Token-A'])
+  local tokenBPrice = lookups.tryGetHopperPrice(swapData['Token-B'])
 
   local fromTokenUsdPrice = swapData['Token-A'] == swapData['From-Token'] and tokenAPrice or tokenBPrice
   local toTokenUsdPrice = swapData['Token-A'] == swapData['To-Token'] and tokenAPrice or tokenBPrice

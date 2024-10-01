@@ -25,8 +25,10 @@ function analytics.findBestPairs(tokenProcess)
     local result = dbUtils.queryManyWithParams(pairFinderQuery, { token = tokenProcess })
 
     for _, pair in ipairs(result) do
-        local token0Price = lookups.getPriceFromLastTransaction(pair.t0_process)
-        local token1Price = lookups.getPriceFromLastTransaction(pair.t1_process)
+        local token0Price = lookups.getPriceFromLastTransaction(pair.t0_process) or
+        lookups.tryGetHopperPrice(pair.t0_process)
+        local token1Price = lookups.getPriceFromLastTransaction(pair.t1_process) or
+        lookups.tryGetHopperPrice(pair.t1_process)
 
         if token0Price and token1Price then
             local reserves0 = pair.reserves_0 / (10 ^ token0Price.denominator)

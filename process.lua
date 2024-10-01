@@ -429,7 +429,7 @@ Handlers.add(
     local tokens = json.decode(msg.Tags["Tokens"])
     local prices = {}
     for _, token in ipairs(tokens) do
-      prices[token] = lookups.getPriceFromLastTransaction(token)
+      prices[token] = lookups.getPriceFromLastTransaction(token) or lookups.tryGetHopperPrice(token)
     end
     ao.send({
       Target = msg.From,
