@@ -7,7 +7,8 @@ local stats = require('dexi-core.stats')
 local candles = require('dexi-core.candles')
 local priceAround = require('dexi-core.price-around')
 local topN = require('top-n.top-n')
-
+local hopper = require('hopper.hopper')
+local lookups = require('dexi-core.lookups')
 
 local dexiCore = {}
 
@@ -220,6 +221,12 @@ function dexiCore.handleGetPricesInBatch(msg)
   local ammPrices = {}
   for _, amm in ipairs(amms) do
     local price = priceAround.findPriceAroundTimestamp(msg.Timestamp / 1000, amm)
+    if not price then
+      local ammInfo = lookups.ammInfo(amm)
+      if ammInfo then
+        price = hopper.getPrice(ammInfo.amm_token1, 'USD')
+      end
+    end
     ammPrices[amm] = price
   end
 
