@@ -282,7 +282,7 @@ integrateAmm.handleGetRegistrationStatus = function(msg)
 end
 
 integrateAmm.handleActivateAmm = function(msg)
-  assert(msg.Tags["AMM-Process"], "AMM activation data must contain a valid AMM-Process tag")
+  assert(msg.Tags["X-AMM-Process"], "AMM activation data must contain a valid X-AMM-Process tag")
 
   -- get denomiator for payment token
   local denominator = updateToken.get_token_denominator(msg.From)
@@ -326,7 +326,7 @@ integrateAmm.handleActivateAmm = function(msg)
   end
 
   -- Update the AMM in sql with status "public"
-  dexiCore.activateAmm(msg.Tags["AMM-Process"])
+  dexiCore.activateAmm(msg.Tags["X-AMM-Process"])
 
   ao.send({
     Target = msg.Sender,
@@ -334,6 +334,19 @@ integrateAmm.handleActivateAmm = function(msg)
     Success = "true",
     ["AMM-Process"] = msg.Tags["X-AMM-Process"],
     Data = "true"
+  })
+end
+
+integrateAmm.handleGetAmmDetails = function(msg)
+  assert(msg.Tags["AMM-Process"], "AMM status data must contain a valid AMM-Process tag")
+
+  local details = dexiCore.getRegisteredAMM(msg.Tags["AMM-Process"])
+
+  ao.send({
+    Target = msg.Sender,
+    Action = 'Get-AMM-Details-Result',
+    ["AMM-Process"] = msg.Tags["AMM-Process"],
+    Data = json.encode(details)
   })
 end
 

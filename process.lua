@@ -270,6 +270,11 @@ Handlers.add(
   integrateAmm.handleGetRegistrationStatus
 )
 
+Handlers.add("Get-AMM-Details",
+  Handlers.utils.hasMatchingTag("Action", "Get-AMM-Details"),
+  integrateAmm.handleGetAmmDetails
+)
+
 -- AMM Activate user public subscription
 
 Handlers.add(
