@@ -10,7 +10,6 @@ local integrateAmm = {}
     [processId] = {
       requester = requesterId,         -- whoever paid for subscribing to the AMM
       status = subscriptionStatus,     -- 'received-request--initializing' | 'initialized--subscribing' | 'subscribed--paying' | 'paid--complete'
-      userWillSubscribe = true | false,    -- if the user will pay for the subscription
       ammDetails = {
         name = ammName,
         tokenA = {
@@ -88,8 +87,7 @@ end
 local initializeRegisterAMM = function(msg)
   local ammProcessId = msg.Tags["X-AMM-Process"]
   AmmSubscriptions[ammProcessId] = {
-    requester = msg.Tags.Sender,
-    userWillSubscribe = msg.Tags["X-User-Will-Subscribe"] == "true" or false,
+    requester = msg.Tags.Sender
   }
 end
 
@@ -230,8 +228,7 @@ local finalizeRegisterAMM = function(ammProcessId)
     ammProcessId,
     registrationData.ammDetails.tokenA.processId,
     registrationData.ammDetails.tokenB.processId,
-    now,
-    registrationData.userWillSubscribe
+    now
   )
 end
 

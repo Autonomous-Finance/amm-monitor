@@ -15,7 +15,7 @@ local dexiCore = {}
 
 local sql = {}
 
-function sql.registerAMM(name, processId, token0, token1, discoveredAt, status)
+function sql.registerAMM(name, processId, token0, token1, discoveredAt)
   local stmt = db:prepare [[
   INSERT OR REPLACE INTO amm_registry (amm_process, amm_name, amm_token0, amm_token1, amm_quote_token, amm_base_token, amm_discovered_at_ts, amm_status)
   VALUES
@@ -33,7 +33,7 @@ function sql.registerAMM(name, processId, token0, token1, discoveredAt, status)
     "quote_token", token0 == QUOTE_TOKEN.ProcessId and token0 or token1,
     "base_token", token0 == QUOTE_TOKEN.ProcessId and token1 or token0,
     "discovered_at", discoveredAt,
-    "status", status
+    "status", "private"
   })
   stmt:bind_names({
     process = processId,
@@ -43,7 +43,7 @@ function sql.registerAMM(name, processId, token0, token1, discoveredAt, status)
     quote_token = token0 == QUOTE_TOKEN.ProcessId and token0 or token1,
     base_token = token0 == QUOTE_TOKEN.ProcessId and token1 or token0,
     discovered_at = tostring(discoveredAt),
-    status = status
+    status = "private"
   })
   dbUtils.stepAndFinalize(stmt)
 end
@@ -175,10 +175,8 @@ dexiCore.registerToken = function(processId, name, ticker, denominator, totalSup
   sql.registerToken(processId, name, ticker, denominator, totalSupply, fixedSupply, updatedAt)
 end
 
-dexiCore.registerAMM = function(name, processId, token0, token1, discoveredAt, userWillSubscribe)
-  local status = userWillSubscribe and 'private' or 'public'
-
-  sql.registerAMM(name, processId, token0, token1, discoveredAt, status)
+dexiCore.registerAMM = function(name, processId, token0, token1, discoveredAt)
+  sql.registerAMM(name, processId, token0, token1, discoveredAt)
 end
 
 dexiCore.activateAMM = function(processId)
