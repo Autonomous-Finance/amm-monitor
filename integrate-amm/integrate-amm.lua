@@ -1,5 +1,7 @@
 local json = require("json")
 local dexiCore = require("dexi-core.dexi-core")
+local updateToken = require("update-token.update-token")
+local hopper = require("hopper.hopper")
 
 local integrateAmm = {}
 
@@ -26,6 +28,10 @@ local integrateAmm = {}
   }
 ]]
 AmmSubscriptions = AmmSubscriptions or {}
+
+
+-- Set activate price in USD
+PriceInUSD = 50;
 
 -- ----------------------- INTERNAL
 
@@ -272,6 +278,62 @@ integrateAmm.handleGetRegistrationStatus = function(msg)
     Action = "Get-AMM-Registration-Status",
     AMM = ammProcessId,
     Status = registrationData.status
+  })
+end
+
+integrateAmm.handleActivateAmm = function(msg)
+  assert(msg.Tags["AMM-Process"], "AMM activation data must contain a valid AMM-Process tag")
+
+  -- get denomiator for payment token
+  local denominator = updateToken.get_token_denominator(msg.From)
+
+  -- Get hopper price for the payment token
+  local priceResponse = hopper.getPrice("USD", msg.From)
+  local totalCost = priceResponse * PriceInUSD * 10 ^ denominator
+  local quantity = tonumber(msg.Tags.Quantity)
+
+  -- if less funds received refund the user and send back the reason
+  if (quantity < totalCost) then
+    -- Send back the funds
+    ao.send({
+      Target = msg.From,
+      Action = "Transfer",
+      Quantity = msg.Tags.Quantity,
+      Recipient = msg.Sender
+    })
+
+    ao.send({
+      Target = msg.Sender,
+      Action = 'Activate-AMM-Result',
+      Success = "false",
+      ["AMM-Process"] = msg.Tags["X-AMM-Process"],
+      ["Reason"] = "Insufficient funds"
+    })
+
+    -- break the execution
+    return false
+  end
+
+  -- if more funds received refund the difference to user
+  if (quantity > totalCost) then
+    -- Send back the funds
+    ao.send({
+      Target = msg.From,
+      Action = "Transfer",
+      Quantity = quantity - totalCost,
+      Recipient = msg.Sender
+    })
+  end
+
+  -- Update the AMM in sql with status "public"
+  dexiCore.activateAmm(msg.Tags["AMM-Process"])
+
+  ao.send({
+    Target = msg.Sender,
+    Action = 'Activate-AMM-Result',
+    Success = "true",
+    ["AMM-Process"] = msg.Tags["X-AMM-Process"],
+    Data = "true"
   })
 end
 
