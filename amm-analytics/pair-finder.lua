@@ -66,7 +66,7 @@ function analytics.findBestPairsForToken(msg)
             {
                 ticker = 'mockAO',
                 name = 'mockAO',
-                process = 'j7w28CJQHYwamMsotkhE7x0aVUggGwrBtdO5-MQ80uU',
+                process = '0udHxHUaSZI4aIs4hD6rF2jRas4G_XWYnn6JwxXd0II',
                 tvl_in_usd = 100000000
             }
         }

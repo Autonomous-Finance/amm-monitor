@@ -60,8 +60,7 @@ end
 
 local function seedOraclePrices()
   local stmt = db:prepare([[
-      INSERT OR REPLACE INTO oracle_prices (process_id, ticker, price, last_update, last_update_ts) VALUES ('j7w28CJQHYwamMsotkhE7x0aVUggGwrBtdO5-MQ80uU', 'mockAO.old', 1.0, '2024-09-23', 1727085221);
-      INSERT OR REPLACE INTO oracle_prices (process_id, ticker, price, last_update, last_update_ts) VALUES ('otJylFBsFA3u8mY7XaIYlmZPHeYeRNZi9CDWbY3ZnfI', 'mockAO.new', 1.0, '2024-09-23', 1727085221);
+      INSERT OR REPLACE INTO oracle_prices (process_id, ticker, price, last_update, last_update_ts) VALUES ('0udHxHUaSZI4aIs4hD6rF2jRas4G_XWYnn6JwxXd0II', 'mockAO.new', 1.0, '2024-09-23', 1727085221);
   ]])
   dbUtils.execute(stmt)
 end
