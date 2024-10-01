@@ -43,7 +43,6 @@ function mod.updateUsdPrice(message)
 
     -- insert ar price as ao price
     local stmt = db:prepare [[
-        INSERT OR REPLACE INTO oracle_prices (process_id, ticker, price, last_update, last_update_ts) VALUES ('j7w28CJQHYwamMsotkhE7x0aVUggGwrBtdO5-MQ80uU', 'mockAO.old', :price, :date, :ts);
         INSERT OR REPLACE INTO oracle_prices (process_id, ticker, price, last_update, last_update_ts) VALUES ('0udHxHUaSZI4aIs4hD6rF2jRas4G_XWYnn6JwxXd0II', 'mockAO.new', :price, :date, :ts);
     ]]
 
