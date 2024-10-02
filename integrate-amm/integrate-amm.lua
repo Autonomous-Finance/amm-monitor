@@ -326,7 +326,7 @@ integrateAmm.handleActivateAmm = function(msg)
   end
 
   -- Update the AMM in sql with status "public"
-  dexiCore.activateAmm(msg.Tags["X-AMM-Process"])
+  dexiCore.activateAMM(msg.Tags["X-AMM-Process"])
 
   ao.send({
     Target = msg.Sender,
