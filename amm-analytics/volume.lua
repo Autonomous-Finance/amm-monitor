@@ -29,8 +29,8 @@ local volumeQuery = [[
 ]]
 
 function analytics.getDailyVolume(msg)
-    local startTimestamp = tonumber(msg.Tags['Start-Timestamp']) or os.time() / 1000 - 7 * 24 * 60 * 60
-    local endTimestamp = tonumber(msg.Tags['End-Timestamp']) or os.time() / 1000
+    local startTimestamp = tonumber(msg.Tags['Start-Timestamp']) or math.floor(os.time() / 1000) - 7 * 24 * 60 * 60
+    local endTimestamp = tonumber(msg.Tags['End-Timestamp']) or math.floor(os.time() / 1000)
     local ammProcessId = msg.Tags['Amm-Process-Id'] or nil
 
     assert(endTimestamp - startTimestamp <= 14 * 24 * 60 * 60, "No more then 14 days")
