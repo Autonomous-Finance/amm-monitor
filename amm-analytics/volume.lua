@@ -22,7 +22,7 @@ local volumeQuery = [[
     LEFT JOIN amm_transactions_view ON DATE(created_at_ts, 'unixepoch') = DATE(date_range.date, 'unixepoch')
     JOIN process_id ON TRUE
     WHERE
-        date_range.date >= :start_timestamp AND (quote_token_process = :quote_token_process OR quote_token_process IS NULL)
+        date_range.date >= :start_timestamp
         AND CASE WHEN amm_process_id IS NOT NULL THEN amm_process_id = amm_process_id ELSE TRUE END
     GROUP BY 1, 2
     ORDER BY 1 DESC;
@@ -44,7 +44,6 @@ function analytics.getDailyVolume(msg)
     local result = dbUtils.queryManyWithParams(volumeQuery, {
         start_timestamp = startTimestamp,
         end_timestamp = endTimestamp,
-        quote_token_process = QUOTE_TOKEN.ProcessId,
         amm_process_id = ammProcessId
     })
     responses.sendReply(msg, result)
