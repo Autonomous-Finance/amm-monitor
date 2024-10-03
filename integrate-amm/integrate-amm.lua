@@ -307,7 +307,9 @@ integrateAmm.handleActivateAmm = function(msg)
       Action = 'Activate-AMM-Result',
       Success = "false",
       ["AMM-Process"] = msg.Tags["X-AMM-Process"],
-      ["Reason"] = "Insufficient funds"
+      ["Reason"] = "Insufficient funds",
+      ["Received-Quantity"] = tostring(msg.Tags.Quantity),
+      ["Total-Cost"] = tostring(totalCost)
     })
 
     -- break the execution
@@ -326,7 +328,7 @@ integrateAmm.handleActivateAmm = function(msg)
   end
 
   -- Update the AMM in sql with status "public"
-  dexiCore.activateAmm(msg.Tags["X-AMM-Process"])
+  dexiCore.activateAMM(msg.Tags["X-AMM-Process"])
 
   ao.send({
     Target = msg.Sender,
