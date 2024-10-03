@@ -29,11 +29,11 @@ local volumeQuery = [[
 ]]
 
 function analytics.getDailyVolume(msg)
-    local startTimestamp = tonumber(msg.Tags['Start-Timestamp']) or os.time() - 7 * 24 * 60 * 60 * 1000
-    local endTimestamp = tonumber(msg.Tags['End-Timestamp']) or os.time() * 1000
+    local startTimestamp = tonumber(msg.Tags['Start-Timestamp']) or math.floor(os.time() / 1000 - 7 * 24 * 60 * 60)
+    local endTimestamp = tonumber(msg.Tags['End-Timestamp']) or math.floor(os.time() / 1000)
     local ammProcessId = msg.Tags['Amm-Process-Id'] or nil
 
-    assert(endTimestamp - startTimestamp <= 14 * 24 * 60 * 60, "No more then 14 days")
+    assert(endTimestamp - startTimestamp <= 31 * 24 * 60 * 60, "No more then 31 days")
 
     assert(startTimestamp and endTimestamp, "Start and end timestamps are required")
     -- assert start date and end date are valid dates
@@ -42,8 +42,8 @@ function analytics.getDailyVolume(msg)
     assert(startDate and endDate, "Start and end dates are required")
 
     local result = dbUtils.queryManyWithParams(volumeQuery, {
-        start_timestamp = math.floor(startTimestamp / 1000),
-        end_timestamp = math.floor(endTimestamp / 1000),
+        start_timestamp = startTimestamp,
+        end_timestamp = endTimestamp,
         amm_process_id = ammProcessId
     })
     responses.sendReply(msg, result)
