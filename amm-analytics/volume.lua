@@ -29,9 +29,11 @@ local volumeQuery = [[
 ]]
 
 function analytics.getDailyVolume(msg)
-    local startTimestamp = tonumber(msg.Tags['Start-Timestamp'])
-    local endTimestamp = tonumber(msg.Tags['End-Timestamp'])
+    local startTimestamp = tonumber(msg.Tags['Start-Timestamp']) or os.time() / 1000 - 7 * 24 * 60 * 60
+    local endTimestamp = tonumber(msg.Tags['End-Timestamp']) or os.time() / 1000
     local ammProcessId = msg.Tags['Amm-Process-Id'] or nil
+
+    assert(endTimestamp - startTimestamp <= 14 * 24 * 60 * 60, "No more then 14 days")
 
     assert(startTimestamp and endTimestamp, "Start and end timestamps are required")
     -- assert start date and end date are valid dates
@@ -39,20 +41,12 @@ function analytics.getDailyVolume(msg)
     local endDate = os.date("!%Y-%m-%d", endTimestamp)
     assert(startDate and endDate, "Start and end dates are required")
 
-    local stmt = db:prepare(volumeQuery)
-
-    if not stmt then
-        error("Err: " .. db:errmsg())
-    end
-
-    stmt:bind_names({
+    local result = dbUtils.queryManyWithParams(volumeQuery, {
         start_timestamp = startTimestamp,
         end_timestamp = endTimestamp,
         quote_token_process = QUOTE_TOKEN.ProcessId,
         amm_process_id = ammProcessId
     })
-
-    local result = dbUtils.queryMany(stmt)
     responses.sendReply(msg, result)
 end
 
