@@ -58,8 +58,7 @@ function candles.generateCandlesForXDaysInIntervalY(xDays, yInterval, endTime, a
           MIN(price) as low,
           MAX(price) as high,
           FLOOR(amm_transactions_view.created_at_ts/:candle_time) as open_time,
-          SUM(volume) AS volume,
-          SUM(volume_usd) AS volume_usd
+          SUM(volume) * :conversion_price AS volume
         FROM amm_transactions_view
         WHERE created_at_ts >= :start_time AND created_at_ts < :end_time AND amm_process = :amm_process
         GROUP BY open_time) m
