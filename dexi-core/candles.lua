@@ -79,9 +79,9 @@ function candles.generateCandlesForXDaysInIntervalY(xDays, yInterval, endTime, a
 
   local candles = dbUtils.queryManyWithParams(stmt, params)
 
-  for i = 2, #candles do
-    candles[i].open = candles[i - 1].close
-  end
+  -- for i = 2, #candles do
+  --   candles[i].open = candles[i - 1].close
+  -- end
 
   return candles
 end
