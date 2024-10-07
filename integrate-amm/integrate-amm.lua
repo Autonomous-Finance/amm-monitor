@@ -263,8 +263,12 @@ end
 
 integrateAmm.handleRemoveAmm = function(msg)
   local ammProcessId = msg.Tags["Process-Id"]
-  dexiCore.handleRemoveAmm(msg)
+
+  -- DEXI SUBSCRIPTION TO THIS AMM
   unsubscribeAmm(ammProcessId)
+
+  -- delete everything related to this AMM (status quo, history, subscriptions to DEXI about this AMM)
+  dexiCore.handleRemoveAmm(msg)
 end
 
 integrateAmm.handleGetRegistrationStatus = function(msg)

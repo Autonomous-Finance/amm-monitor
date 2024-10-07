@@ -70,9 +70,17 @@ function mod.unregisterSwapParamsSubscriber(processId, ammProcessId)
     dbUtils.execute(stmt, 'unregisterSwapParamsSubscriber')
 end
 
+function mod.unregisterAllSwapParamsSubscribersToAmm(ammProcessId)
+    local stmt = db:prepare [[
+        DELETE FROM reserve_change_subscriptions WHERE amm_process_id = :amm_process_id;
+    ]]
+    stmt:bind_names({ amm_process_id = ammProcessId })
+    dbUtils.execute(stmt, 'unregisterAllSwapParamsSubscribersToAmm')
+end
+
 function mod.registerAgent(agentId, agentType)
     local stmt = db:prepare [[
-        INSERT OR REPLACE INTO agents (agent_id, agent_type) 
+        INSERT OR REPLACE INTO agents (agent_id, agent_type)
         VALUES (:agent_id, :agent_type);
     ]]
     stmt:bind_names({ agent_id = agentId, agent_type = agentType })

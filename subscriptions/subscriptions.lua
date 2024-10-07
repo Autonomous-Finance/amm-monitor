@@ -2,7 +2,6 @@ local indicators = require('indicators.indicators')
 local topN = require('top-n.top-n')
 local bint = require('.bint')(256)
 local dbUtils = require('db.utils')
-local responses = require('utils.responses')
 
 local subscriptions = {}
 
@@ -24,11 +23,7 @@ function sql.registerIndicatorSubscriber(processId, ammProcessId)
     process_id = processId,
     amm_process_id = ammProcessId
   })
-  local _, err = stmt:step()
-  stmt:finalize()
-  if err then
-    error("Err: " .. db:errmsg())
-  end
+  dbUtils.stepAndFinalize(stmt)
 end
 
 function sql.getIndicatorsSubscriber(processId, ammProcessId)
@@ -59,11 +54,21 @@ function sql.unregisterIndicatorsSubscriber(processId, ammProcessId)
     process_id = processId,
     amm_process_id = ammProcessId
   })
-  local _, err = stmt:step()
-  stmt:finalize()
-  if err then
-    error("Err: " .. db:errmsg())
+  dbUtils.stepAndFinalize(stmt)
+end
+
+function sql.unregisterAllIndicatorsSubscribers(ammProcessId)
+  local stmt = db:prepare [[
+    DELETE FROM indicator_subscriptions
+    WHERE amm_process_id = :amm_process_id;
+  ]]
+  if not stmt then
+    error("Failed to prepare SQL statement for unregistering process: " .. db:errmsg())
   end
+  stmt:bind_names({
+    amm_process_id = ammProcessId
+  })
+  dbUtils.stepAndFinalize(stmt)
 end
 
 -- TOP N SQL
@@ -81,11 +86,7 @@ function sql.registerTopNSubscriber(processId, quoteToken, nInTopN)
     quote_token = quoteToken,
     top_n = nInTopN
   })
-  local _, err = stmt:step()
-  stmt:finalize()
-  if err then
-    error("Err: " .. db:errmsg())
-  end
+  dbUtils.stepAndFinalize(stmt)
 end
 
 -- TOP N SQL
@@ -102,11 +103,7 @@ function sql.registerPriceSubscriber(processId, ammProcessId)
     process_id = processId,
     amm_process_id = ammProcessId
   })
-  local _, err = stmt:step()
-  stmt:finalize()
-  if err then
-    error("Err: " .. db:errmsg())
-  end
+  dbUtils.stepAndFinalize(stmt)
 end
 
 function sql.getTopNSubscription(processId, quoteToken)
@@ -137,11 +134,21 @@ function sql.unregisterTopNSubscriber(processId, quoteToken)
     process_id = processId,
     quote_token = quoteToken,
   })
-  local _, err = stmt:step()
-  stmt:finalize()
-  if err then
-    error("Err: " .. db:errmsg())
+  dbUtils.stepAndFinalize(stmt)
+end
+
+function sql.unregisterAllTopNSubscribers(quoteToken)
+  local stmt = db:prepare [[
+    DELETE FROM top_n_subscriptions
+    WHERE quote_token = :quote_token;
+  ]]
+  if not stmt then
+    error("Failed to prepare SQL statement for unregistering process: " .. db:errmsg())
   end
+  stmt:bind_names({
+    quote_token = quoteToken,
+  })
+  dbUtils.stepAndFinalize(stmt)
 end
 
 function sql.updateBalance(processId, amount, isCredit)
@@ -164,11 +171,7 @@ function sql.updateBalance(processId, amount, isCredit)
     amount = math.abs(amount), -- Ensure amount is positive
     is_credit = isCredit
   })
-  local _, err = stmt:step()
-  stmt:finalize()
-  if err then
-    error("Error updating balance: " .. db:errmsg())
-  end
+  dbUtils.stepAndFinalize(stmt)
 end
 
 function sql.getBalance(processId)
@@ -207,8 +210,8 @@ subscriptions.handleSubscribeForIndicators = function(msg)
   end
 
   print('Registering subscriber to indicator data: ' ..
-    processId .. ' for amm: ' .. ammProcessId .. ' with owner: ' .. ownerId)
-  indicators.registerIndicatorSubscriber(processId, ownerId, ammProcessId)
+    processId .. ' for amm: ' .. ammProcessId)
+  sql.registerIndicatorSubscriber(processId, ammProcessId)
 
   ao.send({
     Target = ao.id,
@@ -228,8 +231,6 @@ local unsubscribeForInidicators = function(processId, ammProcessId)
   print('Unsubscribing subscriber from indicator data: ' ..
     processId .. ' for amm: ' .. ammProcessId)
 
-  indicators.unregisterIndicatorSubscriber(processId, ammProcessId)
-
   ao.send({
     Target = processId,
     Action = 'Dexi-Indicator-Unsubscription-Confirmation',
@@ -242,6 +243,10 @@ subscriptions.handleUnsubscribeForIndicators = function(msg)
   local processId = msg.From
   local ammProcessId = msg.Tags['AMM-Process-Id']
   unsubscribeForInidicators(processId, ammProcessId)
+end
+
+subscriptions.unsubscribeForIndicatorsOnAmm = function(ammProcessId)
+  indicators.unregisterAllIndicatorsSubscribers(ammProcessId)
 end
 
 subscriptions.handleOperatorUnsubscribeForIndicators = function(msg)

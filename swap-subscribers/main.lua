@@ -51,6 +51,14 @@ function mod.unregisterSwapSubscriber(processId, ammProcessId)
     dbUtils.execute(stmt, 'unregisterSwapSubscriber')
 end
 
+function mod.unregisterAllSwapSubscribersToAmm(ammProcessId)
+    local stmt = db:prepare [[
+        DELETE FROM swap_subscriptions WHERE amm_process_id = :amm_process_id;
+    ]]
+    stmt:bind_names({ amm_process_id = ammProcessId })
+    dbUtils.execute(stmt, 'unregisterAllSwapSubscribersToAmm')
+end
+
 function mod.registerSwapSubscriberHandler(msg)
     local processId = msg.Tags['Process-Id']
     local ammProcessId = msg.Tags['Amm-Process-Id']
