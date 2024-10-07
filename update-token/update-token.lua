@@ -3,7 +3,7 @@ local dbUtils = require("db.utils")
 
 local updateToken = {}
 
-local tokendropRegistry = "Mrkk8xNLfy1zhx99oAJTRDAHA3j6n1TG_hIf_I03yBY"
+local tokendropRegistry = "mQES2_hwlXQS8JVSdPJvRTkp78slLCl2gpm6sW3CK9w"
 local priceInUSD = 20
 
 function updateToken.get_token_denominator(tokenProcess)
