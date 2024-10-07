@@ -9,6 +9,9 @@ local priceAround = require('dexi-core.price-around')
 local topN = require('top-n.top-n')
 local hopper = require('hopper.hopper')
 local lookups = require('dexi-core.lookups')
+local subscriptions = require('subscriptions.subscriptions')
+local swapSubscribers = require("swap-subscribers.main")
+local reservesSubscribers = require("swap-subscribers.reserves")
 
 local dexiCore = {}
 
@@ -60,10 +63,47 @@ function sql.getRegisteredAMM(processId)
   return dbUtils.queryOne(stmt)
 end
 
-function sql.unregisterAMM(processId)
-  local stmt = db:prepare('DELETE FROM amm_registry WHERE amm_process = :process_id')
-  stmt:bind_names({ process_id = processId })
-  dbUtils.stepAndFinalize(stmt)
+-- removes AMM STATUS QUO from misc tables
+function sql.unregisterAMM(ammProcessId)
+  -- AMMs table
+  local unregisterStmt = db:prepare('DELETE FROM amm_registry WHERE amm_process = :amm_process_id')
+  if not unregisterStmt then
+    error("Failed to prepare SQL statement for unregistering amm: " .. db:errmsg())
+  end
+  unregisterStmt:bind_names({ amm_process_id = ammProcessId })
+  dbUtils.stepAndFinalize(unregisterStmt)
+
+  -- AMM swap params table
+  local deleteSwapParamsStmt = db:prepare('DELETE FROM amm_swap_params WHERE amm_process = :amm_process_id')
+  if not deleteSwapParamsStmt then
+    error("Failed to prepare SQL statement for deleting swap params of amm: " .. db:errmsg())
+  end
+  deleteSwapParamsStmt:bind_names({ amm_process_id = ammProcessId })
+  dbUtils.stepAndFinalize(deleteSwapParamsStmt)
+end
+
+-- removes AMM HISTORY from misc tables
+function sql.deleteAmmHistory(ammProcessId)
+  local transactionsStmt = db:prepare('DELETE FROM amm_transactions WHERE amm_process = :amm_process_id')
+  if not transactionsStmt then
+    error("Failed to prepare SQL statement for deleting history of transactions of amm: " .. db:errmsg())
+  end
+  transactionsStmt:bind_names({ amm_process_id = ammProcessId })
+  dbUtils.stepAndFinalize(transactionsStmt)
+
+  local swapParamsChangesStmt = db:prepare('DELETE FROM amm_swap_params_changes WHERE amm_process = :amm_process_id')
+  if not swapParamsChangesStmt then
+    error("Failed to prepare SQL statement for deleting history of swap params changes of amm: " .. db:errmsg())
+  end
+  swapParamsChangesStmt:bind_names({ amm_process_id = ammProcessId })
+  dbUtils.stepAndFinalize(swapParamsChangesStmt)
+
+  local reserveChangesStmt = db:prepare('DELETE FROM reserve_changes WHERE amm_process = :amm_process_id')
+  if not reserveChangesStmt then
+    error("Failed to prepare SQL statement for deleting history of reserve changes of amm: " .. db:errmsg())
+  end
+  reserveChangesStmt:bind_names({ amm_process_id = ammProcessId })
+  dbUtils.stepAndFinalize(reserveChangesStmt)
 end
 
 function sql.registerToken(processId, name, ticker, denominator, totalSupply, fixedSupply, updatedAt)
@@ -102,10 +142,21 @@ function sql.registerToken(processId, name, ticker, denominator, totalSupply, fi
   dbUtils.execute(stmt)
 end
 
+-- delete token status quo
 function sql.unregisterToken(processId)
   local stmt = db:prepare('DELETE FROM token_registry WHERE token_process = :process_id')
   stmt:bind_names({ process_id = processId })
   dbUtils.stepAndFinalize(stmt)
+end
+
+-- delete token related history
+function sql.deleteTokenHistory(processId)
+  local supplyChanges = db:prepare('DELETE FROM token_supply_changes WHERE process_id = :process_id')
+  if not supplyChanges then
+    error("Failed to prepare SQL statement for deleting history of supply changes of token: " .. db:errmsg())
+  end
+  supplyChanges:bind_names({ process_id = processId })
+  dbUtils.stepAndFinalize(supplyChanges)
 end
 
 ---@param supply_changed_at_ts number @timestamp of when the change occurred in the token contract - typically earlier than the time at which DEXI records this change
@@ -150,6 +201,9 @@ end
 
 function sql.isKnownAmm(processId)
   local stmt = db:prepare('SELECT TRUE FROM amm_registry WHERE amm_process = :amm_process')
+  if not stmt then
+    error("Failed to prepare SQL statement for getting amm by process id: " .. db:errmsg())
+  end
   stmt:bind_names({ amm_process = processId })
 
   local row = dbUtils.queryOne(stmt)
@@ -158,6 +212,9 @@ end
 
 function sql.isKnownToken(processId)
   local stmt = db:prepare('SELECT TRUE FROM token_registry WHERE token_process = :token_process')
+  if not stmt then
+    error("Failed to prepare SQL statement for getting token by process id: " .. db:errmsg())
+  end
   stmt:bind_names({ token_process = processId })
 
   local row = dbUtils.queryOne(stmt)
@@ -166,6 +223,9 @@ end
 
 function sql.activateAMM(processId)
   local stmt = db:prepare('UPDATE amm_registry SET amm_status = "public" WHERE amm_process = :process_id')
+  if not stmt then
+    error("Failed to prepare SQL statement for updating amm status: " .. db:errmsg())
+  end
   stmt:bind_names({ process_id = processId })
   dbUtils.stepAndFinalize(stmt)
 end
@@ -314,7 +374,16 @@ function dexiCore.handleRemoveAmm(msg)
     error('AMM not found: ' .. ammProcessId)
   end
 
+  -- AMM STATUS QUO
   sql.unregisterAMM(ammProcessId)
+
+  -- HISTORY for this amm
+  sql.deleteAmmHistory(ammProcessId)
+
+  -- SUBSCRIPTIONS TO DEXI involving this amm
+  subscriptions.unregisterAllIndicatorsSubscribers(ammProcessId)
+  swapSubscribers.unregisterAllSwapSubscribersToAmm(ammProcessId)
+  reservesSubscribers.unregisterAllSwapParamsSubscribersToAmm(ammProcessId)
 end
 
 function dexiCore.handleRemoveToken(msg)
@@ -323,7 +392,15 @@ function dexiCore.handleRemoveToken(msg)
   end
 
   local processId = msg.Tags["Process-Id"]
+
+  -- TOKEN status quo
   sql.unregisterToken(processId)
+
+  -- HISTORY for this token
+  sql.deleteTokenHistory(processId)
+
+  -- SUBSCRIPTIONS TO DEXI involving this token
+  subscriptions.unregisterAllTopNSubscribers(processId)
 end
 
 return dexiCore
