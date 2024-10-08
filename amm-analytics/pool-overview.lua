@@ -47,8 +47,8 @@ SELECT *
 FROM sorted
 -- WHERE tvl_rank BETWEEN :start_rank AND :end_rank
 ORDER BY tvl_rank
-OFFSET :start_rank - 1
 LIMIT :end_rank
+OFFSET :start_rank - 1
 ]]
 
 
