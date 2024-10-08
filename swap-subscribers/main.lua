@@ -33,7 +33,7 @@ function mod.registerSwapSubscriber(processId, ammProcessId, expiresAtTs)
         INSERT INTO swap_subscriptions (process_id, amm_process_id, expires_at_ts, subscribed_at_ts)
         VALUES (:process_id, :amm_process_id, :expires_at_ts, :subscribed_at_ts);
     ]]
-    local expiresAtTs = math.max(os.time() + 60 * 60 * 24 * 3, expiresAtTs)
+    local expiresAtTs = math.max(os.time() + 60 * 60 * 24 * 7, expiresAtTs)
     stmt:bind_names({
         process_id = processId,
         amm_process_id = ammProcessId,
