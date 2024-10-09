@@ -23,8 +23,9 @@ luacheck process.lua \
     swap-subscribers/main.lua swap-subscribers/reserves.lua \
     hopper/hopper.lua \
     update-token/update-token.lua \
-    ingest/ingest-token-lock.lua
-
+    ingest/ingest-token-lock.lua \
+    amm-analytics/locked-tokens.lua
+    
 amalg.lua -s process.lua -o build/output.lua \
     validation.validation validation.validation-schemas \
     db.sqlschema db.seed db.utils \
@@ -43,4 +44,5 @@ amalg.lua -s process.lua -o build/output.lua \
     swap-subscribers.main swap-subscribers.reserves \
     hopper.hopper \
     update-token.update-token \
-    ingest.ingest-token-lock
+    ingest.ingest-token-lock \
+    amm-analytics.locked-tokens
