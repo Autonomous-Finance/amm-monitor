@@ -19,6 +19,7 @@ mod.handleInitialize = function(msg)
   assert(msg.Tags.PaymentTokenTicker, 'PaymentTokenTicker is required for Dexi initialization')
   assert(msg.Tags.SupplyUpdatesProvider, 'SupplyUpdatesProvider is required for Dexi initialization')
 
+  QUOTE_TOKEN.Name = msg.Tags.QuoteTokenName
   QUOTE_TOKEN.ProcessId = msg.Tags.QuoteTokenProcess
   QUOTE_TOKEN.Ticker = msg.Tags.QuoteTokenTicker
   QUOTE_TOKEN.Denominator = msg.Tags.QuoteTokenDenominator
