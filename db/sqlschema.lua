@@ -293,4 +293,17 @@ CREATE TABLE IF NOT EXISTS agents (
     agent_type TEXT NOT NULL
 );]]
 
+sqlschema.create_locked_tokens_table = [[
+CREATE TABLE IF NOT EXISTS locked_tokens (
+    id TEXT NOT NULL PRIMARY KEY,
+    locked_by TEXT NOT NULL,
+    locked_token TEXT NOT NULL,
+    initial_locked_value TEXT NOT NULL,
+    current_locked_value TEXT NOT NULL,
+    locked_period INTEGER NOT NULL,
+    locked_until INTEGER NOT NULL,
+    locked_at_ts INTEGER NOT NULL
+);
+]]
+
 return sqlschema

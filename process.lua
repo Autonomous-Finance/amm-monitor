@@ -18,6 +18,7 @@ local analytics = require("amm-analytics.main")
 local hopper = require("hopper.hopper")
 local updateToken = require("update-token.update-token")
 local lookups = require("dexi-core.lookups")
+local ingestTokenLock = require("ingest.ingest-token-lock")
 local json = require("json")
 
 db = db or sqlite3.open_memory()
@@ -247,9 +248,7 @@ Handlers.add(
     return Handlers.utils.hasMatchingTag("Action", "Notify-Claimed-Tokens")(msg)
         and msg.From == TOKEN_LOCKER
   end,
-  function(msg)
-    print(msg)
-  end
+  ingestTokenLock.handleClaimNotification
 )
 
 Handlers.add(
@@ -258,9 +257,7 @@ Handlers.add(
     return Handlers.utils.hasMatchingTag("Action", "Notify-Locked-Tokens")(msg)
         and msg.From == TOKEN_LOCKER
   end,
-  function(msg)
-    print(msg)
-  end
+  ingestTokenLock.handleLockNotification
 )
 
 
