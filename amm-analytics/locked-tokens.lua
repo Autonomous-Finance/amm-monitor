@@ -22,7 +22,7 @@ function mod.getAggregateLockedTokens(ammProcess)
             SUM(CAST(current_locked_value AS INTEGER)) AS total_locked_tokens
         FROM locked_tokens
         WHERE locked_token = :amm_process
-        GROUP BY date
+        GROUP BY locked_at_date
     ]]
 
     return dbUtils.queryOneWithParams(stmt, { amm_process = ammProcess })
