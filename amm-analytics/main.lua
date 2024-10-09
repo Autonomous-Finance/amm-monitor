@@ -11,7 +11,7 @@ local analytics = {
     findBestPairsForToken = pairFinder.findBestPairsForToken,
     getOneYearLockedShare = lockedTokens.getOneYearLockedShare,
     getAggregateLockedTokens = lockedTokens.getAggregateLockedTokens,
-    getLastTvl = poolPnl.getCurrentTvl
+    getCurrentTvl = poolPnl.getCurrentTvl
 }
 
 return analytics
