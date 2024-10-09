@@ -25,7 +25,7 @@ function mod.getAggregateLockedTokens(ammProcess)
         GROUP BY date
     ]]
 
-    return dbUtils.query(stmt, { amm_process = ammProcess })
+    return dbUtils.queryOneWithParams(stmt, { amm_process = ammProcess })
 end
 
 function mod.getOneYearLockedShare(ammProcess)
