@@ -1,6 +1,5 @@
 local poolTokenPnl = require("amm-analytics.pool-token-pnl")
--- use getLastPoolTokenAmount
-local dbUtils = require("db.db-utils")
+local dbUtils = require("db.utils")
 
 local function getOneYearLockedTokens(ammProcess)
     local stmt = [[
