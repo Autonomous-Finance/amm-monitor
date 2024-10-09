@@ -22,8 +22,9 @@ luacheck process.lua \
     amm-analytics/main.lua amm-analytics/volume.lua amm-analytics/pool-overview.lua amm-analytics/pool-token-pnl.lua amm-analytics/pair-finder.lua \
     swap-subscribers/main.lua swap-subscribers/reserves.lua \
     hopper/hopper.lua \
-    update-token/update-token.lua
-    
+    update-token/update-token.lua \
+    ingest/ingest-token-lock.lua
+
 amalg.lua -s process.lua -o build/output.lua \
     validation.validation validation.validation-schemas \
     db.sqlschema db.seed db.utils \
@@ -41,4 +42,5 @@ amalg.lua -s process.lua -o build/output.lua \
     amm-analytics.main amm-analytics.volume amm-analytics.pool-overview amm-analytics.pool-token-pnl amm-analytics.pair-finder \
     swap-subscribers.main swap-subscribers.reserves \
     hopper.hopper \
-    update-token.update-token
+    update-token.update-token \
+    ingest.ingest-token-lock
