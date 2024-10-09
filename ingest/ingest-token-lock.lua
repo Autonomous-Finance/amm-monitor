@@ -1,5 +1,6 @@
 local json = require('json')
 local dbUtils = require('db.utils')
+local lookups = require('dexi-core.lookups')
 
 local ingestTokenLock = {}
 
@@ -48,10 +49,18 @@ function ingestTokenLock.handleLockNotification(msg)
     assert(msg.Tags["Locked-Until"], "Missing Locked-Until tag")
     assert(msg.Tags["Current-Timestamp"], "Missing Current-Timestamp tag")
 
+    local lockedToken = msg.Tags["Locked-Token"]
+
+    -- Check if the locked token is a registered AMM
+    if not lookups.ammInfo(lockedToken) then
+        print('Ignoring lock notification for non-AMM token: ' .. lockedToken)
+        return
+    end
+
     local entry = {
         id = msg.Tags["Id"],
         locked_by = msg.Tags["Locked-By"],
-        locked_token = msg.Tags["Locked-Token"],
+        locked_token = lockedToken,
         initial_locked_value = msg.Tags["Locked-Value"],
         current_locked_value = msg.Tags["Locked-Value"],
         locked_period = tonumber(msg.Tags["Locked-Period"]),
@@ -68,6 +77,11 @@ function ingestTokenLock.handleClaimNotification(msg)
     assert(msg.Tags["Claimed-By"], "Missing Claimed-By tag")
     assert(msg.Tags["Claimed-Token"], "Missing Claimed-Token tag")
     assert(msg.Tags["Claimed-Quantity"], "Missing Claimed-Quantity tag")
+
+    if not lookups.ammInfo(msg.tags['Claimed-Token']) then
+        print('Ignoring claim notification for non-AMM token: ' .. msg.tags['Claimed-Token'])
+        return
+    end
 
     local lockedEntry = getLockedTokenEntry(msg.Tags["Id"])
 

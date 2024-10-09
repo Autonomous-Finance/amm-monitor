@@ -260,6 +260,26 @@ Handlers.add(
   ingestTokenLock.handleLockNotification
 )
 
+Handlers.add(
+  "Get-Locked-Share",
+  Handlers.utils.hasMatchingTag("Action", "Get-Locked-Share"),
+  function(msg)
+    local ammProcess = msg.Tags['AMM-Process']
+    local lockedShare = analytics.getOneYearLockedShare(ammProcess)
+    local aggregateLockedTokens = analytics.getAggregateLockedTokens(ammProcess)
+
+    ao.send({
+      Target = msg.From,
+      ResponseFor = msg.Action,
+      ['One-Year-Locked-Share'] = lockedShare,
+      Data = json.encode({
+        ['One-Year-Locked-Share'] = lockedShare,
+        ['Aggregate-Locked-Tokens'] = aggregateLockedTokens
+      })
+    })
+  end
+)
+
 
 -- PAYMENT for Dexi Subscribers
 
