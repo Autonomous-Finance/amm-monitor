@@ -20,6 +20,7 @@ local updateToken = require("update-token.update-token")
 local lookups = require("dexi-core.lookups")
 local ingestTokenLock = require("ingest.ingest-token-lock")
 local json = require("json")
+local utils = require(".utils")
 
 db = db or sqlite3.open_memory()
 
@@ -266,14 +267,23 @@ Handlers.add(
   function(msg)
     local ammProcess = msg.Tags['AMM-Process']
     local lockedShare = analytics.getOneYearLockedShare(ammProcess)
+    local currentTvl = analytics.getCurrentTvl(ammProcess)
     local aggregateLockedTokens = analytics.getAggregateLockedTokens(ammProcess)
+    -- todo return total locked liquidity
+    local totalLockedLiquidity = utils.reduce(function(acc, curr)
+      return acc + curr.locked_tokens
+    end, 0, aggregateLockedTokens)
 
     ao.send({
       Target = msg.From,
       ResponseFor = msg.Action,
       ['One-Year-Locked-Share'] = lockedShare,
+      ['Current-Tvl'] = currentTvl,
+      ['One-Year-Locked-Liquidity'] = currentTvl * lockedShare,
       Data = json.encode({
         ['One-Year-Locked-Share'] = lockedShare,
+        ['Current-Tvl'] = currentTvl,
+        ['One-Year-Locked-Liquidity'] = currentTvl * lockedShare,
         ['Aggregate-Locked-Tokens'] = aggregateLockedTokens
       })
     })

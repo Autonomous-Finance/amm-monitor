@@ -10,7 +10,8 @@ local analytics = {
     getPoolPnlHistoryForUser = poolPnl.getPoolPnlHistoryForUser,
     findBestPairsForToken = pairFinder.findBestPairsForToken,
     getOneYearLockedShare = lockedTokens.getOneYearLockedShare,
-    getAggregateLockedTokens = lockedTokens.getAggregateLockedTokens
+    getAggregateLockedTokens = lockedTokens.getAggregateLockedTokens,
+    getLastTvl = poolPnl.getCurrentTvl
 }
 
 return analytics
