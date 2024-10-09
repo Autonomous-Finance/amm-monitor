@@ -6,7 +6,7 @@ local mod = {}
 function mod.getOneYearLockedTokens(ammProcess)
     local stmt = [[
         SELECT
-            SUM(CAST(current_locked_value AS INTEGER)) AS total_locked_tokens
+            SUM(CAST(current_locked_value AS REAL)) AS total_locked_tokens
     FROM locked_tokens
         WHERE locked_token = :amm_process AND locked_until > :current_timestamp + (60 * 60 * 24 * 365 * 1000)
     ]]
@@ -19,7 +19,7 @@ function mod.getAggregateLockedTokens(ammProcess)
     local stmt = [[
         SELECT
             strftime('%Y-%m-%d', ceil(locked_at_ts / 1000)) AS locked_at_date,
-            SUM(CAST(current_locked_value AS INTEGER)) AS total_locked_tokens
+            SUM(CAST(current_locked_value AS REAL)) AS total_locked_tokens
         FROM locked_tokens
         WHERE locked_token = :amm_process
         GROUP BY locked_at_date
