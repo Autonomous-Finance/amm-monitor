@@ -49,6 +49,7 @@ DISPATCH_ACTIVE = DISPATCH_ACTIVE or true
 LOGGING_ACTIVE = LOGGING_ACTIVE or true
 
 OPERATOR = OPERATOR or ao.env.Process.Tags["Operator"]
+TOKEN_LOCKER = 'jxiKuu_21_KjNga8KxH1h8fJeoCl9DzcEjGBiKN66DY'
 
 Initialized = Initialized or false
 
@@ -237,6 +238,31 @@ Handlers.add(
   Handlers.utils.hasMatchingTag("Action", "Unsubscribe-Top-N"),
   subscriptions.handleUnsubscribeForTopN
 )
+
+
+-- TOKEN LOCKER --
+Handlers.add(
+  "Notify-Claimed-Tokens",
+  function(msg)
+    return Handlers.utils.hasMatchingTag("Action", "Notify-Claimed-Tokens")(msg)
+        and msg.From == TOKEN_LOCKER
+  end,
+  function(msg)
+    print(msg)
+  end
+)
+
+Handlers.add(
+  "Notify-Locked-Tokens",
+  function(msg)
+    return Handlers.utils.hasMatchingTag("Action", "Notify-Locked-Tokens")(msg)
+        and msg.From == TOKEN_LOCKER
+  end,
+  function(msg)
+    print(msg)
+  end
+)
+
 
 -- PAYMENT for Dexi Subscribers
 
