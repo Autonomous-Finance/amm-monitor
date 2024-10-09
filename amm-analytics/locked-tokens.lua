@@ -18,7 +18,7 @@ end
 function mod.getAggregateLockedTokens(ammProcess)
     local stmt = [[
         SELECT
-            strftime('%Y-%m-%d', ceil(locked_at_ts / 1000)) AS locked_at_date,
+            strftime('%Y-%m-%d', locked_at_ts / 1000, 'unixepoch') AS locked_at_date,
             SUM(CAST(current_locked_value AS REAL)) AS locked_tokens
         FROM locked_tokens
         WHERE locked_token = :amm_process
