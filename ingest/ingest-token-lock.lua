@@ -1,6 +1,7 @@
 local json = require('json')
 local dbUtils = require('db.utils')
 local lookups = require('dexi-core.lookups')
+local bint = require('.bint')(256)
 
 local ingestTokenLock = {}
 
@@ -86,7 +87,7 @@ function ingestTokenLock.handleClaimNotification(msg)
     local lockedEntry = getLockedTokenEntry(msg.Tags["Id"])
 
     if lockedEntry then
-        local newLockedValue = tonumber(lockedEntry.current_locked_value) - tonumber(msg.Tags["Claimed-Quantity"])
+        local newLockedValue = bint(lockedEntry.current_locked_value) - bint(msg.Tags["Claimed-Quantity"])
 
         if newLockedValue > 0 then
             local updatedEntry = {

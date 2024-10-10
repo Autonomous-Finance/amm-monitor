@@ -306,4 +306,13 @@ CREATE TABLE IF NOT EXISTS locked_tokens (
 );
 ]]
 
+
+sqlschema.create_community_approved_tokens_table = [[
+CREATE TABLE IF NOT EXISTS community_approved_tokens (
+    id TEXT NOT NULL PRIMARY KEY,
+    ticker TEXT,
+    approved_at_ts INTEGER NOT NULL
+);
+]]
+
 return sqlschema

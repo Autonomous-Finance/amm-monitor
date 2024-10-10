@@ -59,6 +59,9 @@ function dbSeed.createMissingTables()
 
   db:exec(sqlschema.create_locked_tokens_table)
   print("create_locked_tokens_table: " .. (db:errmsg() == 'not an error' and '✅' or db:errmsg()))
+
+  db:exec(sqlschema.create_community_approved_tokens_table)
+  print("create_community_approved_tokens_table: " .. (db:errmsg() == 'not an error' and '✅' or db:errmsg()))
 end
 
 local function seedOraclePrices()
@@ -69,8 +72,16 @@ local function seedOraclePrices()
 end
 
 
+local function seedCommunityApprovedTokens()
+  local stmt = db:prepare([[
+      INSERT OR REPLACE INTO community_approved_tokens (id, ticker, approved_at_ts) VALUES ('0udHxHUaSZI4aIs4hD6rF2jRas4G_XWYnn6JwxXd0II', 'mockAO', 1727085221);
+  ]])
+  dbUtils.execute(stmt)
+end
+
 function dbSeed.seed()
   seedOraclePrices()
+  seedCommunityApprovedTokens()
 end
 
 function dbSeed.handleResetDBState(msg)
