@@ -466,6 +466,33 @@ Handlers.add(
   end
 )
 
+Handlers.add(
+  "Add-Community-Approved-Token",
+  Handlers.utils.hasMatchingTag("Action", "Add-Community-Approved-Token"),
+  function(msg)
+    assert(msg.From == OPERATOR, "Only OPERATOR can add community approved tokens")
+
+    local stmt =
+    "INSERT INTO community_approved_tokens (id, ticker, approved_at_ts) VALUES (:id, :ticker, :approved_at_ts)"
+    dbUtils.exec(stmt, {
+      id = msg.Tags["Process-Id"],
+      ticker = msg.Tags["Ticker"],
+      approved_at_ts = msg.Timestamp
+    })
+  end
+)
+
+Handlers.add(
+  "Remove-Community-Approved-Token",
+  Handlers.utils.hasMatchingTag("Action", "Remove-Community-Approved-Token"),
+  function(msg)
+    assert(msg.From == OPERATOR, "Only OPERATOR can add community approved tokens")
+
+    local stmt = "DELETE FROM community_approved_tokens WHERE id = :id"
+    dbUtils.exec(stmt, { id = msg.Tags["Process-Id"] })
+  end
+)
+
 -- Token Profile Update
 
 Handlers.add(
