@@ -1,5 +1,7 @@
 local poolTokenPnl = require("amm-analytics.pool-token-pnl")
 local dbUtils = require("db.utils")
+local utils = require(".utils")
+local bint = require(".bint")
 
 local mod = {}
 
@@ -19,13 +21,25 @@ function mod.getAggregateLockedTokens(ammProcess)
     local stmt = [[
         SELECT
             strftime('%Y-%m-%d', locked_until / 1000, 'unixepoch') AS locked_till_date,
-            SUM(CAST(current_locked_value AS REAL)) AS locked_tokens
+            GROUP_CONCAT(CAST(current_locked_value AS TEXT)) AS locked_tokens
         FROM locked_tokens
         WHERE locked_token = :amm_process
         GROUP BY locked_till_date
     ]]
 
-    return dbUtils.queryManyWithParams(stmt, { amm_process = ammProcess })
+    local results = dbUtils.queryManyWithParams(stmt, { amm_process = ammProcess })
+
+    -- Convert locked_tokens string to an array
+    for _, result in ipairs(results) do
+        result.locked_tokens = dbUtils.splitString(result.locked_tokens, ",")
+        result.locked_tokens = utils.reduce(function(acc, curr)
+            return acc + bint(curr)
+        end, bint(0), result.locked_tokens)
+
+        result.locked_tokens = tostring(result.locked_tokens)
+    end
+
+    return results
 end
 
 function mod.getOneYearLockedShare(ammProcess)
