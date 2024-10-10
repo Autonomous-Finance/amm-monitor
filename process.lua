@@ -471,12 +471,16 @@ Handlers.add(
     assert(msg.From == OPERATOR, "Only OPERATOR can add community approved tokens")
 
     local stmt =
-    "INSERT INTO community_approved_tokens (id, ticker, approved_at_ts) VALUES (:id, :ticker, :approved_at_ts)"
-    dbUtils.exec(stmt, {
+        db:prepare(
+          "INSERT INTO community_approved_tokens (id, ticker, approved_at_ts) VALUES (:id, :ticker, :approved_at_ts)")
+
+    stmt:bind_names({
       id = msg.Tags["Process-Id"],
       ticker = msg.Tags["Ticker"],
       approved_at_ts = msg.Timestamp
     })
+
+    dbUtils.execute(stmt)
   end
 )
 
@@ -486,8 +490,9 @@ Handlers.add(
   function(msg)
     assert(msg.From == OPERATOR, "Only OPERATOR can add community approved tokens")
 
-    local stmt = "DELETE FROM community_approved_tokens WHERE id = :id"
-    dbUtils.exec(stmt, { id = msg.Tags["Process-Id"] })
+    local stmt = db:prepare("DELETE FROM community_approved_tokens WHERE id = :id")
+    stmt:bind_names({ id = msg.Tags["Process-Id"] })
+    dbUtils.execute(stmt)
   end
 )
 
