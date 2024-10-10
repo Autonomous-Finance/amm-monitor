@@ -472,7 +472,7 @@ Handlers.add(
 
     local stmt =
         db:prepare(
-          "INSERT INTO community_approved_tokens (id, ticker, approved_at_ts) VALUES (:id, :ticker, :approved_at_ts)")
+          "INSERT OR REPLACE INTO community_approved_tokens (id, ticker, approved_at_ts) VALUES (:id, :ticker, :approved_at_ts)")
 
     stmt:bind_names({
       id = msg.Tags["Process-Id"],
