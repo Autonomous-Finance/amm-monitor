@@ -10,7 +10,7 @@ WITH tx_counts AS (
 ), fees30d AS (
     SELECT amm_process, SUM(volume_usd * .25) AS fees_in_usd_30d FROM amm_transactions_view WHERE created_at_ts >= :now - 2592000 GROUP BY 1
 ), tvl AS (
-    SELECT amm_process, tvl_in_usd, row_number() over (ORDER BY created_at_ts DESC) AS seq FROM reserve_changes
+    SELECT amm_process, tvl_in_usd, row_number() over (PARTITION BY amm_process ORDER BY created_at_ts DESC) AS seq FROM reserve_changes
 ),
 preagg AS (
     SELECT
