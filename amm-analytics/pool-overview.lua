@@ -10,7 +10,7 @@ WITH tx_counts AS (
 ), fees30d AS (
     SELECT amm_process, SUM(volume_usd * .25) AS fees_in_usd_30d FROM amm_transactions_view WHERE created_at_ts >= :now - 2592000 GROUP BY 1
 ), tvl AS (
-    SELECT amm_process, tvl_in_usd FROM reserve_changes
+    SELECT amm_process, tvl_in_usd, row_number() over (ORDER BY created_at_ts DESC) AS seq FROM reserve_changes
 ),
 preagg AS (
     SELECT
@@ -27,7 +27,7 @@ preagg AS (
         tx_counts.cnt AS tx_count
     FROM amm_swap_params asp
     LEFT JOIN tx_counts USING (amm_process)
-    LEFT JOIN tvl USING (amm_process)
+    LEFT JOIN tvl ON tvl.amm_process = asp.amm_process AND tvl.seq = 1
     LEFT JOIN amm_registry ar USING (amm_process)
     LEFT JOIN fees30d f30 ON f30.amm_process = ar.amm_process
     LEFT JOIN token_registry t0 ON t0.token_process = ar.amm_token0
