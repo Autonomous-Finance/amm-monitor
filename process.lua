@@ -461,7 +461,7 @@ Handlers.add(
     ao.send({
       Target = msg.From,
       ResponseFor = msg.Action,
-      Tokens = processes
+      ['Community-Approved-Tokens'] = processes
     })
   end
 )
