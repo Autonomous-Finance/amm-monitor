@@ -30,7 +30,7 @@ local function insertOrUpdateLockedTokens(entry)
 end
 
 local function getLockedTokenEntry(id)
-    local stmt = db:prepare [[
+    local stmt = [[
     SELECT * FROM locked_tokens
     WHERE id = :id;
   ]]
@@ -98,6 +98,7 @@ function ingestTokenLock.handleClaimNotification(msg)
             print('Updating locked tokens ' .. json.encode(updatedEntry))
             insertOrUpdateLockedTokens(updatedEntry)
         else
+            print('Locked tokens record: ' .. json.encode(lockedEntry))
             -- Delete the record if nothing is locked
             local stmt = db:prepare([[
                 DELETE FROM locked_tokens
