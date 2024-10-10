@@ -17,6 +17,14 @@ function mod.getOneYearLockedTokens(ammProcess)
     return result and result.total_locked_tokens or 0
 end
 
+local function splitString(str, delimiter)
+    local result = {}
+    for match in string.gmatch(str, "([^" .. delimiter .. "]+)") do
+        table.insert(result, match)
+    end
+    return result
+end
+
 function mod.getAggregateLockedTokens(ammProcess)
     local stmt = [[
         SELECT
@@ -31,7 +39,7 @@ function mod.getAggregateLockedTokens(ammProcess)
 
     -- Convert locked_tokens string to an array
     for _, result in ipairs(results) do
-        result.locked_tokens = dbUtils.splitString(result.locked_tokens, ",")
+        result.locked_tokens = splitString(result.locked_tokens, ",")
         result.locked_tokens = utils.reduce(function(acc, curr)
             return acc + bint(curr)
         end, bint(0), result.locked_tokens)
