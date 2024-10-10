@@ -458,9 +458,7 @@ Handlers.add(
     local tokens = dbUtils.queryManyWithParams('SELECT * FROM community_approved_tokens', {})
     local processes = utils.map(function(token) return token.id end, tokens)
 
-    ao.send({
-      Target = msg.From,
-      ResponseFor = msg.Action,
+    msg.reply({
       ['Community-Approved-Tokens'] = processes
     })
   end
