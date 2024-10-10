@@ -1,7 +1,7 @@
 local poolTokenPnl = require("amm-analytics.pool-token-pnl")
 local dbUtils = require("db.utils")
 local utils = require(".utils")
-local bint = require(".bint")
+local bint = require(".bint")(256)
 
 local mod = {}
 
