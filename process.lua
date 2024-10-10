@@ -21,6 +21,7 @@ local lookups = require("dexi-core.lookups")
 local ingestTokenLock = require("ingest.ingest-token-lock")
 local json = require("json")
 local utils = require(".utils")
+local dbUtils = require("db.utils")
 
 db = db or sqlite3.open_memory()
 
@@ -446,6 +447,23 @@ Handlers.add(
   "Get-Price-For-Token",
   Handlers.utils.hasMatchingTag("Action", "Get-Price-For-Token"),
   hopper.getPriceForTokenHandler
+)
+
+-- COMMUNITY APPROVED TOKENS
+
+Handlers.add(
+  "Get-Community-Approved-Tokens",
+  Handlers.utils.hasMatchingTag("Action", "Get-Community-Approved-Tokens"),
+  function(msg)
+    local tokens = dbUtils.queryManyWithParams('SELECT * FROM community_approved_tokens', {})
+    local processes = utils.map(function(token) return token.id end, tokens)
+
+    ao.send({
+      Target = msg.From,
+      ResponseFor = msg.Action,
+      Tokens = processes
+    })
+  end
 )
 
 -- Token Profile Update
