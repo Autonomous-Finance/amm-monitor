@@ -5,27 +5,7 @@ rm -rf ./build
 
 mkdir -p ./build
 
-luacheck process.lua \
-    validation/validation.lua validation/validation-schemas.lua \
-    db/sqlschema.lua db/seed.lua db/utils.lua \
-    subscriptions/subscriptions.lua \
-    integrate-amm.integrate-amm \
-    dexi-core/dexi-core.lua \
-    dexi-core/intervals.lua dexi-core/candles.lua dexi-core/stats.lua dexi-core/overview.lua dexi-core/price-around.lua dexi-core/usd-price.lua \
-    dexi-core/lookups.lua \
-    ingest/ingest.lua \
-    indicators/indicators.lua indicators/calc.lua \
-    top-n/top-n.lua \
-    utils/debug.lua utils/responses.lua \
-    ownable/ownable.lua \
-    ops/config-ops.lua ops/emergency.lua ops/initialize.lua \
-    amm-analytics/main.lua amm-analytics/volume.lua amm-analytics/pool-overview.lua amm-analytics/pool-token-pnl.lua amm-analytics/pair-finder.lua \
-    swap-subscribers/main.lua swap-subscribers/reserves.lua \
-    hopper/hopper.lua \
-    update-token/update-token.lua \
-    ingest/ingest-token-lock.lua \
-    amm-analytics/locked-tokens.lua
-    
+
 amalg.lua -s process.lua -o build/output.lua \
     validation.validation validation.validation-schemas \
     db.sqlschema db.seed db.utils \
