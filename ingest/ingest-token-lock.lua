@@ -105,10 +105,10 @@ function ingestTokenLock.handleClaimNotification(msg)
             insertOrUpdateLockedTokens(updatedEntry)
         else
             -- Delete the record if nothing is locked
-            local stmt = db:prepare [[
+            local stmt = db:prepare([[
                 DELETE FROM locked_tokens
                 WHERE id = :id;
-            ]]
+            ]])
 
             stmt:bind_names({ id = lockedEntry.id })
             dbUtils.execute(stmt, "deleteLockedTokens")
