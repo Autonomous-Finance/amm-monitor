@@ -92,13 +92,7 @@ function ingestTokenLock.handleClaimNotification(msg)
         if newLockedValue > 0 then
             local updatedEntry = {
                 id = lockedEntry.id,
-                locked_by = lockedEntry.locked_by,
-                locked_token = lockedEntry.locked_token,
-                initial_locked_value = lockedEntry.initial_locked_value,
                 current_locked_value = tostring(newLockedValue),
-                locked_period = lockedEntry.locked_period,
-                locked_until = lockedEntry.locked_until,
-                locked_at_ts = lockedEntry.locked_at_ts
             }
 
             print('Updating locked tokens ' .. json.encode(updatedEntry))
