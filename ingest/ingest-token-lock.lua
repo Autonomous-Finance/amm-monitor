@@ -79,7 +79,7 @@ function ingestTokenLock.handleClaimNotification(msg)
     assert(msg.Tags["Claimed-Token"], "Missing Claimed-Token tag")
     assert(msg.Tags["Claimed-Quantity"], "Missing Claimed-Quantity tag")
 
-    if not lookups.ammInfo(msg.tags['Claimed-Token']) then
+    if not lookups.ammInfo(msg.Tags['Claimed-Token']) then
         print('Ignoring claim notification for non-AMM token: ' .. msg.tags['Claimed-Token'])
         return
     end
